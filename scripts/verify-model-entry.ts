@@ -69,3 +69,20 @@ export {
 export { makeTransitionTiming, makeProjectTimeline } from '../src/renderer/src/core/ProjectTimeline'
 export { makeClip } from '../src/renderer/src/core/ZoomAnimation'
 export { makeMotionStyle } from '../src/renderer/src/core/MotionStyle'
+
+// ---- 批次 3（OverlayTimeline：马赛克 + 贴图）----
+export {
+  makeOverlayRect,
+  clampedOverlayRect,
+  makeOverlayTiming,
+  overlayEndTime,
+  overlayContains,
+  decodeMosaicEffectStyle,
+  makeMosaicClip,
+  decodeMosaicClip,
+  encodeMosaicClip,
+  stickerAutomaticExit,
+  makeStickerClip,
+  decodeStickerClip,
+  encodeStickerClip,
+} from '../src/renderer/src/core/OverlayTimeline'

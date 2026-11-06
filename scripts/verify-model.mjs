@@ -374,5 +374,72 @@ check('curve.atFirst', ramp.offsetAt(10), 2)
 check('curve.afterFirst', ramp.offsetAt(15), 2)
 check('curve.empty', new MediaSyncAnchorCurve([]).offsetAt(5), 0)
 
+
+// ================================================================ OverlayTimeline
+{
+  const {
+    makeOverlayRect, clampedOverlayRect, makeOverlayTiming, overlayEndTime, overlayContains,
+    decodeMosaicEffectStyle, makeMosaicClip, decodeMosaicClip, encodeMosaicClip,
+    stickerAutomaticExit, makeStickerClip, decodeStickerClip, encodeStickerClip,
+  } = m
+
+  // ---- NormalizedOverlayRect.clamped
+  const r = clampedOverlayRect({ x: -0.2, y: 0.9, width: NaN, height: 0.5 })
+  check('or.x', r.x, 0)
+  check('or.y', r.y, 0.5)
+  check('or.w', r.width, 0.3)
+  check('or.h', r.height, 0.5)
+  const r2 = clampedOverlayRect({ x: 0.35, y: 0.39, width: 0.9, height: 0.3 })
+  check('or.xClamp', r2.x, 0.1)
+  check('or.wMin', clampedOverlayRect({ width: 0.001 }).width, 0.01)
+
+  // ---- OverlayTiming
+  const t = makeOverlayTiming(2)
+  check('ot.endTime', overlayEndTime(t), 5)
+  check('ot.containsIn', overlayContains(t, 4.9), true)
+  check('ot.containsEnd', overlayContains(t, 5), false)
+
+  // ---- MosaicEffectStyle 解码迁移（v9 像素块 → blur）
+  check('mos.spotlight', decodeMosaicEffectStyle('spotlight'), 'spotlight')
+  check('mos.pixelBlock', decodeMosaicEffectStyle('pixelBlock'), 'blur')
+  check('mos.unknown', decodeMosaicEffectStyle('whatever'), 'blur')
+
+  // ---- MosaicClip：transitionStyle 缺省推导 + 编码往返
+  const mc = makeMosaicClip({ timing: makeOverlayTiming(1, 2) })
+  check('mc.defaults', mc.transitionStyle, 'none')
+  const mcSpot = decodeMosaicClip({ id: 'm1', timing: { startTime: 0, duration: 1 }, sourceRect: { x: 0, y: 0, width: 0.2, height: 0.2 }, cornerRadius: 0.1, style: 'spotlight', intensity: 0.7 })
+  check('mc.spotTransition', mcSpot.transitionStyle, 'smooth')
+  check('mc.spotDimming', mcSpot.spotlightDimming, 0.22)
+  const mcRound = decodeMosaicClip(encodeMosaicClip(mcSpot))
+  check('mc.round.style', mcRound.style, 'spotlight')
+  check('mc.round.intensity', mcRound.intensity, 0.7)
+  check('mc.round.transition', mcRound.transitionStyle, 'smooth')
+
+  // ---- StickerAnimationPreset.automaticExit
+  check('sa.slideLeft', stickerAutomaticExit('slideLeft'), 'slideRight')
+  check('sa.slideTopLeft', stickerAutomaticExit('slideTopLeft'), 'slideBottomRight')
+  check('sa.pop', stickerAutomaticExit('pop'), 'pop')
+  check('sa.fade', stickerAutomaticExit('fade'), 'fade')
+
+  // ---- StickerClip：默认值 + 编码往返（HexColor → hexString）
+  const sc = makeStickerClip({ timing: makeOverlayTiming(0, 4), relativePath: 'stickers/a.png' })
+  check('sc.width', sc.width, 0.38)
+  check('sc.animation', sc.animation, 'pop')
+  check('sc.exitAuto', sc.exitAnimation, null)
+  check('sc.borderHex', sc.borderColor.hexString, '#FFFFFF')
+  const enc = encodeStickerClip(sc)
+  check('sc.encBorderColor', enc.borderColor, '#FFFFFF')
+  check('sc.encNoExit', 'exitAnimation' in enc, false)
+  const scRound = decodeStickerClip(enc)
+  check('sc.round.border', scRound.borderColor.hexString, '#FFFFFF')
+  check('sc.round.curve', scRound.animationCurve, 'swift')
+  const sc2 = decodeStickerClip({ id: 's1', timing: { startTime: 0, duration: 2 }, relativePath: 'x', position: { x: 0.5, y: 0.5 }, width: 0.5, rotationDegrees: 12, opacity: 0.9, cornerRadius: 8, borderWidth: 2, borderColor: '#FF8800', shadowOpacity: 0.3, shadowRadius: 10, shadowOffsetX: 1, shadowOffsetY: 2, animation: 'slideLeft', enterDuration: 0.5, exitDuration: 0.3, backdropBlur: 12, layerIndex: 3 })
+  check('sc2.border', sc2.borderColor.hexString, '#FF8800')
+  check('sc2.exit', sc2.exitAnimation, null)
+  check('sc2.layer', sc2.layerIndex, 3)
+  const enc2 = encodeStickerClip({ ...sc2, exitAnimation: 'slideRight' })
+  check('sc2.encExit', enc2.exitAnimation, 'slideRight')
+}
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
