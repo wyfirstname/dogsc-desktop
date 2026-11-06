@@ -9,6 +9,10 @@
  */
 
 import type { TimeInterval } from './ZoomAnimation'
+import type { MediaTimeRange } from './MediaTimeRange'
+import { makeRange } from './MediaTimeRange'
+import type { PointerEventRecord } from './ZoomAnimation'
+import { normalizedPointerEvents } from './PointerEventTimelineOrdering'
 import {
   FULL_RECORDING_SEGMENT_ID,
   type RecordingSegment,
@@ -271,4 +275,79 @@ export class TimelineMap {
     if (!segment) return null
     return { start: segment.outputStart, end: resolvedOutputEnd(segment) }
   }
+
+  // Swift source: TimelineMap.swift @ 567fd6e L439-500（mapPointerEventSegments）
+  // 与 L502-515（firstEventIndex(atOrAfter:in:)）。
+
+  /**
+   * 把源指针事件逐段映射到输出时钟。
+   *
+   * 对应 Swift TimelineMap.mapPointerEventSegments(_:)。指针事件按片段分组：
+   * 展平它们会让插值器穿越被删除的区间滑向下一片段的首位置，制造出成片中
+   * 从未存在过的运动。每个片段开头若没有与 sourceStart 精确对齐的事件，
+   * 注入一个 carry-over「位置种子」（kind: 'move'），使插值器从保留区间
+   * 的真实起点开始。
+   */
+  mapPointerEventSegments(sourceEvents: PointerEventRecord[]): TimelineMappedPointerSegment[] {
+    const ordered = normalizedPointerEvents(sourceEvents)
+
+    const result: TimelineMappedPointerSegment[] = []
+    for (const segment of this.segments) {
+      const sourceEnd = resolvedSourceEnd(segment)
+      const outputRange = makeRange(segment.outputStart, resolvedOutputEnd(segment))
+      const lowerIndex = firstEventIndexAtOrAfter(segment.sourceStart, ordered)
+      const upperIndex = firstEventIndexAtOrAfter(sourceEnd, ordered)
+      const eventsInRange = ordered.slice(lowerIndex, upperIndex)
+      const mapped: PointerEventRecord[] = []
+      const startsWithExactEvent =
+        eventsInRange.length > 0 &&
+        Math.abs(eventsInRange[0].time - segment.sourceStart) < 0.000_001
+      if (!startsWithExactEvent && lowerIndex > 0) {
+        const seed = ordered[lowerIndex - 1]
+        mapped.push({
+          time: segment.outputStart,
+          location: seed.location,
+          kind: 'move',
+          modifiers: seed.modifiers,
+          cursorAssetID: seed.cursorAssetID,
+        })
+      }
+      for (const event of eventsInRange) {
+        mapped.push({
+          time: segment.outputStart + (event.time - segment.sourceStart) / segment.playbackRate,
+          location: event.location,
+          kind: event.kind,
+          modifiers: event.modifiers,
+          cursorAssetID: event.cursorAssetID,
+        })
+      }
+      result.push({ id: segment.id, outputRange, events: mapped })
+    }
+    return result
+  }
+}
+
+/** Swift TimelineMappedPointerSegment（TimelineMap.swift L398-418）。 */
+export interface TimelineMappedPointerSegment {
+  id: string
+  outputRange: MediaTimeRange
+  events: PointerEventRecord[]
+}
+
+/** Swift TimelineMap.firstEventIndex(atOrAfter:in:) —— 二分查找。 */
+export function firstEventIndexAtOrAfter(
+  time: TimeInterval,
+  events: PointerEventRecord[]
+): number {
+  let lower = 0
+  let upper = events.length
+  while (lower < upper) {
+    const middle = lower + Math.floor((upper - lower) / 2)
+    if (events[middle].time < time) {
+      lower = middle + 1
+    } else {
+      upper = middle
+    }
+  }
+  return lower
 }

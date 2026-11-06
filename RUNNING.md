@@ -312,3 +312,11 @@ PointerTrack 等转写后实现。
   推送网络为 SNI 间歇阻断，工具脚本 `.workbuddy/tools/push_retry.sh`
   探测连接窗口后用 `http.curloptResolve` 直连（不动仓库配置）。
 - 下一批：PointerTrack(894) / ProjectPointerTrack(469)。
+
+## 十一、PointerTrack / ProjectPointerTrack 批次
+
+- `src/renderer/src/core/PointerTrack.ts`（Swift PointerTrack.swift，894 行）：PointerClickPhase / PointerSample / PointerTrackEvaluation / PointerTrack 类 / PointerInterpolator 门面。核心算法：240Hz 二阶弹簧积分（BoundedMemoizationCache 容量 2）+ 亚像素抖动阈值 0.00035 + 点击锚定（±0.18s 支撑窗、五次 smootherStep、相邻点击中点止步）+ C1 三次 Hermite 插值（PCHIP/Fritsch-Carlson 单调切向，tangentScale 按响应度 0.25~1.2）+ 拖尾倾斜（smooth/medium/rapid/none 四档参数，idleDecay 0.18s）。位置与可见性解耦：隐藏光标不影响自动运镜。
+- `src/renderer/src/core/ProjectPointerTrack.ts`（Swift ProjectPointerTrack.swift，469 行）：输出时钟域评估。保留片段段表 + 首点击时间缓存 + 剪辑桥接（CUR-005，0.28s 五次 smootherstep 端点连接）+ 自动运镜稳定区跟随（120Hz 采样、rest area 22% 内缩、屏幕弹簧积分、LRU×4 缓存）+ 源不连续检测。
+- `TimelineMap.ts` 补齐 Swift TimelineMap.mapPointerEventSegments（L439-500）：按片段分组映射指针事件到输出时钟，起点无精确事件时注入 move 位置种子；导出 `TimelineMappedPointerSegment` / `firstEventIndexAtOrAfter`。
+- verify-model 断言 218 → 259（+41）：smootherStep/连续运动判定/单调切向/线性插值/可见性解耦/点击相位/弹簧收敛/预热缓存/乱序规范化/门面/二分切片/raw 插值/段表/剪辑桥接/种子注入。
+- MotionStyle 中文 rawValue 对照：smooth→'平滑'、medium→'适中'、rapid→'快速'、none→'无'；CursorStyle.clickEffectStyle.duration → cursorClickEffectDuration()。

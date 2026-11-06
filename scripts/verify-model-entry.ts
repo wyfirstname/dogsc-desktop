@@ -97,3 +97,25 @@ export {
   cameraMotionClipsNeedRepair,
   type CameraMotionClip,
 } from '../src/renderer/src/core/CameraMotion'
+
+// ---- 批次 5（PointerTrack / ProjectPointerTrack / TimelineMap 指针映射）----
+export {
+  PointerTrack,
+  PointerInterpolator,
+  makeClickPhase,
+  makePointerSample,
+  makeEvaluation,
+  smootherStep,
+  isContinuousMovement,
+  monotoneTangent,
+  type PointerClickPhase,
+  type PointerSample,
+  type PointerTrackEvaluation,
+} from '../src/renderer/src/core/PointerTrack'
+export {
+  ProjectPointerTrack,
+  ProjectPointerTrackSegment,
+  interpolatedRawPosition,
+} from '../src/renderer/src/core/ProjectPointerTrack'
+export { TimelineMap, firstEventIndexAtOrAfter } from '../src/renderer/src/core/TimelineMap'
+export { makeRecordingSegment } from '../src/renderer/src/core/ProjectTimeline'

@@ -530,5 +530,173 @@ check('curve.empty', new MediaSyncAnchorCurve([]).offsetAt(5), 0)
   check('cm.decShape', decodeCameraLayoutMode({ kind: 'shape', shape: '纵向' }).shape, '纵向')
 }
 
+// ---- 批次 5（PointerTrack / ProjectPointerTrack）----
+function runPointerTrackBatch() {
+  const {
+    PointerTrack, PointerInterpolator, smootherStep, isContinuousMovement,
+    monotoneTangent, ProjectPointerTrack, interpolatedRawPosition,
+    TimelineMap, firstEventIndexAtOrAfter,
+    makeMotionStyle, makeCursorStyle, makeRecordingSegment, makeClip,
+  } = m
+  const mkEvent = (time, x, y, kind = 'move', cursorAssetID = null) => ({
+    time,
+    location: { x, y },
+    kind,
+    modifiers: [],
+    cursorAssetID,
+  })
+  const motion = makeMotionStyle()
+  const style = makeCursorStyle()
+
+  // smootherStep（五次）
+  check('pt.smooth0', smootherStep(0), 0)
+  check('pt.smooth1', smootherStep(1), 1)
+  check('pt.smoothHalf', smootherStep(0.5), 0.5)
+
+  // 连续运动判定
+  check(
+    'pt.contTrue',
+    isContinuousMovement(mkEvent(0, 0, 0), mkEvent(0.05, 0.1, 0.1)),
+    true
+  )
+  check(
+    'pt.contFalse',
+    isContinuousMovement(mkEvent(0, 0, 0), mkEvent(0.6, 0.4, 0.4)),
+    false
+  )
+
+  // monotoneTangent：单调递增斜坡 → 切向为正
+  const mt = monotoneTangent(
+    mkEvent(0, 0, 0),
+    mkEvent(1, 1, 1),
+    mkEvent(2, 4, 4)
+  )
+  check('pt.mtPositive', mt.x > 0 && mt.y > 0, true)
+
+  // 基本评估：「无」光标风格 → Hermite 线性插值（密集事件=连续运动）
+  const linear = new PointerTrack([mkEvent(0, 0, 0), mkEvent(0.1, 1, 1)])
+  const linearMotion = makeMotionStyle({ cursor: '无' })
+  check('pt.linearMid', linear.evaluation(0.05, linearMotion, style).position.x, 0.5)
+
+  // 轨迹开始前不透露未来样本
+  check('pt.beforeStart', linear.evaluation(-0.1, linearMotion, style).position, null)
+
+  // 隐藏光标：position 仍在，cursor 为 null（位置与可见性解耦）
+  const hiddenStyle = makeCursorStyle({ assetID: 'system.hidden' })
+  const hiddenEval = linear.evaluation(0.05, linearMotion, hiddenStyle)
+  check('pt.hiddenPos', hiddenEval.position.x, 0.5)
+  check('pt.hiddenCursor', hiddenEval.cursor, null)
+
+  // 点击相位
+  const withClick = new PointerTrack([
+    mkEvent(0, 0.2, 0.2),
+    mkEvent(0.5, 0.3, 0.3, 'leftClick'),
+    mkEvent(1, 0.4, 0.4),
+  ])
+  const clickEval = withClick.evaluation(0.6, linearMotion, style)
+  check('pt.clicking', clickEval.cursor.isClicking, true)
+  check('pt.clickPhaseKind', clickEval.cursor.clickPhase.kind, 'leftClick')
+  check('pt.clickPhaseProgress<1', clickEval.cursor.clickPhase.progress < 1, true)
+
+  // 静止时不倾斜
+  const staticEval = withClick.evaluation(0.05, linearMotion, style)
+  check('pt.staticRotation', staticEval.cursor.rotationRadians, 0)
+
+  // 弹簧路径（平滑）：密集事件=连续运动目标，弹簧在两点之间推进
+  const springTrack = new PointerTrack([mkEvent(0, 0, 0), mkEvent(0.2, 1, 1)])
+  const s0 = springTrack.evaluation(0.5, motion, style).position
+  check('pt.springMid', s0.x > 0 && s0.x < 1, true)
+  const s1 = springTrack.evaluation(2, motion, style).position
+  check('pt.springReach', s1.x > 0.99 && s1.x <= 1.001, true)
+
+  // 预热弹簧缓存
+  const prewarmed = new PointerTrack([mkEvent(0, 0, 0), mkEvent(1, 1, 1)])
+  check('pt.cacheBefore', prewarmed.cachedSpringVariantCount, 0)
+  prewarmed.prewarmCursorSpring(motion)
+  check('pt.cacheAfter', prewarmed.cachedSpringVariantCount, 1)
+
+  // 乱序输入被规范化
+  const unordered = new PointerTrack([mkEvent(1, 1, 1), mkEvent(0, 0, 0)])
+  check('pt.normalized', unordered.events[0].time, 0)
+
+  // PointerInterpolator 门面
+  check(
+    'pt.interp',
+    PointerInterpolator.sample([mkEvent(0, 0.1, 0.1)], 0, linearMotion, style).location.x,
+    0.1
+  )
+
+  // eventsBetween 二分切片：窗口 [0.4,0.9] 只含 0.5 处的点击
+  check('pt.sliceLen', withClick.eventsBetween(0.4, 0.9).length, 1)
+  check('pt.sliceInvalid', withClick.eventsBetween(2, 1).length, 0)
+
+  // interpolatedRawPosition
+  check('pt.rawMid', interpolatedRawPosition(0.5, [mkEvent(0, 0, 0.2), mkEvent(1, 1, 0.4)]).x, 0.5)
+  check('pt.rawClamp', interpolatedRawPosition(5, [mkEvent(0, 0, 0), mkEvent(1, 1, 1)]).x, 1)
+
+  // ---- ProjectPointerTrack ----
+  const timelineMap = new TimelineMap({ kind: 'fullRecording' }, 10)
+  // 密集事件（间隔 ≤0.12s = 连续运动），使插值在中点有效
+  const sourceEvents = [
+    mkEvent(0, 0, 0),
+    mkEvent(0.05, 0.5, 0.5),
+    mkEvent(0.1, 1, 1, 'leftClick'),
+  ]
+  const ppt = new ProjectPointerTrack(timelineMap, sourceEvents)
+  check('ppt.segments', ppt.segments.length, 1)
+  check('ppt.noDiscontinuity', ppt.segments[0].startsAfterSourceDiscontinuity, false)
+  check('ppt.firstClick', ppt.segments[0].firstClickTime, 0.1)
+
+  // 输出时钟评估（全片 1:1 映射；「无」风格线性 Hermite）
+  check('ppt.evalStart', ppt.evaluation(0, linearMotion, style).position.x, 0)
+  check('ppt.evalMid', ppt.evaluation(0.05, linearMotion, style).position.x, 0.5)
+
+  // sample = evaluation().cursor
+  check('ppt.sampleAlias', ppt.sample(0, linearMotion, style).location.x, 0)
+
+  // 剪辑桥接：两段保留片段之间源不连续 → 光标五次缓动跨过剪辑
+  const segA = makeRecordingSegment({ id: 'a', sourceStart: 0, sourceDuration: 1, playbackRate: 1 })
+  const segB = makeRecordingSegment({ id: 'b', sourceStart: 5, sourceDuration: 1, playbackRate: 1 })
+  const cutMap = new TimelineMap({ kind: 'edited', segments: [segA, segB] }, 10)
+  const cutEvents = [
+    mkEvent(0, 0, 0),
+    mkEvent(0.9, 0.1, 0.1),
+    mkEvent(5, 0.8, 0.8),
+    mkEvent(5.9, 0.9, 0.9),
+  ]
+  const cutTrack = new ProjectPointerTrack(cutMap, cutEvents)
+  check('ppt.cutSegments', cutTrack.segments.length, 2)
+  check('ppt.cutDiscontinuity', cutTrack.segments[1].startsAfterSourceDiscontinuity, true)
+  // 剪辑点 output=1.0 处：桥接中点位置应介于两端之间（用「无」风格避免弹簧滞后）
+  const bridged = cutTrack.evaluation(1.14, linearMotion, style).position
+  check('ppt.bridgeMid', bridged.x > 0.1 && bridged.x < 0.9, true)
+  // 桥接结束之后回到保留片段自己的位置（output 1.95 ↔ 源 5.9）
+  check('ppt.bridgeDone', cutTrack.evaluation(1.95, linearMotion, style).position.x, 0.9)
+
+  // mapPointerEventSegments：片段起点无精确事件 → 注入位置种子
+  const midMap = new TimelineMap(
+    { kind: 'edited', segments: [makeRecordingSegment({ id: 'm', sourceStart: 0.6, sourceDuration: 0.2, playbackRate: 1 })] },
+    10
+  )
+  const mapped = midMap.mapPointerEventSegments([
+    mkEvent(0.5, 0.25, 0.25),
+    mkEvent(0.7, 0.75, 0.75),
+  ])
+  check('ppt.mapSeedKind', mapped[0].events[0].kind, 'move')
+  check('ppt.mapSeedTime', mapped[0].events[0].time, 0)
+  check('ppt.mapSeedX', mapped[0].events[0].location.x, 0.25)
+  check('ppt.mapMappedTime', Math.round(mapped[0].events[1].time * 100) / 100, 0.1)
+
+  // firstEventIndexAtOrAfter
+  check('ppt.binSearch', firstEventIndexAtOrAfter(0.06, sourceEvents), 2)
+  check('ppt.binSearchEnd', firstEventIndexAtOrAfter(99, sourceEvents), 3)
+
+  // automaticEntryStartsAfterCut：manual 片段恒 false
+  const manualClip = makeClip({ startTime: 0, endTime: 1, origin: 'manual' })
+  check('ppt.manualNoCut', cutTrack.automaticEntryStartsAfterCut(manualClip), false)
+}
+
+runPointerTrackBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
