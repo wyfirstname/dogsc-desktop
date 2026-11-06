@@ -1,0 +1,85 @@
+{
+  "name": "dogsc-win",
+  "productName": "DogSC",
+  "version": "0.1.0",
+  "description": "DogSC for Windows 鈥?Electron port of laogou717/dogsc",
+  "main": "dist/main/index.js",
+  "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "electron",
+      "esbuild",
+      "ffmpeg-static"
+    ]
+  },
+  "author": "DogSC Windows port contributors",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build:renderer": "vite build",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:preload": "tsc -p tsconfig.preload.json",
+    "build": "npm run build:renderer && npm run build:main && npm run build:preload",
+    "start": "node scripts/launch.mjs",
+    "dev:electron": "npm run build && npm start",
+    "capture": "node scripts/capture-ui.mjs",
+    "dist": "npm run build && electron-builder --win portable",
+    "upstream:check": "node scripts/check-upstream.mjs",
+    "verify:editing": "node scripts/verify-editing.mjs",
+    "verify:editing-ui": "node scripts/verify-editing-ui.mjs",
+    "verify:batch1": "node scripts/verify-batch1.mjs",
+    "verify:model": "node scripts/verify-model.mjs",
+    "verify:render-ui": "node scripts/verify-render-ui.mjs",
+    "verify:export-ui": "node scripts/verify-export-ui.mjs"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^5.5.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "antd": "^5.22.2",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  },
+  "build": {
+    "appId": "com.dogsc.windows",
+    "productName": "DogSC",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/ffmpeg-static/ffmpeg.exe",
+        "to": "ffmpeg/ffmpeg.exe"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "DogSC-${version}-win-x64-portable.${ext}"
+    },
+    "portable": {
+      "artifactName": "DogSC-${version}-win-x64-portable.${ext}",
+      "unpackDirName": "DogSC"
+    },
+    "compression": "maximum"
+  }
+}
