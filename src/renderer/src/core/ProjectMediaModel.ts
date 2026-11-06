@@ -43,6 +43,7 @@ import { decodeCaptureConfiguration, type CaptureConfiguration } from './Capture
 import { makeMotionStyle } from './MotionStyle'
 import { makeExportSettings, decodeExportSettings, type ExportSettings } from './ExportSettings'
 import { makeRecordingMarker, type RecordingMarker } from './RecordingMarker'
+import { makeCameraMotionClip, type CameraMotionClip } from './CameraMotion'
 
 export type TimeInterval = number
 
@@ -344,6 +345,11 @@ export function decodeRecorderProject(raw: unknown): RecorderProject {
       screenMotionClips: Array.isArray(rawTimeline.screenMotionClips)
         ? (rawTimeline.screenMotionClips as ScreenMotionClip[]).map((c) =>
             sanitizeScreenMotionClip(c)
+          )
+        : [],
+      cameraMotionClips: Array.isArray(rawTimeline.cameraMotionClips)
+        ? (rawTimeline.cameraMotionClips as CameraMotionClip[]).map((c) =>
+            makeCameraMotionClip(c as unknown as Parameters<typeof makeCameraMotionClip>[0])
           )
         : [],
     })

@@ -119,3 +119,14 @@ export {
 } from '../src/renderer/src/core/ProjectPointerTrack'
 export { TimelineMap, firstEventIndexAtOrAfter } from '../src/renderer/src/core/TimelineMap'
 export { makeRecordingSegment } from '../src/renderer/src/core/ProjectTimeline'
+
+// ---- 批次 6（CompositionScene）----
+export {
+  canonicalStyleScale,
+  decorationInsetsAtScaleOne,
+  compositionSceneEvaluate,
+  evaluateCameraStatic,
+  evaluateCamera,
+  projectedQuad,
+  SCREEN_DECORATION_ZERO,
+} from '../src/renderer/src/core/CompositionScene'

@@ -698,5 +698,122 @@ function runPointerTrackBatch() {
 
 runPointerTrackBatch()
 
+// ---- 批次 6（CompositionScene）----
+function runCompositionSceneBatch() {
+  const {
+    canonicalStyleScale, decorationInsetsAtScaleOne, compositionSceneEvaluate,
+    evaluateCameraStatic, evaluateCamera, SCREEN_DECORATION_ZERO,
+    makeRecorderProject, makeCanvasStyle, makeCameraStyle, makeMotionStyle, projectedQuad,
+  } = m
+
+  // canonicalStyleScale：1080 短边基准
+  check('cs.scale1080', canonicalStyleScale(1080, 1920), 1)
+  check('cs.scale540', canonicalStyleScale(540, 960), 0.5)
+
+  // decorationInsetsAtScaleOne
+  check(
+    'cs.insetsNone',
+    decorationInsetsAtScaleOne('none', 1, 1, 800, 600, 1),
+    SCREEN_DECORATION_ZERO
+  )
+  // 窗口：46px 工具栏 @scale1，受 25% 高度上限约束
+  const winTop = decorationInsetsAtScaleOne('windowLight', 1, 1, 800, 600, 1).top
+  check('cs.insetsWindow', winTop, 46)
+  // 手机边框：短边 500 → 500*0.026 = 13
+  const phone = decorationInsetsAtScaleOne('devicePhone', 1, 1, 500, 900, 1)
+  check('cs.insetsPhone', phone.top, 13)
+  check('cs.insetsPhoneSym', phone.left, 13)
+  // frameScale 钳制：0.6*46=27.6 上限 25% (150) 之内
+  const winScaled = decorationInsetsAtScaleOne('windowDark', 0.6, 1, 800, 600, 1).top
+  check('cs.insetsWindowScaled', winScaled, 27.6)
+
+  // evaluateCameraStatic：方形摄像头 @ 1080x1920
+  const cam = evaluateCameraStatic(makeCameraStyle(), 1, 1, 1080, 1920, 1)
+  // base=1080，height = max(1080*0.29, 72) = 313.2，方形 aspect 1
+  check('cs.camHeight', cam.rect.height, 313.2, 1e-6)
+  check('cs.camWidth', cam.rect.width, 313.2, 1e-6)
+  check('cs.camBorder', cam.borderWidth, 3, 1e-6)
+  check('cs.camOpacity', cam.opacity, 1)
+  check('cs.camFullscreen', cam.fullscreenProgress, 0)
+
+  // evaluateCamera：全屏过渡 → 铺满画布、边框消失
+  const fsSample = {
+    position: { x: 0.5, y: 0.5 },
+    size: 0.29,
+    aspectRatio: 1,
+    cornerFraction: 0.5,
+    fullscreenProgress: 1,
+    opacity: 1,
+  }
+  const fs = evaluateCamera(makeCameraStyle(), fsSample, 1, 1080, 1920, 1)
+  check('cs.fsX', fs.rect.x, 0)
+  check('cs.fsY', fs.rect.y, 0)
+  check('cs.fsW', fs.rect.width, 1080)
+  check('cs.fsH', fs.rect.height, 1920)
+  check('cs.fsBorder', fs.borderWidth, 0)
+
+  // compositionSceneEvaluate：默认工程 1080x1080、16:9 源
+  const project = makeRecorderProject({
+    canvas: makeCanvasStyle({ padding: 100 }),
+    camera: makeCameraStyle(),
+    motion: makeMotionStyle(),
+  })
+  const scene = compositionSceneEvaluate({
+    project,
+    time: 0,
+    canvasWidth: 1080,
+    canvasHeight: 1080,
+    sourceAspectRatio: 16 / 9,
+  })
+  // padding 100 → available 880 → fitted 880x495 居中
+  check('cs.fittedW', scene.screen.fittedRect.width, 880, 1e-6)
+  check('cs.fittedH', scene.screen.fittedRect.height, 495, 1e-6)
+  check('cs.fittedX', scene.screen.fittedRect.x, 100, 1e-6)
+  check('cs.fittedY', scene.screen.fittedRect.y, 292.5, 1e-6)
+  // scale 1、居中 → baseRect = fittedRect
+  check('cs.baseW', scene.screen.baseRect.width, 880, 1e-6)
+  check('cs.baseX', scene.screen.baseRect.x, 100, 1e-6)
+  check('cs.manualScale', scene.screen.manualScale, 1)
+  // 无缩放 → viewport scale 1，finalRect = baseRect
+  check('cs.vpScale', scene.screen.viewport.scale, 1)
+  check('cs.finalX', scene.screen.finalRect.x, 100, 1e-6)
+  // 未指定 cameraAspectRatio → camera null
+  check('cs.noCamera', scene.camera, null)
+  // 指定 cameraAspectRatio → camera 有值且位置合理
+  const sceneCam = compositionSceneEvaluate({
+    project,
+    time: 0,
+    canvasWidth: 1080,
+    canvasHeight: 1080,
+    sourceAspectRatio: 16 / 9,
+    cameraAspectRatio: 4 / 3,
+  })
+  check('cs.hasCamera', sceneCam.camera !== null, true)
+  check('cs.camOpacityScene', sceneCam.camera.opacity, 1)
+
+  // keepsCanvasCovered：padding=0 且全画布覆盖 → finalCornerRadius 归零
+  const fullProject = makeRecorderProject({
+    canvas: makeCanvasStyle({ padding: 0, cornerRadius: 24, borderWidth: 0 }),
+    camera: makeCameraStyle(),
+    motion: makeMotionStyle(),
+  })
+  const fullScene = compositionSceneEvaluate({
+    project: fullProject,
+    time: 0,
+    canvasWidth: 1920,
+    canvasHeight: 1080,
+    sourceAspectRatio: 16 / 9,
+  })
+  check('cs.coverRadius', fullScene.screen.finalCornerRadius, 0)
+  check('cs.coverScale', fullScene.screen.viewport.scale, 1)
+
+  // projectedQuad：无旋转时四角 = finalRect 四角
+  const quad = projectedQuad(scene.screen)
+  check('cs.quadTL', Math.round(quad.topLeft.x * 100) / 100, 100)
+  check('cs.quadTR', Math.round(quad.topRight.x * 100) / 100, 980)
+}
+
+runCompositionSceneBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

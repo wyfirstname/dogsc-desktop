@@ -16,6 +16,7 @@ import type {
   ZoomEasingPreset,
   TimeInterval,
 } from './ZoomAnimation'
+import type { CameraMotionClip } from './CameraMotion'
 import { ZOOM_BEZIER } from './ZoomAnimation'
 
 // ---------------------------------------------------------------- RecordingSegment
@@ -281,6 +282,11 @@ export interface ProjectTimeline {
   primarySegmentAudioOverrides: Record<string, PrimarySegmentAudioOverrides>
   zoomClips: ZoomAnimationClip[]
   screenMotionClips: ScreenMotionClip[]
+  /**
+   * Swift ProjectTimeline.cameraMotionClips（CompositionScene 批次补齐）。
+   * 可选：既有构造点暂不强制携带，消费侧用 `?? []`。
+   */
+  cameraMotionClips?: CameraMotionClip[]
 }
 
 export function makeProjectTimeline(
@@ -291,6 +297,7 @@ export function makeProjectTimeline(
     primarySegmentAudioOverrides: overrides.primarySegmentAudioOverrides ?? {},
     zoomClips: overrides.zoomClips ?? [],
     screenMotionClips: overrides.screenMotionClips ?? [],
+    cameraMotionClips: overrides.cameraMotionClips ?? [],
   }
 }
 
