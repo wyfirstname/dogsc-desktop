@@ -298,3 +298,17 @@ PointerTrack 等转写后实现。
   FrameScene / CompositionScene 转写后接入。
 - 端到端验证：`npm run verify:export-ui` —— 真实 UI 分割+删除制造剪辑，
   导出后校验输出时长与期望一致（本轮实测 6.370s vs 6.370s，误差 0.000s）。
+
+## 十、OverlayTimeline / CameraMotion 转写（批次推进）
+
+- `OverlayTimeline.ts`：马赛克剪辑（NormalizedOverlayRect / OverlayTiming /
+  MosaicClip，含 v9 像素块预设迁移）与贴图剪辑（StickerClip 22 字段 +
+  StickerAnimationPreset.automaticExit）。HexColor 持久化为 hexString。
+- `CameraMotion.ts`：摄像头运动轨（布局/位置/尺寸/圆角/不透明度的定时过渡）。
+  索引+扫描双路径、returnFalloff、隐藏目标原地淡出、离散布局先 resolve 成
+  连续值（圆→矩形→全屏可平滑过渡）；cameraMotionClipsNeedRepair 乱序修复。
+- verify-model：162 → 218 项断言全过。
+- 已推送 https://github.com/wyfirstname/dogsc-desktop.git（main）。
+  推送网络为 SNI 间歇阻断，工具脚本 `.workbuddy/tools/push_retry.sh`
+  探测连接窗口后用 `http.curloptResolve` 直连（不动仓库配置）。
+- 下一批：PointerTrack(894) / ProjectPointerTrack(469)。
