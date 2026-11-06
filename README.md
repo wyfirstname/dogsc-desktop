@@ -2,6 +2,14 @@
 
 把 macOS 录屏剪辑工具 [laogou717/dogsc](https://github.com/laogou717/dogsc) 的源码逐文件转写为 **Electron + React + TypeScript + Ant Design** 的 Windows 版本，并打免安装绿色包。
 
+## 下载
+
+免安装绿色包（无需安装，解压即用）：
+
+> **百度网盘**：https://pan.baidu.com/s/18QJFUBMfvwps3mQelFjSig?pwd=sd56 （提取码 `sd56`）
+
+也可自行构建：`npm run dist` 生成 `release/DogSC-0.1.0-win-x64-portable.exe`。
+
 ## 功能现状
 
 - 屏幕录制（Electron 桌面捕获）与视频导入
