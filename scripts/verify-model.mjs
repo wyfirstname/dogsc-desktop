@@ -441,5 +441,94 @@ check('curve.empty', new MediaSyncAnchorCurve([]).offsetAt(5), 0)
   check('sc2.encExit', enc2.exitAnimation, 'slideRight')
 }
 
+
+// ================================================================ CameraMotion
+{
+  const {
+    CameraMotionTrack, makeCameraMotionState, makeCameraMotionClip,
+    decodeCameraLayoutMode, encodeCameraLayoutMode, cameraMotionClipsNeedRepair,
+  } = m
+  const { makeTransitionTiming } = m
+
+  // ---- resolve：形状 → 连续值
+  const trk = new CameraMotionTrack([])
+  const base = makeCameraMotionState()
+  const s0 = trk.sample(0, base, 1.6, 16 / 9)
+  check('cm.basePos', s0.position.x, 0.86)
+  check('cm.baseAspect', s0.aspectRatio, 1)
+  check('cm.baseCorner', s0.cornerFraction, 0.25)
+  const fs = makeCameraMotionState({ layout: { kind: 'fullscreen' } })
+  const sfs = trk.sample(0, fs, 1.6, 16 / 9)
+  check('cm.fsAspect', sfs.aspectRatio, 16 / 9)
+  check('cm.fsProgress', sfs.fullscreenProgress, 1)
+  const circ = makeCameraMotionState({ layout: { kind: 'shape', shape: '圆形' } })
+  check('cm.circleCorner', trk.sample(0, circ, 1.6, 16 / 9).cornerFraction, 0.5)
+  const orig = makeCameraMotionState({ layout: { kind: 'shape', shape: '原始比例' } })
+  check('cm.origAspect', trk.sample(0, orig, 1.6, 16 / 9).aspectRatio, 1.6)
+
+  // ---- 单片段：leadIn 进入过渡
+  const target = makeCameraMotionState({ position: { x: 0.2, y: 0.2 }, size: 0.5 })
+  const clip = makeCameraMotionClip({
+    id: 'c1',
+    timing: makeTransitionTiming({ startTime: 1, duration: 2, leadInDuration: 1 }),
+    target,
+  })
+  const t1 = new CameraMotionTrack([clip])
+  const before = t1.sample(0.5, base, 1.6, 16 / 9)
+  check('cm.beforePos', before.position.x, 0.86)
+  const mid = t1.sample(1.5, base, 1.6, 16 / 9)
+  // 三次方缓动 @0.5 ≈ 0.5（对称贝塞尔）；位置从 0.86 → 0.2
+  check('cm.midPosBetween', mid.position.x > 0.2 && mid.position.x < 0.86, true)
+  const held = t1.sample(2.5, base, 1.6, 16 / 9)
+  check('cm.holdPos', held.position.x, 0.2)
+  // returnDuration=0 → 保持目标
+  const late = t1.sample(9, base, 1.6, 16 / 9)
+  check('cm.keepTarget', late.position.x, 0.2)
+
+  // ---- returnDuration 回落：endTime 后 1s 回到 base
+  const clipR = makeCameraMotionClip({
+    id: 'c2',
+    timing: makeTransitionTiming({ startTime: 1, duration: 2, leadInDuration: 1, returnDuration: 1 }),
+    target,
+  })
+  const t2 = new CameraMotionTrack([clipR])
+  const half = t2.sample(2.5, base, 1.6, 16 / 9)
+  check('cm.fallHalfBetween', half.position.x > 0.2 && half.position.x < 0.86, true)
+  check('cm.fallDone', t2.sample(4.5, base, 1.6, 16 / 9).position.x, 0.86)
+
+  // ---- 相接链：前段目标保持到后段
+  const clipB = makeCameraMotionClip({
+    id: 'c3',
+    timing: makeTransitionTiming({ startTime: 3, duration: 2, leadInDuration: 1 }),
+    target: makeCameraMotionState({ position: { x: 0.4, y: 0.4 } }),
+  })
+  const t3 = new CameraMotionTrack([clip, clipB])
+  // clip endTime=3，clipB startTime=3 相接 → 3 处应已处于 clipB 的进入过渡起点（=clip 目标）
+  const atJunction = t3.sample(3.0, base, 1.6, 16 / 9)
+  check('cm.chainNoFlash', atJunction.position.x < 0.86, true)
+
+  // ---- 隐藏目标：原地淡出，位置不动
+  const hide = makeCameraMotionClip({
+    id: 'c4',
+    timing: makeTransitionTiming({ startTime: 1, duration: 2, leadInDuration: 1 }),
+    target: makeCameraMotionState({ opacity: 0, position: { x: 0.1, y: 0.1 } }),
+  })
+  const t4 = new CameraMotionTrack([hide])
+  const fading = t4.sample(1.5, base, 1.6, 16 / 9)
+  check('cm.hidePos', fading.position.x, 0.86)
+  check('cm.hideOpacity<1', fading.opacity < 1, true)
+
+  // ---- 乱序修复
+  check('cm.repairNeeded', cameraMotionClipsNeedRepair([clipB, clip]), true)
+  const t5 = new CameraMotionTrack([clipB, clip])
+  check('cm.repaired', t5.clips[0].id, 'c1')
+
+  // ---- 编解码
+  check('cm.encShape', encodeCameraLayoutMode({ kind: 'shape', shape: '横向' }).shape, '横向')
+  check('cm.encFs', encodeCameraLayoutMode({ kind: 'fullscreen' }).kind, 'fullscreen')
+  check('cm.decFs', decodeCameraLayoutMode({ kind: 'fullscreen' }).kind, 'fullscreen')
+  check('cm.decShape', decodeCameraLayoutMode({ kind: 'shape', shape: '纵向' }).shape, '纵向')
+}
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

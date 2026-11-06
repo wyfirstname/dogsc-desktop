@@ -86,3 +86,14 @@ export {
   decodeStickerClip,
   encodeStickerClip,
 } from '../src/renderer/src/core/OverlayTimeline'
+
+// ---- 批次 4（CameraMotion）----
+export {
+  CameraMotionTrack,
+  makeCameraMotionState,
+  makeCameraMotionClip,
+  decodeCameraLayoutMode,
+  encodeCameraLayoutMode,
+  cameraMotionClipsNeedRepair,
+  type CameraMotionClip,
+} from '../src/renderer/src/core/CameraMotion'
