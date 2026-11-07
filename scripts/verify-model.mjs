@@ -3400,5 +3400,311 @@ async function runFileBoundaryBatch() {
 
 await runFileBoundaryBatch()
 
+async function runCaptureSupportBatch() {
+  const {
+    EditorThumbnailPermits, ThumbnailPermitCancelledError,
+    cameraReadinessEquals, cameraReadinessPermitsRecording, recorderCameraReadiness,
+    recorderStartAvailability, startAvailabilityPermitsRecording,
+    captureAreaSelectionOutcome, captureDisplayIdentity, resolveCaptureDisplay,
+    resolveCaptureDisplayScreen, screenDeviceDisplayID,
+    EDITOR_EXTERNAL_ACTIONS, interactionEndPolicy, preparationAllowsProceeding,
+    prepareExternalAction,
+    CAPTURE_AREA_SAFE_MARGIN, CAPTURE_AREA_TOOLBAR_GAP, CAPTURE_AREA_TOOLBAR_HEIGHT,
+    CAPTURE_AREA_TOOLBAR_WIDTH, captureAreaSelectionScale, captureAreaToolbarFrame,
+    rectMaxX, rectMaxY, rectMidX, rectMinX, rectMinY,
+    CAPTURE_AREA_SELECTION_MOTION_DURATION, CaptureAreaSelectionMotion,
+    selectionMotionIsComplete, selectionMotionProgress,
+    persistRecordingPointerEvents, prepareRecordingPointerFinalization,
+    SCENE_PRESET_ASSET_SUBDIRECTORY, makeScenePresetBackgroundAsset,
+    retainedScenePresetAsset, retainedScenePresetFilename, scenePresetAssetDirectory,
+    scenePresetAssetExtension, scenePresetAssetIsAvailable, scenePresetAssetPath,
+    scenePresetBackgroundSource,
+  } = m
+
+  // ================================================ EditorThumbnailPermits（Swift 49 行）
+  const permits = new EditorThumbnailPermits(2)
+  check('tp.limit', permits.permitLimit, 2)
+  await permits.acquire()
+  await permits.acquire()
+  check('tp.activeFull', permits.activeCount, 2)
+  check('tp.noWaiting', permits.waitingCount, 0)
+  let thirdGranted = false
+  const third = permits.acquire().then(() => {
+    thirdGranted = true
+  })
+  check('tp.queued', permits.waitingCount, 1)
+  check('tp.queuedNotGranted', thirdGranted, false)
+  // release 是「转移许可」：队首直接拿到，active 不变
+  permits.release()
+  await third
+  check('tp.transferred', thirdGranted, true)
+  check('tp.activeUnchanged', permits.activeCount, 2)
+  check('tp.queueDrained', permits.waitingCount, 0)
+  permits.release()
+  permits.release()
+  check('tp.activeDecremented', permits.activeCount, 0)
+  permits.release()
+  check('tp.activeFloor', permits.activeCount, 0)
+
+  // 排队中取消：立即出队并拒绝
+  const permits2 = new EditorThumbnailPermits(1)
+  await permits2.acquire()
+  let cancelWaiter = null
+  const queued = permits2.acquire({ registerCancellation: (cancel) => { cancelWaiter = cancel } })
+  check('tp2.queued', permits2.waitingCount, 1)
+  cancelWaiter()
+  let cancelledError = null
+  try {
+    await queued
+  } catch (error) {
+    cancelledError = error
+  }
+  check('tp2.cancelled', cancelledError instanceof ThumbnailPermitCancelledError, true)
+  check('tp2.queueEmptyAfterCancel', permits2.waitingCount, 0)
+  permits2.release()
+  // 入口即取消
+  const permits3 = new EditorThumbnailPermits(1)
+  let immediateCancel = false
+  try {
+    await permits3.acquire({ isCancelled: () => true })
+  } catch (error) {
+    immediateCancel = error instanceof ThumbnailPermitCancelledError
+  }
+  check('tp3.immediateCancel', immediateCancel, true)
+  check('tp3.noPermitConsumed', permits3.activeCount, 0)
+
+  // ================================================ RecorderStartAvailability（Swift 47 行）
+  const noCamera = recorderCameraReadiness(false, null)
+  check('sa.disabledKind', noCamera.kind, 'disabled')
+  check('sa.disabledPermits', cameraReadinessPermitsRecording(noCamera), true)
+  const preparing = recorderCameraReadiness(true, null)
+  check('sa.preparingKind', preparing.kind, 'preparing')
+  check('sa.preparingBlocks', cameraReadinessPermitsRecording(preparing), false)
+  const readyCamera = recorderCameraReadiness(true, { width: 1920, height: 1080, framesPerSecond: 30 })
+  check('sa.readyKind', readyCamera.kind, 'ready')
+  check('sa.readyPermits', cameraReadinessPermitsRecording(readyCamera), true)
+  check(
+    'sa.readyFormat',
+    cameraReadinessEquals(readyCamera, recorderCameraReadiness(true, { width: 1920, height: 1080, framesPerSecond: 30 })),
+    true
+  )
+  check(
+    'sa.formatDiffers',
+    cameraReadinessEquals(readyCamera, recorderCameraReadiness(true, { width: 1280, height: 720, framesPerSecond: 30 })),
+    false
+  )
+  check('sa.kindDiffers', cameraReadinessEquals(noCamera, preparing), false)
+  check('sa.needsTarget', recorderStartAvailability(false, noCamera), 'needsCaptureTarget')
+  check('sa.needsTargetWins', recorderStartAvailability(false, preparing), 'needsCaptureTarget')
+  check('sa.preparingCamera', recorderStartAvailability(true, preparing), 'preparingCamera')
+  check('sa.readyNoCamera', recorderStartAvailability(true, noCamera), 'ready')
+  check('sa.permitsReady', startAvailabilityPermitsRecording('ready'), true)
+  check('sa.permitsPreparing', startAvailabilityPermitsRecording('preparingCamera'), false)
+
+  // ================================================ CaptureDisplayResolution（Swift 67 行）
+  const screens = [
+    { id: 1, name: '内建' },
+    { id: 2, name: '外接 A' },
+    { id: null, name: '虚拟' }
+  ]
+  check('cd.explicitHit', resolveCaptureDisplay(2, screens, (s) => s.id, 1).name, '外接 A')
+  // 显式 ID 找不到 → null，绝不降级到别的屏
+  check('cd.explicitMiss', resolveCaptureDisplay(9, screens, (s) => s.id, 1), null)
+  check('cd.preferred', resolveCaptureDisplay(null, screens, (s) => s.id, 2).name, '外接 A')
+  check('cd.preferredMissing', resolveCaptureDisplay(null, screens, (s) => s.id, 7).name, '内建')
+  check(
+    'cd.firstWithID',
+    resolveCaptureDisplay(null, [{ id: null, name: 'X' }, { id: 5, name: 'Y' }], (s) => s.id, null).name,
+    'Y'
+  )
+  check('cd.allNull', resolveCaptureDisplay(null, [{ id: null, name: 'X' }], (s) => s.id, null), null)
+  check('cd.screenWrapper', resolveCaptureDisplayScreen(1, screens, 2).name, '内建')
+  check('cd.identity', captureDisplayIdentity({ id: 3, name: '屏' }).id, 3)
+  check('cd.identityNull', captureDisplayIdentity({ id: null, name: '屏' }), null)
+  check('cd.deviceID', screenDeviceDisplayID({ NSScreenNumber: 2 }), 2)
+  check('cd.deviceIDString', screenDeviceDisplayID({ NSScreenNumber: '4' }), 4)
+  check('cd.deviceIDMissing', screenDeviceDisplayID({}), null)
+  check('cd.deviceIDNull', screenDeviceDisplayID(null), null)
+  const selectedOutcome = captureAreaSelectionOutcome(
+    { display: { id: 1, name: '屏' }, rect: { x: 0, y: 0, width: 1, height: 1 } },
+    false,
+    1
+  )
+  check('cd.outcomeSelected', selectedOutcome.kind, 'selected')
+  check('cd.outcomeCancelled', captureAreaSelectionOutcome(null, true, 1).kind, 'cancelled')
+  const unavailable = captureAreaSelectionOutcome(null, false, 9)
+  check('cd.outcomeUnavailable', unavailable.kind, 'displayUnavailable')
+  check('cd.outcomeRequestedID', unavailable.requestedID, 9)
+
+  // ================================================ EditorInteractionLifecycle（Swift 29 行）
+  check('il.actionCount', EDITOR_EXTERNAL_ACTIONS.length, 4)
+  check('il.policyExport', interactionEndPolicy('export'), 'cancel')
+  check('il.policyDeactivation', interactionEndPolicy('windowDeactivation'), 'cancel')
+  check('il.policyClosing', interactionEndPolicy('windowClosing'), 'cancel')
+  check('il.policyReplacement', interactionEndPolicy('projectReplacement'), 'cancel')
+  check('il.noDraft', prepareExternalAction('export', false), 'ready')
+  check('il.draftCancelled', prepareExternalAction('export', true), 'cancelledDraft')
+  check('il.allowsProceed', preparationAllowsProceeding('cancelledDraft'), true)
+
+  // ================================================ CaptureAreaSelectionLayout（Swift 26 行）
+  check('al.toolbarWidth', CAPTURE_AREA_TOOLBAR_WIDTH, 642)
+  check('al.toolbarHeight', CAPTURE_AREA_TOOLBAR_HEIGHT, 60)
+  check('al.margin', CAPTURE_AREA_SAFE_MARGIN, 12)
+  check('al.gap', CAPTURE_AREA_TOOLBAR_GAP, 14)
+  const bigDisplay = { x: 0, y: 0, width: 1920, height: 1080 }
+  check('al.scalePreferred', captureAreaSelectionScale(bigDisplay, 1), 1)
+  const smallDisplay = { x: 0, y: 0, width: 300, height: 60 }
+  check('al.scaleWidthBound', captureAreaSelectionScale(smallDisplay, 1), 300 / 666, 1e-12)
+  check('al.scalePreferredWins', captureAreaSelectionScale(bigDisplay, 0.5), 0.5)
+  check('al.rectMidX', rectMidX({ x: 100, y: 0, width: 200, height: 0 }), 200)
+  check('al.rectMaxY', rectMaxY({ x: 0, y: 100, width: 0, height: 50 }), 150)
+  check('al.rectMinX', rectMinX({ x: 7, y: 0, width: 0, height: 0 }), 7)
+  check('al.rectMaxX', rectMaxX({ x: 7, y: 0, width: 3, height: 0 }), 10)
+  check('al.rectMinY', rectMinY({ x: 0, y: 9, width: 0, height: 0 }), 9)
+  const toolbar = captureAreaToolbarFrame(
+    { x: 100, y: 100, width: 200, height: 100 },
+    { x: 0, y: 0, width: 1000, height: 800 },
+    1
+  )
+  check('al.frameBelowY', toolbar.y, 26) // 100 - 60 - 14
+  check('al.frameX', toolbar.x, 12) // 夹到安全区左边
+  check('al.frameWidth', toolbar.width, 642)
+  check('al.frameHeight', toolbar.height, 60)
+  const toolbarAbove = captureAreaToolbarFrame(
+    { x: 400, y: 10, width: 200, height: 100 },
+    { x: 0, y: 0, width: 1000, height: 800 },
+    1
+  )
+  check('al.frameAboveY', toolbarAbove.y, 124) // 110 + 14
+  check('al.frameCenteredX', toolbarAbove.x, 500 - 321)
+  const toolbarClamped = captureAreaToolbarFrame(
+    { x: 400, y: 400, width: 100, height: 10 },
+    { x: 0, y: 0, width: 700, height: 300 },
+    1
+  )
+  check('al.frameClampedY', toolbarClamped.y, 300 - 12 - 60)
+
+  // ================================================ CaptureAreaSelectionMotion（Swift 38 行）
+  check('mo.duration', CAPTURE_AREA_SELECTION_MOTION_DURATION, 0.32)
+  check('mo.start', selectionMotionProgress(0), 0)
+  check('mo.mid', selectionMotionProgress(0.16), 0.875)
+  check('mo.end', selectionMotionProgress(0.32), 1)
+  check('mo.clampHigh', selectionMotionProgress(1), 1)
+  check('mo.clampLow', selectionMotionProgress(-1), 0)
+  check('mo.reduceMotion', selectionMotionProgress(0.1, 0.32, true), 1)
+  check('mo.completeAtOne', selectionMotionIsComplete(1), true)
+  check('mo.incomplete', selectionMotionIsComplete(0.999), false)
+
+  const motionValues = []
+  let currentTime = 0
+  let pendingFrame = null
+  const motion = new CaptureAreaSelectionMotion(() => false)
+  motion.start((progress) => motionValues.push(progress), {
+    now: () => currentTime,
+    nextFrame: (callback) => {
+      pendingFrame = callback
+      return () => {
+        pendingFrame = null
+      }
+    }
+  })
+  check('mo.firstFrameZero', motionValues[0], 0)
+  check('mo.running', motion.isRunning, true)
+  currentTime = 0.16
+  pendingFrame()
+  check('mo.tickMid', motionValues[1], 0.875)
+  currentTime = 0.4
+  pendingFrame()
+  check('mo.tickEnd', motionValues[2], 1)
+  check('mo.stoppedAtEnd', motion.isRunning, false)
+  check('mo.framesTotal', motionValues.length, 3)
+  // reduceMotion 下直接到终态并停止
+  const motionRM = new CaptureAreaSelectionMotion(() => true)
+  const rmValues = []
+  let pendingRM = null
+  motionRM.start((progress) => rmValues.push(progress), {
+    now: () => 0,
+    nextFrame: (callback) => {
+      pendingRM = callback
+      return () => {
+        pendingRM = null
+      }
+    }
+  })
+  pendingRM()
+  check('mo.reduceMotionEnd', rmValues[rmValues.length - 1], 1)
+  check('mo.reduceMotionStops', motionRM.isRunning, false)
+
+  // ================================================ RecordingPointerFinalization（Swift 49 行）
+  let checks = 0
+  const finalized = prepareRecordingPointerFinalization([], {
+    startOffset: 0,
+    sourceStartTime: 0,
+    createsAutomaticZooms: true,
+    easing: '弹簧',
+    transitionDuration: 0.7,
+    checkCancellation: () => {
+      checks++
+    }
+  })
+  check('pf.cancelChecks', checks, 3)
+  check('pf.emptyEvents', finalized.events.length, 0)
+  check('pf.emptyAnimations', finalized.automaticZoomAnimations.length, 0)
+  const noZoom = prepareRecordingPointerFinalization([], {
+    startOffset: 0,
+    sourceStartTime: 0,
+    createsAutomaticZooms: false,
+    easing: '弹簧',
+    transitionDuration: 0.7
+  })
+  check('pf.noAutoZoom', noZoom.automaticZoomAnimations.length, 0)
+  const savedEvents = []
+  let persistChecks = 0
+  await persistRecordingPointerEvents([], { root: '/P' }, {
+    savePointerEvents: (events) => savedEvents.push(events.length)
+  }, {
+    checkCancellation: () => {
+      persistChecks++
+    }
+  })
+  check('pf.persistChecks', persistChecks, 2)
+  check('pf.persisted', savedEvents.length, 1)
+
+  // ================================================ ScenePresetBackgroundAsset（Swift 47 行）
+  check('sp.subdirectory', SCENE_PRESET_ASSET_SUBDIRECTORY, 'DogSC/ScenePresets/Assets')
+  check('sp.directory', scenePresetAssetDirectory('/AppData'), '/AppData/DogSC/ScenePresets/Assets')
+  check('sp.directoryTrailing', scenePresetAssetDirectory('/AppData/'), '/AppData/DogSC/ScenePresets/Assets')
+  const asset = makeScenePresetBackgroundAsset('scene-1.png', false)
+  check('sp.path', scenePresetAssetPath(asset, '/Assets'), '/Assets/scene-1.png')
+  check('sp.rejectEmpty', scenePresetAssetPath(makeScenePresetBackgroundAsset('', false), '/Assets'), null)
+  check('sp.rejectSlash', scenePresetAssetPath(makeScenePresetBackgroundAsset('a/b.png', false), '/Assets'), null)
+  check('sp.rejectBackslash', scenePresetAssetPath(makeScenePresetBackgroundAsset('a\\b.png', false), '/Assets'), null)
+  check('sp.rejectDot', scenePresetAssetPath(makeScenePresetBackgroundAsset('.', false), '/Assets'), null)
+  check('sp.rejectDotDot', scenePresetAssetPath(makeScenePresetBackgroundAsset('..', false), '/Assets'), null)
+  check('sp.available', scenePresetAssetIsAvailable(asset, '/Assets', () => true), true)
+  check('sp.unavailable', scenePresetAssetIsAvailable(asset, '/Assets', () => false), false)
+  const imageSource = scenePresetBackgroundSource(asset, '/Assets', () => true)
+  check('sp.sourceKind', imageSource.kind, 'systemImage')
+  check('sp.sourcePath', imageSource.absolutePath, '/Assets/scene-1.png')
+  const videoSource = scenePresetBackgroundSource(
+    makeScenePresetBackgroundAsset('scene-1.mov', true),
+    '/Assets',
+    () => true
+  )
+  check('sp.videoKind', videoSource.kind, 'systemVideo')
+  check('sp.sourceMissing', scenePresetBackgroundSource(asset, '/Assets', () => false), null)
+  check('sp.extGiven', scenePresetAssetExtension('/tmp/clip.MP4', true), 'MP4')
+  check('sp.extVideoDefault', scenePresetAssetExtension('/tmp/clip', true), 'mov')
+  check('sp.extImageDefault', scenePresetAssetExtension('/tmp/clip', false), 'png')
+  check('sp.extTrailingDot', scenePresetAssetExtension('/tmp/clip.', false), 'png')
+  check('sp.retainedName', retainedScenePresetFilename('/tmp/clip.mov', true, 'ABC'), 'scene-ABC.mov')
+  const retained = retainedScenePresetAsset('/tmp/clip.heic', false, 'DEF')
+  check('sp.retainedFilename', retained.filename, 'scene-DEF.heic')
+  check('sp.retainedIsVideo', retained.asset.isVideo, false)
+
+}
+
+await runCaptureSupportBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

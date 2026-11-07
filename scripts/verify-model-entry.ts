@@ -459,3 +459,63 @@ export {
   cmTimeSeconds,
   recordingActivityDisablesIdleSleep,
 } from '../src/renderer/src/core/CaptureStreamCadence'
+
+// ---------------------------------------------------------------- 批次 12：并发许可 / 就绪判定 / 选区几何
+export {
+  EditorThumbnailPermits,
+  ThumbnailPermitCancelledError,
+} from '../src/renderer/src/core/EditorThumbnailPermits'
+export {
+  cameraReadinessEquals,
+  cameraReadinessPermitsRecording,
+  recorderCameraReadiness,
+  recorderStartAvailability,
+  startAvailabilityPermitsRecording,
+} from '../src/renderer/src/core/RecorderStartAvailability'
+export {
+  captureAreaSelectionOutcome,
+  captureDisplayIdentity,
+  resolveCaptureDisplay,
+  resolveCaptureDisplayScreen,
+  screenDeviceDisplayID,
+} from '../src/renderer/src/core/CaptureDisplayResolution'
+export {
+  EDITOR_EXTERNAL_ACTIONS,
+  interactionEndPolicy,
+  preparationAllowsProceeding,
+  prepareExternalAction,
+} from '../src/renderer/src/core/EditorInteractionLifecycle'
+export {
+  CAPTURE_AREA_SAFE_MARGIN,
+  CAPTURE_AREA_TOOLBAR_GAP,
+  CAPTURE_AREA_TOOLBAR_HEIGHT,
+  CAPTURE_AREA_TOOLBAR_WIDTH,
+  captureAreaSelectionScale,
+  captureAreaToolbarFrame,
+  rectMaxX,
+  rectMaxY,
+  rectMidX,
+  rectMinX,
+  rectMinY,
+} from '../src/renderer/src/core/CaptureAreaSelectionLayout'
+export {
+  CAPTURE_AREA_SELECTION_MOTION_DURATION,
+  CaptureAreaSelectionMotion,
+  selectionMotionIsComplete,
+  selectionMotionProgress,
+} from '../src/renderer/src/core/CaptureAreaSelectionMotion'
+export {
+  persistRecordingPointerEvents,
+  prepareRecordingPointerFinalization,
+} from '../src/renderer/src/core/RecordingPointerFinalization'
+export {
+  SCENE_PRESET_ASSET_SUBDIRECTORY,
+  makeScenePresetBackgroundAsset,
+  retainedScenePresetAsset,
+  retainedScenePresetFilename,
+  scenePresetAssetDirectory,
+  scenePresetAssetExtension,
+  scenePresetAssetIsAvailable,
+  scenePresetAssetPath,
+  scenePresetBackgroundSource,
+} from '../src/renderer/src/core/ScenePresetBackgroundAsset'

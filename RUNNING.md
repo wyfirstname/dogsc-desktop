@@ -416,3 +416,15 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
 - `core/ScreenCaptureFrameMetadata.ts`（31 行）：只从第一份附件字典取 `status`，不整份桥接 CFArray/CFDictionary（每帧都做会拖慢采集）；未知 rawValue 按失败初始化器返回 null。
 - `core/CaptureStreamCadence.ts`（40 行）：产品录制上限 60 FPS —— 120Hz 合成器/独立窗口要无限更新只会产出 60 FPS 导出留不住的帧，还把同一份实时 HEVC 预算摊到两倍画面上；屏幕类源最少间隔 1/60s，**设备源返回 .zero**（摄像头自有帧率协商）；表面池深度 8（多三张 4K NV12 约 42 MiB，换取编码器短暂占用旧表面时 WindowServer 仍能出帧）；录制期间禁用空闲睡眠。
 - verify-model 断言 959 → 1062（+103）：路径归一化与符号链接冲突、临时文件命名、落地模式、看门狗首次/重复间隔与延迟触发/单向闩锁/取消、回收站永不永久删除、取消前后两处检查、文档空写不通知、目录快照双集合语义、恢复日志顺序与串行化、帧状态解码、限流上限与表面池。
+
+## 十八、并发许可 / 就绪判定 / 选区几何（8 文件 / 331 行）
+
+- `core/EditorThumbnailPermits.ts`（49 行）：无定时器的并发闸门。`release()` 是「**转移**许可」而非归还计数 —— 有等待者时直接交给队首，`active` 不变；取消把排队项**立即**摘掉，切换显示模式时不必等整批跑完。
+- `core/RecorderStartAvailability.ts`（47 行）：开录前每个启用的实时输入都必须产出真实媒体。选好摄像头 ≠ 就绪 —— 权限、USB 协商、首帧投递都还可能在路上；`preparing` 是唯一禁止开录的状态，`needsCaptureTarget` 优先于它。
+- `core/CaptureDisplayResolution.ts`（67 行）：全应用唯一的显示器身份策略。给了 ID 就是选定了隐私边界，**绝不降级到另一块屏**（找不到返回 null）；只有没显式要 ID 时才允许默认选择。
+- `core/EditorInteractionLifecycle.ts`（29 行）：导出/窗口失活/关窗/换工程四类外部动作一律先 `cancel` 瞬时手势草稿 —— 鼠标抬起前自动提交会把「误触中断」变成持久化编辑；输入控件的显式自动保存策略由 store 自己处理，不走这条兜底。
+- `core/CaptureAreaSelectionLayout.ts`（26 行）：工具栏只在**可用区**（去掉菜单栏/程序坞）里摆，选区矩形仍按整屏算；贴下方 → 贴上方 → 夹进安全区的三级回落，横向夹在安全区内。
+- `core/CaptureAreaSelectionMotion.ts`（38 行）：0.32s 可中断过渡，ease-out cubic **不带回弹**（选区边缘必须留在屏幕上）；`reduceMotion` 直接跳到 1；进度到 1 时先 stop 再回调，保证最后一帧恰好是 1。
+- `core/RecordingPointerFinalization.ts`（49 行）：采集轨全部停止后的重活（对齐 + 自动运镜规划）在后台跑，结果整块作为不可变值返回；三步间各一次取消检查；写盘前后也各一次 —— 取消必须能打断一次大文件写。
+- `core/ScenePresetBackgroundAsset.ts`（47 行）：预设资产与工程包分离（搬走源工程后场景仍可用）；`filename` 只接受纯文件名，带分隔符或 `.` / `..` 一律拒绝 —— 这是防止资产逃出 Assets 目录的唯一闸门；保留副本命名 `scene-<UUID>.<ext>`，扩展名缺省按 mov/png 兜底。
+- verify-model 断言 1062 → 1181（+119）：许可转移/排队/取消三态、就绪三级判定、显示器身份不降级、外部动作一律取消草稿、工具栏三级回落与横向夹取、缓动曲线与 reduceMotion、指针收尾的取消次数与写盘次序、资产文件名闸门与来源枚举。
