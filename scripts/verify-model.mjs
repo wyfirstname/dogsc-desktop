@@ -7501,5 +7501,918 @@ async function runCapturePipelineBatch() {
 
 await runCapturePipelineBatch()
 
+
+async function runEditorChromeAndPresetBatch() {
+  // ========== 8 文件 / 1117 行：聚焦检查器 / 性能采样 / 编辑窗口过滤 /
+  //            完成过渡 / 键盘焦点外观 / 图标目录 / 关于页 / 样式预设
+  const {
+    // ---- EditorFocusEffectInspector.swift
+    FOCUS_EFFECT_INSPECTOR_ACTION_NAME, FOCUS_EFFECT_TARGET_TITLES,
+    FOCUS_EFFECT_INSPECTOR_TITLES, FOCUS_EFFECT_INSPECTOR_TOGGLE_LABELS,
+    FOCUS_EFFECT_INSPECTOR_ROTATION_SLIDER, FOCUS_EFFECT_INSPECTOR_SLIDERS,
+    focusEffectInspectorSelectionEffect, focusEffectInspectorIsLinear,
+    focusEffectInspectorTitle, focusEffectInspectorAccessibilityLabel,
+    focusEffectInspectorToggleProposal, normalizeFocusEffectForLinear,
+    focusEffectInspectorAcceptsUpdate, editorSelectionEqual,
+    focusEffectInspectorSlider, focusEffectInspectorTargetChange,
+    focusEffectInspectorCenterChange, focusEffectInspectorPositionPadVisible,
+    focusEffectInspectorSliderVisible, focusEffectInspectorTargetPickerVisible,
+    focusEffectInspectorWritePlan, applyFocusEffectWritePlan,
+    makeFocusEffect,
+    // ---- RecordingPerformanceMonitor.swift
+    NANOSECONDS_PER_SECOND, subtractWrappingUInt64, performanceSampleWallDelta,
+    processCPUPercent, systemCPUPercent, performanceDelta,
+    availableDiskBytesFromCandidates, thermalStateFromName, performanceSampleFrom,
+    RecordingPerformanceMonitor,
+    // ---- CaptureEditorWindows.swift
+    EDITOR_WINDOW_IDENTIFIER, editorWindowRegistrationIDs, CaptureEditorWindowsRegistry,
+    captureEditorRefreshSupported, CAPTURE_EDITOR_REFRESH_RETRY_DELAYS_MS,
+    CAPTURE_EDITOR_REFRESH_FALLBACK_DETAIL, captureEditorRefreshFailureMessage,
+    captureEditorRefreshPlan, windowIDSetEqual, runCaptureEditorRefresh,
+    CaptureEditorWindowRefresh,
+    // ---- RecordingCompletionTransition.swift
+    RECORDING_COMPLETION_DURATION, RECORDING_COMPLETION_REDUCED_DURATION,
+    RECORDING_COMPLETION_CARD_RADIUS, completionTransitionDuration,
+    completionTransitionProgress, completionTransitionGeometry,
+    completionTransitionElapsed, completionTransitionTime, completionTransitionFrame,
+    completionTransitionAlphas, completionTransitionFrameAt,
+    COMPLETION_TRANSITION_INITIAL_STATE, recordingCompletionCardOrigins,
+    COMPLETION_TRANSITION_RUN_LOOP_MODES,
+    // ---- AppControlFocusAppearance.swift
+    APP_KEYBOARD_FOCUS_NAVIGATION_KEY_CODES, APP_KEYBOARD_FOCUS_BLOCKING_MODIFIERS,
+    APP_SHOWS_KEYBOARD_FOCUS_DEFAULT, APP_KEYBOARD_FOCUS_CUE_LINE_WIDTH,
+    APP_KEYBOARD_FOCUS_CUE_DEFAULT_CHROME_LEVEL, APP_CONTROL_FOCUS_ROOT_ATTRIBUTE,
+    appKeyboardFocusEventAction, keyboardFocusCueVisible, keyboardFocusEnvironmentValue,
+    AppKeyboardFocusVisibility,
+    // ---- EditorSymbol.swift
+    EDITOR_SYMBOL_SCALE, EDITOR_SYMBOL_LABEL_DEFAULT_SIZE, EDITOR_SYMBOL_CATALOG,
+    editorSymbolKind, editorSymbolSize, editorSymbolKinds,
+    // ---- AppAboutSettingsView.swift
+    ABOUT_SUBTITLE, ABOUT_HERO_ICON_SIZE, ABOUT_HERO_ICON_SHADOW, ABOUT_HERO_ENTRY_SCALE,
+    ABOUT_HERO_ENTRY_OFFSET_Y, ABOUT_HERO_ARRIVAL_DELAY, ABOUT_TITLE_SIZE,
+    ABOUT_SUBTITLE_SIZE, ABOUT_VERSION_PILL, ABOUT_HERO_PADDING, ABOUT_LINK_TILE_SPACING,
+    ABOUT_LINK_TILE_METRICS, ABOUT_LINK_TILE_HOVER_OFFSET, ABOUT_UPDATE_BAR_METRICS,
+    ABOUT_PAGE_PADDING, ABOUT_AUTOMATIC_UPDATE_TITLE, ABOUT_CHECK_UPDATES_TITLE,
+    ABOUT_CHECK_UPDATES_HINT, APP_PROJECT_LINKS, ABOUT_LINK_TILES, aboutHeroArrival,
+    aboutLinkTileTrailingOffset, aboutLinkTileAccessibilityIdentifier,
+    aboutCheckForUpdatesEnabled, aboutAutoUpdateEnabled, aboutCheckForUpdatesHelp,
+    // ---- EditorStylePresetStore.swift
+    EDITOR_STYLE_PRESET_KEY, EDITOR_LAST_USED_STYLE_KEY, EDITOR_DEFAULT_PRESET_ID_KEY,
+    EDITOR_STYLE_PRESET_FORMAT_VERSION, EDITOR_LAST_USED_STYLE_FORMAT_VERSION,
+    EDITOR_LAST_USED_STYLE_NAME, styleValueEqual, editorStylePresetIncludesCrop,
+    makeEditorStylePreset, applyEditorStylePreset, editorStylePresetMatchesConfiguration,
+    editorStylePresetHasAvailableBackground, editorStylePresetBackgroundIsAvailable,
+    loadEditorStylePresets, saveEditorStylePresets, readDefaultPresetID,
+    writeDefaultPresetID, rememberLastUsedStyle, applyingLastUsedStyle,
+    clearEditorStylePresetStorage,
+    // ---- 工程构造（复用既有批次）
+    makeRecorderProject, makeProjectTimeline, makeCanvasStyle, makeCameraStyle,
+    makeMotionStyle, makeCursorStyle, makeAudioStyle, makeOpeningSequence,
+  } = m
+
+  const projectWith = (overrides = {}) =>
+    makeRecorderProject({
+      canvas: makeCanvasStyle(overrides.canvas ?? {}),
+      camera: makeCameraStyle(overrides.camera ?? {}),
+      motion: makeMotionStyle(overrides.motion ?? {}),
+      cursorStyle: makeCursorStyle(),
+      audio: makeAudioStyle(),
+      openingSequence: makeOpeningSequence(),
+      timeline: makeProjectTimeline(overrides.timeline ?? {}),
+    })
+
+  // ---------------------------------------------------------------------------
+  // EditorFocusEffectInspector.swift（135 行）
+  // ---------------------------------------------------------------------------
+  check('efi.actionName', FOCUS_EFFECT_INSPECTOR_ACTION_NAME, '调整聚焦')
+  check('efi.titleRadial', FOCUS_EFFECT_INSPECTOR_TITLES.radial, '聚焦')
+  check('efi.titleLinear', FOCUS_EFFECT_INSPECTOR_TITLES.linear, '线性虚化')
+  check('efi.a11yRadial', FOCUS_EFFECT_INSPECTOR_TOGGLE_LABELS.radial, '启用聚焦')
+  check('efi.a11yLinear', FOCUS_EFFECT_INSPECTOR_TOGGLE_LABELS.linear, '启用线性虚化')
+  check('efi.targetTitles', Object.values(FOCUS_EFFECT_TARGET_TITLES).join(','), '随运镜,随鼠标,固定')
+  check('efi.titleUsesLinear', focusEffectInspectorTitle(true), '线性虚化')
+  check('efi.titleUsesRadial', focusEffectInspectorTitle(false), '聚焦')
+  check('efi.a11yUsesLinear', focusEffectInspectorAccessibilityLabel(true), '启用线性虚化')
+  check('efi.rotationMin', FOCUS_EFFECT_INSPECTOR_ROTATION_SLIDER.min, 0)
+  check('efi.rotationMax', FOCUS_EFFECT_INSPECTOR_ROTATION_SLIDER.max, 360)
+  check('efi.rotationFormat', FOCUS_EFFECT_INSPECTOR_ROTATION_SLIDER.format, 'degrees')
+  check('efi.sliderTitles', FOCUS_EFFECT_INSPECTOR_SLIDERS.map((s) => s.title).join(','),
+    '清晰范围,模糊程度,羽化范围,暗角')
+  check('efi.sliderRanges', FOCUS_EFFECT_INSPECTOR_SLIDERS.map((s) => `${s.min}-${s.max}`).join(','),
+    '0.1-1,0-1,0-1,0-1')
+  check('efi.dimmingHiddenWhenLinear',
+    FOCUS_EFFECT_INSPECTOR_SLIDERS[3].hiddenWhenLinear, true)
+  check('efi.dimmingHiddenInLinear',
+    focusEffectInspectorSliderVisible(FOCUS_EFFECT_INSPECTOR_SLIDERS[3], true), false)
+  check('efi.dimmingVisibleInRadial',
+    focusEffectInspectorSliderVisible(FOCUS_EFFECT_INSPECTOR_SLIDERS[3], false), true)
+  check('efi.sizeAlwaysVisible',
+    focusEffectInspectorSliderVisible(FOCUS_EFFECT_INSPECTOR_SLIDERS[0], true), true)
+  check('efi.targetPickerRadial', focusEffectInspectorTargetPickerVisible(false), true)
+  check('efi.targetPickerLinear', focusEffectInspectorTargetPickerVisible(true), false)
+
+  {
+    const effect = makeFocusEffect()
+    const project = projectWith({
+      timeline: {
+        zoomClips: [{ id: 'z1', focusEffect: effect }, { id: 'z2', focusEffect: null }],
+        screenMotionClips: [{ id: 'm1', focusEffect: makeFocusEffect({ linear: true }) }],
+      },
+    })
+    check('efi.selectionZoomEffect',
+      focusEffectInspectorSelectionEffect({ kind: 'zoom', id: 'z1' }, project) === effect, true)
+    check('efi.selectionZoomNull',
+      focusEffectInspectorSelectionEffect({ kind: 'zoom', id: 'z2' }, project), null)
+    check('efi.selectionMissingClip',
+      focusEffectInspectorSelectionEffect({ kind: 'zoom', id: 'zz' }, project), null)
+    check('efi.selectionScreenMotionShape',
+      focusEffectInspectorSelectionEffect({ kind: 'screenMotion', id: 'm1' }, project).shape, 'linear')
+    check('efi.selectionCanvas',
+      focusEffectInspectorSelectionEffect({ kind: 'canvas' }, project), null)
+    check('efi.selectionNull', focusEffectInspectorSelectionEffect(null, project), null)
+  }
+
+  check('efi.linearByScreenMotion',
+    focusEffectInspectorIsLinear({ kind: 'screenMotion', id: 'm1' }, null), true)
+  check('efi.linearByShape',
+    focusEffectInspectorIsLinear({ kind: 'zoom', id: 'z1' }, makeFocusEffect({ linear: true })), true)
+  check('efi.radialByDefault',
+    focusEffectInspectorIsLinear({ kind: 'zoom', id: 'z1' }, makeFocusEffect()), false)
+  check('efi.radialForCanvasSelection',
+    focusEffectInspectorIsLinear({ kind: 'canvas' }, null), false)
+
+  {
+    const off = focusEffectInspectorToggleProposal(true, false)
+    check('efi.toggleOffNull', off, null)
+    const linear = focusEffectInspectorToggleProposal(true, true)
+    check('efi.toggleLinearShape', linear.shape, 'linear')
+    check('efi.toggleLinearTarget', linear.target, 'fixed')
+    check('efi.toggleLinearDimming', linear.dimming, 0)
+    const radial = focusEffectInspectorToggleProposal(false, true)
+    check('efi.toggleRadialShape', radial.shape, null)
+    check('efi.toggleRadialDimming', radial.dimming, 0.18)
+    check('efi.toggleRadialSize', radial.size, 0.45)
+  }
+
+  {
+    const source = makeFocusEffect({ dimming: 0.4, target: 'pointer' })
+    check('efi.normalizeNull', normalizeFocusEffectForLinear(null, true), null)
+    check('efi.normalizeRadialKeepsRef', normalizeFocusEffectForLinear(source, false) === source, true)
+    const linear = normalizeFocusEffectForLinear(source, true)
+    check('efi.normalizeShape', linear.shape, 'linear')
+    check('efi.normalizeTarget', linear.target, 'fixed')
+    check('efi.normalizeDimming', linear.dimming, 0)
+    check('efi.normalizeNoMutation', source.dimming, 0.4)
+    check('efi.normalizeKeepsSize', linear.size, source.size)
+  }
+
+  check('efi.selectionSameID',
+    editorSelectionEqual({ kind: 'zoom', id: 'a' }, { kind: 'zoom', id: 'a' }), true)
+  check('efi.selectionDiffID',
+    editorSelectionEqual({ kind: 'zoom', id: 'a' }, { kind: 'zoom', id: 'b' }), false)
+  check('efi.selectionDiffKind',
+    editorSelectionEqual({ kind: 'zoom', id: 'a' }, { kind: 'screenMotion', id: 'a' }), false)
+  check('efi.selectionBothNull', editorSelectionEqual(null, null), true)
+  check('efi.selectionNullVsCanvas', editorSelectionEqual(null, { kind: 'canvas' }), false)
+  check('efi.acceptsSame',
+    focusEffectInspectorAcceptsUpdate({ kind: 'zoom', id: 'a' }, { kind: 'zoom', id: 'a' }), true)
+  check('efi.acceptsChanged',
+    focusEffectInspectorAcceptsUpdate({ kind: 'zoom', id: 'a' }, { kind: 'zoom', id: 'b' }), false)
+
+  {
+    const effect = makeFocusEffect({ size: 0.5 })
+    check('efi.sliderSize', focusEffectInspectorSlider(effect, 'size', 0.9).size, 0.9)
+    check('efi.sliderNoMutation', effect.size, 0.5)
+    check('efi.sliderAngle', focusEffectInspectorSlider(effect, 'angleDegrees', 45).angleDegrees, 45)
+    check('efi.targetChange', focusEffectInspectorTargetChange(effect, 'pointer').target, 'pointer')
+    const moved = focusEffectInspectorCenterChange(effect, { x: 0.2, y: 0.7 })
+    check('efi.centerChange', `${moved.center.x},${moved.center.y}`, '0.2,0.7')
+  }
+
+  check('efi.padVisibleFixed',
+    focusEffectInspectorPositionPadVisible(makeFocusEffect({ target: 'fixed' }), false), true)
+  check('efi.padHiddenPointer',
+    focusEffectInspectorPositionPadVisible(makeFocusEffect({ target: 'pointer' }), false), false)
+  check('efi.padHiddenLinear',
+    focusEffectInspectorPositionPadVisible(makeFocusEffect({ target: 'fixed' }), true), false)
+  check('efi.padHiddenNoEffect', focusEffectInspectorPositionPadVisible(null, false), false)
+
+  {
+    check('efi.writePlanCanvas', focusEffectInspectorWritePlan({ kind: 'canvas' }, null), null)
+    const zoomPlan = focusEffectInspectorWritePlan({ kind: 'zoom', id: 'z9' }, null)
+    check('efi.writePlanKind', zoomPlan.selectionKind, 'zoom')
+    check('efi.writePlanID', zoomPlan.clipID, 'z9')
+    const project = projectWith({ timeline: { zoomClips: [{ id: 'z9', focusEffect: null }] } })
+    const effect = makeFocusEffect({ linear: true })
+    check('efi.writePlanApplied', applyFocusEffectWritePlan(project, zoomPlan), true)
+    check('efi.writePlanWrote', project.timeline.zoomClips[0].focusEffect, null)
+    check('efi.applyMissing',
+      applyFocusEffectWritePlan(project, { selectionKind: 'zoom', clipID: 'nope', effect }), false)
+    const motionProject = projectWith({ timeline: { screenMotionClips: [{ id: 'm9', focusEffect: null }] } })
+    check('efi.applyScreenMotion',
+      applyFocusEffectWritePlan(motionProject, { selectionKind: 'screenMotion', clipID: 'm9', effect }), true)
+    check('efi.applyScreenMotionWrote', motionProject.timeline.screenMotionClips[0].focusEffect, effect)
+  }
+
+  // ---------------------------------------------------------------------------
+  // RecordingPerformanceMonitor.swift（136 行）
+  // ---------------------------------------------------------------------------
+  check('pm.nanosPerSecond', Number(NANOSECONDS_PER_SECOND), 1_000_000_000)
+  check('pm.wrapSubtract', subtractWrappingUInt64(5n, 10n), 18446744073709551611n)
+  check('pm.plainSubtract', subtractWrappingUInt64(10n, 5n), 5n)
+  check('pm.wallDeltaFirst', performanceSampleWallDelta(12.5, null), 0)
+  check('pm.wallDeltaNormal', performanceSampleWallDelta(12.5, 11), 1.5)
+  check('pm.wallDeltaClamped', performanceSampleWallDelta(10, 12), 0)
+  check('pm.processCPUNoPrevious', processCPUPercent(null, 1), 0)
+  check('pm.processCPUZeroWall', processCPUPercent(1_000_000_000n, 0), 0)
+  check('pm.processCPUFullCore', processCPUPercent(1_000_000_000n, 1), 100)
+  check('pm.processCPUHalfCore', processCPUPercent(500_000_000n, 2), 25)
+  check('pm.systemCPUHalf', systemCPUPercent(50n, 100n), 50)
+  check('pm.systemCPUZeroTotal', systemCPUPercent(50n, 0n), 0)
+  check('pm.systemCPUNullUsed', systemCPUPercent(null, 100n), 0)
+
+  {
+    const first = { processNanoseconds: 100n, residentBytes: 400n, systemUsedTicks: 10n, systemTotalTicks: 100n }
+    const second = { processNanoseconds: 1_000_000_100n, residentBytes: 800n, systemUsedTicks: 60n, systemTotalTicks: 200n }
+    const delta0 = performanceDelta(first, null, 10, null)
+    check('pm.deltaFirstProcess', delta0.processDelta, null)
+    check('pm.deltaFirstWall', delta0.wallDelta, 0)
+    const delta1 = performanceDelta(second, first, 11, 10)
+    check('pm.deltaProcess', delta1.processDelta, 1_000_000_000n)
+    check('pm.deltaSystemUsed', delta1.systemUsedDelta, 50n)
+    check('pm.deltaSystemTotal', delta1.systemTotalDelta, 100n)
+    check('pm.deltaWall', delta1.wallDelta, 1)
+  }
+
+  check('pm.diskImportantFirst',
+    availableDiskBytesFromCandidates({ importantUsage: 3, capacity: 2, fileSystemFree: 1 }), 3)
+  check('pm.diskCapacitySecond',
+    availableDiskBytesFromCandidates({ importantUsage: null, capacity: 2, fileSystemFree: 1 }), 2)
+  check('pm.diskFreeThird',
+    availableDiskBytesFromCandidates({ importantUsage: null, capacity: null, fileSystemFree: 1 }), 1)
+  check('pm.diskNone',
+    availableDiskBytesFromCandidates({ importantUsage: null, capacity: null, fileSystemFree: null }), null)
+  check('pm.thermalNominal', thermalStateFromName('nominal'), 'nominal')
+  check('pm.thermalFair', thermalStateFromName('fair'), 'fair')
+  check('pm.thermalSerious', thermalStateFromName('serious'), 'serious')
+  check('pm.thermalCritical', thermalStateFromName('critical'), 'critical')
+  check('pm.thermalUnknown', thermalStateFromName('sleeping'), 'unknown')
+
+  {
+    const sample = performanceSampleFrom({
+      uptime: 10,
+      startedAt: 12,
+      delta: { wallDelta: 1, processDelta: 500_000_000n, systemUsedDelta: 25n, systemTotalDelta: 100n },
+      residentBytes: 2048n,
+      metalAllocatedBytes: 4096,
+      availableDiskBytes: 1024,
+      thermalState: 'fair',
+    })
+    check('pm.sampleElapsedClamped', sample.elapsed, 0)
+    check('pm.sampleProcessCPU', sample.processCPUPercent, 50)
+    check('pm.sampleSystemCPU', sample.systemCPUPercent, 25)
+    check('pm.sampleResident', sample.processResidentBytes, 2048)
+    check('pm.sampleMetal', sample.processMetalAllocatedBytes, 4096)
+    check('pm.sampleDisk', sample.availableDiskBytes, 1024)
+    check('pm.sampleThermal', sample.thermalState, 'fair')
+  }
+
+  {
+    let uptime = 100
+    let counters = { processNanoseconds: 0n, residentBytes: 100n, systemUsedTicks: 0n, systemTotalTicks: 0n }
+    let readable = true
+    const monitor = new RecordingPerformanceMonitor({
+      uptime: () => uptime,
+      readCpuCounters: () => (readable ? counters : null),
+      allocatedMetalBytes: () => 512,
+      availableDiskBytes: () => 4096,
+      thermalState: () => 'nominal',
+    })
+    check('pm.monitorStart', monitor.startUptime, 100)
+    check('pm.monitorSummaryEmpty', monitor.summary, null)
+    const first = monitor.sample()
+    check('pm.monitorFirstElapsed', first.elapsed, 0)
+    check('pm.monitorFirstProcessCPU', first.processCPUPercent, 0)
+    check('pm.monitorSummaryCount', monitor.summary.sampleCount, 1)
+
+    uptime = 102
+    counters = { processNanoseconds: 2_000_000_000n, residentBytes: 200n, systemUsedTicks: 60n, systemTotalTicks: 240n }
+    const second = monitor.sample()
+    check('pm.monitorSecondElapsed', second.elapsed, 2)
+    check('pm.monitorSecondProcessCPU', second.processCPUPercent, 100)
+    check('pm.monitorSecondSystemCPU', second.systemCPUPercent, 25)
+    check('pm.monitorSecondResident', second.processResidentBytes, 200)
+    check('pm.monitorSummaryPeakCPU', monitor.summary.peakProcessCPUPercent, 100)
+
+    // 拿不到计数器时采样缺席，且**不**推进上一帧快照。
+    readable = false
+    check('pm.monitorMissingCounters', monitor.sample(), null)
+    check('pm.monitorSummaryUnchanged', monitor.summary.sampleCount, 2)
+    readable = true
+    uptime = 104
+    counters = { processNanoseconds: 3_000_000_000n, residentBytes: 200n, systemUsedTicks: 90n, systemTotalTicks: 360n }
+    const fourth = monitor.sample()
+    check('pm.monitorDeltaSpansGap', fourth.processCPUPercent, 50)
+    check('pm.monitorSummaryFinal', monitor.summary.sampleCount, 3)
+
+    const snapshot = monitor.summary
+    snapshot.sampleCount = 99
+    check('pm.monitorSummarySnapshot', monitor.summary.sampleCount, 3)
+  }
+
+  // ---------------------------------------------------------------------------
+  // CaptureEditorWindows.swift（137 行）
+  // ---------------------------------------------------------------------------
+  check('cew.identifier', EDITOR_WINDOW_IDENTIFIER, 'cn.laogou.dogsc.editor-window')
+  check('cew.registerMatch',
+    editorWindowRegistrationIDs(EDITOR_WINDOW_IDENTIFIER, 42).join(','), '42')
+  check('cew.registerMismatch',
+    editorWindowRegistrationIDs('other-window', 42).length, 0)
+  check('cew.registerZero', editorWindowRegistrationIDs(EDITOR_WINDOW_IDENTIFIER, 0).length, 0)
+  check('cew.registerNegative', editorWindowRegistrationIDs(EDITOR_WINDOW_IDENTIFIER, -3).length, 0)
+  check('cew.registerFraction',
+    editorWindowRegistrationIDs(EDITOR_WINDOW_IDENTIFIER, 1.5).length, 0)
+
+  {
+    const registry = new CaptureEditorWindowsRegistry()
+    check('cew.registryEmpty', registry.windowIDs.length, 0)
+    registry.register('other-window', 9)
+    check('cew.registryIgnoresMismatch', registry.windowIDs.length, 0)
+    registry.register(EDITOR_WINDOW_IDENTIFIER, 7)
+    check('cew.registryRegistered', registry.windowIDs.join(','), '7')
+    registry.register(EDITOR_WINDOW_IDENTIFIER, 7)
+    check('cew.registryStable', registry.windowIDs.join(','), '7')
+    registry.register(EDITOR_WINDOW_IDENTIFIER, 8)
+    check('cew.registryReplaces', registry.windowIDs.join(','), '8')
+    registry.unregister(7)
+    check('cew.registryKeepsLatest', registry.windowIDs.join(','), '8')
+    registry.unregister(8)
+    check('cew.registryCleared', registry.windowIDs.length, 0)
+    registry.register(EDITOR_WINDOW_IDENTIFIER, 11)
+    check('cew.includes', registry.includes(11), true)
+    check('cew.excludes', registry.includes(12), false)
+  }
+
+  check('cew.supportsDisplay', captureEditorRefreshSupported('display'), true)
+  check('cew.supportsArea', captureEditorRefreshSupported('area'), true)
+  check('cew.rejectsWindow', captureEditorRefreshSupported('window'), false)
+  check('cew.rejectsDevice', captureEditorRefreshSupported('device'), false)
+  check('cew.retryDelays', CAPTURE_EDITOR_REFRESH_RETRY_DELAYS_MS.join(','), '100,250,500,1000,1500')
+  check('cew.fallbackDetail', CAPTURE_EDITOR_REFRESH_FALLBACK_DETAIL, '未取得编辑窗口的录制目录')
+  check('cew.failureMessage', captureEditorRefreshFailureMessage('超时'), '编辑窗口录制过滤更新失败：超时')
+
+  check('cew.planTaskRunning',
+    captureEditorRefreshPlan({ taskRunning: true, runID: 'r', hasRefreshHandler: true, desiredWindowIDs: [1], appliedWindowIDs: [] }), null)
+  check('cew.planNoRun',
+    captureEditorRefreshPlan({ taskRunning: false, runID: null, hasRefreshHandler: true, desiredWindowIDs: [1], appliedWindowIDs: [] }), null)
+  check('cew.planNoHandler',
+    captureEditorRefreshPlan({ taskRunning: false, runID: 'r', hasRefreshHandler: false, desiredWindowIDs: [1], appliedWindowIDs: [] }), null)
+  check('cew.planNoChange',
+    captureEditorRefreshPlan({ taskRunning: false, runID: 'r', hasRefreshHandler: true, desiredWindowIDs: [1], appliedWindowIDs: [1] }), null)
+  check('cew.planChange',
+    captureEditorRefreshPlan({ taskRunning: false, runID: 'r', hasRefreshHandler: true, desiredWindowIDs: [1], appliedWindowIDs: [] }) !== null, true)
+
+  check('cew.setEqual', windowIDSetEqual([1, 2], [2, 1]), true)
+  check('cew.setLengthDiff', windowIDSetEqual([1, 2], [1]), false)
+  check('cew.setValueDiff', windowIDSetEqual([1, 2], [1, 3]), false)
+  check('cew.setDuplicateCollapse', windowIDSetEqual([1, 1], [1]), false)
+
+  {
+    const makeHost = (applied, desired, failRefreshTimes = 0) => {
+      const state = { applied: [...applied], calls: 0 }
+      return {
+        state,
+        host: {
+          sleep: async () => {},
+          refresh: async () => {
+            state.calls += 1
+            if (state.calls <= failRefreshTimes) throw new Error('boom')
+            state.applied = [...desired]
+          },
+          appliedWindowIDs: () => state.applied,
+          desiredWindowIDs: () => desired,
+        },
+      }
+    }
+
+    const settled = makeHost([1], [1])
+    const settledOutcome = await runCaptureEditorRefresh(settled.host, 'r')
+    check('cew.loopAlreadySettled', settledOutcome.settled, true)
+    check('cew.loopAlreadySettledAttempts', settledOutcome.attempts, 0)
+    check('cew.loopAlreadySettledCalls', settled.state.calls, 0)
+
+    const once = makeHost([1], [2])
+    const onceOutcome = await runCaptureEditorRefresh(once.host, 'r')
+    check('cew.loopOneAttempt', onceOutcome.attempts, 1)
+    check('cew.loopSettled', onceOutcome.settled, true)
+    check('cew.loopApplied', once.state.applied.join(','), '2')
+
+    const failing = makeHost([1], [2], 99)
+    const failOutcome = await runCaptureEditorRefresh(failing.host, 'r')
+    check('cew.loopFailAttempts', failOutcome.attempts, 5)
+    check('cew.loopFailSettled', failOutcome.settled, false)
+    check('cew.loopFailError', failOutcome.lastError instanceof Error, true)
+
+    const cancelledHost = {
+      sleep: async () => { throw new Error('cancelled') },
+      refresh: async () => {},
+      appliedWindowIDs: () => [1],
+      desiredWindowIDs: () => [2],
+    }
+    const cancelledOutcome = await runCaptureEditorRefresh(cancelledHost, 'r')
+    check('cew.loopCancelled', cancelledOutcome.cancelled, true)
+    check('cew.loopCancelledAttempts', cancelledOutcome.attempts, 0)
+  }
+
+  {
+    const refresh = new CaptureEditorWindowRefresh()
+    check('cew.refreshInitiallyIdle', refresh.currentRunID, null)
+    check('cew.refreshNoObservation', refresh.observesEditorWindows, false)
+    const config = { source: 'display' }
+    refresh.start({ runID: 'run1', configuration: config, appliedWindowIDs: [], refresh: async () => {} })
+    check('cew.refreshStarted', refresh.currentRunID, 'run1')
+    check('cew.refreshObserves', refresh.observesEditorWindows, true)
+    check('cew.refreshConfigMatch', refresh.configurationFor('run1') === config, true)
+    check('cew.refreshConfigMismatch', refresh.configurationFor('run2'), null)
+    check('cew.refreshNeedsUpdate', refresh.needsUpdate(config, [5]), true)
+    check('cew.refreshFailureInitiallyNull', refresh.failureMessage, null)
+    refresh.didApply([5], config, 'run1', [5])
+    check('cew.refreshSettled', refresh.needsUpdate(config, [5]), false)
+    refresh.didApply([5], config, 'run2', [5])
+    check('cew.refreshIgnoresOtherRun', refresh.needsUpdate(config, [5]), false)
+    refresh.stop('run2')
+    check('cew.refreshStopMismatch', refresh.currentRunID, 'run1')
+    refresh.stop('run1')
+    check('cew.refreshStopped', refresh.currentRunID, null)
+    check('cew.refreshStoppedObservation', refresh.observesEditorWindows, false)
+
+    const windowOnly = new CaptureEditorWindowRefresh()
+    windowOnly.start({ runID: 'run3', configuration: { source: 'window' }, appliedWindowIDs: [], refresh: async () => {} })
+    check('cew.refreshWindowSourceNotObserved', windowOnly.observesEditorWindows, false)
+  }
+
+  // ---------------------------------------------------------------------------
+  // RecordingCompletionTransition.swift（137 行）
+  // ---------------------------------------------------------------------------
+  check('rct.duration', completionTransitionDuration(false), RECORDING_COMPLETION_DURATION)
+  check('rct.durationDefault', RECORDING_COMPLETION_DURATION, 0.32)
+  check('rct.durationReduced', completionTransitionDuration(true), RECORDING_COMPLETION_REDUCED_DURATION)
+  check('rct.durationReducedValue', RECORDING_COMPLETION_REDUCED_DURATION, 0.14)
+  check('rct.cardRadius', RECORDING_COMPLETION_CARD_RADIUS, 28)
+  check('rct.progressStart', completionTransitionProgress(0), 0)
+  check('rct.progressEnd', completionTransitionProgress(1), 1)
+  check('rct.progressQuarter', completionTransitionProgress(0.25), 0.3671875)
+  check('rct.progressHalf', completionTransitionProgress(0.5), 0.8125)
+  check('rct.progressMonotonic',
+    completionTransitionProgress(0.3) < completionTransitionProgress(0.4), true)
+  check('rct.progressNoOvershoot', completionTransitionProgress(2), 1)
+  check('rct.progressClampNegative', completionTransitionProgress(-1), 0)
+  check('rct.geometryReduced', completionTransitionGeometry(0.5, true), 1)
+  check('rct.geometryNormal', completionTransitionGeometry(0.5, false), 0.8125)
+  check('rct.elapsedClampHigh', completionTransitionElapsed(0, 5, 0.32), 0.32)
+  check('rct.elapsedClampLow', completionTransitionElapsed(5, 4, 0.32), 0)
+  check('rct.elapsedNormal', completionTransitionElapsed(1, 1.16, 0.32), 0.16)
+  check('rct.timeHalf', completionTransitionTime(0.16, 0.32), 0.5)
+  check('rct.timeZeroDuration', completionTransitionTime(5, 0), 1)
+
+  {
+    const start = { x: 0, y: 0, width: 100, height: 100 }
+    const target = { x: 10, y: 20, width: 300, height: 220 }
+    const atZero = completionTransitionFrame(start, target, 0)
+    check('rct.frameStart', `${atZero.x},${atZero.y},${atZero.width},${atZero.height}`, '0,0,100,100')
+    const atOne = completionTransitionFrame(start, target, 1)
+    check('rct.frameEnd', `${atOne.x},${atOne.y},${atOne.width},${atOne.height}`, '10,20,300,220')
+    const atHalf = completionTransitionFrame(start, target, 0.5)
+    check('rct.frameHalf', `${atHalf.x},${atHalf.y},${atHalf.width},${atHalf.height}`, '5,10,200,160')
+    check('rct.frameNonFinite', completionTransitionFrame(start, target, NaN).x, 0)
+  }
+
+  check('rct.alphaAtZero',
+    Object.values(completionTransitionAlphas(0)).join(','), '1,0')
+  check('rct.alphaSum', (() => {
+    const a = completionTransitionAlphas(0.37)
+    return a.outgoing + a.incoming
+  })(), 1)
+
+  {
+    const start = { x: 0, y: 0, width: 100, height: 100 }
+    const target = { x: 0, y: 0, width: 200, height: 200 }
+    const mid = completionTransitionFrameAt({
+      elapsed: 0.16, duration: 0.32, reducesMotion: false, startFrame: start, targetFrame: target,
+    })
+    check('rct.frameAtProgress', mid.progress, 0.8125)
+    check('rct.frameAtGeometry', mid.geometry, 0.8125)
+    check('rct.frameAtWidth', mid.frame.width, 181.25)
+    check('rct.frameAtFinished', mid.finished, false)
+    const done = completionTransitionFrameAt({
+      elapsed: 0.32, duration: 0.32, reducesMotion: false, startFrame: start, targetFrame: target,
+    })
+    check('rct.frameAtDone', done.finished, true)
+    check('rct.frameAtDoneAlpha', done.incomingAlpha, 1)
+    const reduced = completionTransitionFrameAt({
+      elapsed: 0.05, duration: 0.14, reducesMotion: true, startFrame: start, targetFrame: target,
+    })
+    check('rct.frameAtReducedGeometry', reduced.geometry, 1)
+    check('rct.frameAtReducedWidth', reduced.frame.width, 200)
+    check('rct.frameAtReducedAlpha', reduced.incomingAlpha, completionTransitionProgress(0.05 / 0.14))
+    const overshoot = completionTransitionFrameAt({
+      elapsed: 9, duration: 0.32, reducesMotion: false, startFrame: start, targetFrame: target,
+    })
+    check('rct.frameAtClamp', overshoot.elapsed, 0.32)
+  }
+
+  check('rct.initialOutgoing', COMPLETION_TRANSITION_INITIAL_STATE.outgoingAlpha, 1)
+  check('rct.initialIncoming', COMPLETION_TRANSITION_INITIAL_STATE.incomingAlpha, 0)
+  check('rct.initialVisible',
+    `${COMPLETION_TRANSITION_INITIAL_STATE.outgoingHidden},${COMPLETION_TRANSITION_INITIAL_STATE.incomingHidden}`,
+    'false,false')
+  check('rct.runLoopModes', COMPLETION_TRANSITION_RUN_LOOP_MODES.join(','), 'common,modalPanel')
+
+  {
+    const layout = recordingCompletionCardOrigins({ bounds: { x: 4, y: 6, width: 320, height: 480 } })
+    check('rct.layoutBackground',
+      `${layout.background.x},${layout.background.y},${layout.background.width},${layout.background.height}`,
+      '4,6,320,480')
+    check('rct.layoutViewport',
+      `${layout.viewport.x},${layout.viewport.y},${layout.viewport.width},${layout.viewport.height}`,
+      '4,6,320,480')
+    check('rct.layoutResultOrigin',
+      `${layout.resultOrigin.x},${layout.resultOrigin.y}`, '0,0')
+  }
+
+  // ---------------------------------------------------------------------------
+  // AppControlFocusAppearance.swift（141 行）
+  // ---------------------------------------------------------------------------
+  check('kf.navKeyCodes', APP_KEYBOARD_FOCUS_NAVIGATION_KEY_CODES.join(','), '48,123,124,125,126')
+  check('kf.blockingModifiers', APP_KEYBOARD_FOCUS_BLOCKING_MODIFIERS.join(','), 'command,control,option')
+  check('kf.environmentDefault', APP_SHOWS_KEYBOARD_FOCUS_DEFAULT, false)
+  check('kf.cueLineWidth', APP_KEYBOARD_FOCUS_CUE_LINE_WIDTH, 1.5)
+  check('kf.defaultChrome', APP_KEYBOARD_FOCUS_CUE_DEFAULT_CHROME_LEVEL, 0.4)
+  check('kf.rootAttribute', APP_CONTROL_FOCUS_ROOT_ATTRIBUTE, 'data-app-focus-root')
+  check('kf.tabShows', appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 48 }), 'show')
+  check('kf.leftArrowShows', appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 123 }), 'show')
+  check('kf.upArrowShows', appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 126 }), 'show')
+  check('kf.letterIgnored', appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 0 }), 'ignore')
+  check('kf.commandIgnored',
+    appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 48, modifiers: ['command'] }), 'ignore')
+  check('kf.controlIgnored',
+    appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 48, modifiers: ['control'] }), 'ignore')
+  check('kf.optionIgnored',
+    appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 48, modifiers: ['option'] }), 'ignore')
+  check('kf.shiftStillShows',
+    appKeyboardFocusEventAction({ type: 'keyDown', keyCode: 48, modifiers: ['shift'] }), 'show')
+  check('kf.missingKeyCode',
+    appKeyboardFocusEventAction({ type: 'keyDown' }), 'ignore')
+  check('kf.mouseDownHides', appKeyboardFocusEventAction({ type: 'leftMouseDown' }), 'hide')
+  check('kf.keyUpHides', appKeyboardFocusEventAction({ type: 'keyUp' }), 'hide')
+
+  check('kf.cueVisible',
+    keyboardFocusCueVisible({ isEnabled: true, isFocused: true, showsKeyboardFocus: true }), true)
+  check('kf.cueHiddenDisabled',
+    keyboardFocusCueVisible({ isEnabled: false, isFocused: true, showsKeyboardFocus: true }), false)
+  check('kf.cueHiddenUnfocused',
+    keyboardFocusCueVisible({ isEnabled: true, isFocused: false, showsKeyboardFocus: true }), false)
+  check('kf.cueHiddenNotNavigating',
+    keyboardFocusCueVisible({ isEnabled: true, isFocused: true, showsKeyboardFocus: false }), false)
+  check('kf.cueExplicitOverridesFalse',
+    keyboardFocusCueVisible({ isEnabled: true, isFocused: false, showsKeyboardFocus: true, explicitFocus: true }), true)
+  check('kf.cueExplicitOverridesTrue',
+    keyboardFocusCueVisible({ isEnabled: true, isFocused: true, showsKeyboardFocus: true, explicitFocus: false }), false)
+  check('kf.cueExplicitNullFallsBack',
+    keyboardFocusCueVisible({ isEnabled: true, isFocused: true, showsKeyboardFocus: true, explicitFocus: null }), true)
+  check('kf.environmentValue', keyboardFocusEnvironmentValue(true), true)
+
+  {
+    const visibility = new AppKeyboardFocusVisibility()
+    check('kf.acquireNeedsMonitor', visibility.acquire(), true)
+    check('kf.acquireSecond', visibility.acquire(), false)
+    check('kf.mountedCount', visibility.mountedCount, 2)
+    check('kf.releaseNotLast', visibility.release(), false)
+    check('kf.stillMonitoring', visibility.isMonitoring, true)
+    check('kf.releaseLast', visibility.release(), true)
+    check('kf.monitorDetached', visibility.isMonitoring, false)
+    check('kf.releaseUnderflow', visibility.release(), false)
+    check('kf.releaseClamped', visibility.mountedCount, 0)
+
+    const single = new AppKeyboardFocusVisibility()
+    single.acquire()
+    check('kf.showsOnTab', single.handle({ type: 'keyDown', keyCode: 48 }), true)
+    check('kf.visible', single.isVisible, true)
+    check('kf.repeatShowsNoChange', single.handle({ type: 'keyDown', keyCode: 48 }), false)
+    check('kf.hidesOnPointer', single.handle({ type: 'leftMouseDown' }), true)
+    check('kf.hidden', single.isVisible, false)
+    check('kf.ignoredLetter', single.handle({ type: 'keyDown', keyCode: 3 }), false)
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorSymbol.swift（142 行）
+  // ---------------------------------------------------------------------------
+  check('sym.catalogSize', Object.keys(EDITOR_SYMBOL_CATALOG).length, 124)
+  check('sym.catalogDistinct', new Set(Object.values(EDITOR_SYMBOL_CATALOG)).size, 77)
+  check('sym.scale', EDITOR_SYMBOL_SCALE.join(','), '12,14,16,18,20')
+  check('sym.labelDefault', EDITOR_SYMBOL_LABEL_DEFAULT_SIZE, 14)
+  check('sym.minusCircle', editorSymbolKind('minus.circle'), 'minus')
+  check('sym.squareStack', editorSymbolKind('square.stack'), 'layers')
+  check('sym.rectangleStack', editorSymbolKind('rectangle.stack'), 'layers')
+  check('sym.linkBadgePlus', editorSymbolKind('link.badge.plus'), 'link')
+  check('sym.rectangleFill', editorSymbolKind('rectangle.fill'), 'shapeWide')
+  check('sym.squareFill', editorSymbolKind('square.fill'), 'shapeRounded')
+  check('sym.timelineSelection', editorSymbolKind('timeline.selection'), 'film')
+  check('sym.moonStarsFill', editorSymbolKind('moon.stars.fill'), 'moon')
+  check('sym.cursorMotion', editorSymbolKind('cursorarrow.motionlines'), 'cursorMotion')
+  check('sym.unknownName', editorSymbolKind('no.such.symbol'), null)
+  check('sym.layerOrderFallsBack', editorSymbolKind('square.3.layers.3d.top.filled'), null)
+  check('sym.batchKinds',
+    editorSymbolKinds(['plus', 'video', 'video.slash', 'nope']).join(','),
+    'plus,camera,cameraOff,')
+  check('sym.sizeExact', editorSymbolSize(16), 16)
+  check('sym.sizeTieDown', editorSymbolSize(13), 12)
+  check('sym.sizeTieUp', editorSymbolSize(19), 18)
+  check('sym.sizeMid', editorSymbolSize(15), 14)
+  check('sym.sizeBelow', editorSymbolSize(2), 12)
+  check('sym.sizeAbove', editorSymbolSize(100), 20)
+  check('sym.sizeInvalid', editorSymbolSize(NaN), 14)
+
+  // ---------------------------------------------------------------------------
+  // AppAboutSettingsView.swift（144 行）
+  // ---------------------------------------------------------------------------
+  check('about.subtitle', ABOUT_SUBTITLE, '丝滑、优雅的高性能屏幕录制工具')
+  check('about.iconSize', ABOUT_HERO_ICON_SIZE, 76)
+  check('about.iconShadow', `${ABOUT_HERO_ICON_SHADOW.radius},${ABOUT_HERO_ICON_SHADOW.offsetY}`, '12,6')
+  check('about.entryScale', ABOUT_HERO_ENTRY_SCALE, 0.84)
+  check('about.entryOffset', ABOUT_HERO_ENTRY_OFFSET_Y, 6)
+  check('about.arrivalDelay', ABOUT_HERO_ARRIVAL_DELAY, 0.14)
+  check('about.titleSize', ABOUT_TITLE_SIZE, 21)
+  check('about.subtitleSize', ABOUT_SUBTITLE_SIZE, 12)
+  check('about.versionPillHeight', ABOUT_VERSION_PILL.height, 22)
+  check('about.versionPillPadding', ABOUT_VERSION_PILL.horizontalPadding, 10)
+  check('about.heroPadding', `${ABOUT_HERO_PADDING.top},${ABOUT_HERO_PADDING.bottom}`, '24,22')
+  check('about.tileSpacing', ABOUT_LINK_TILE_SPACING, 8)
+  check('about.tileMinHeight', ABOUT_LINK_TILE_METRICS.minHeight, 100)
+  check('about.tilePadding', ABOUT_LINK_TILE_METRICS.contentPadding, 12)
+  check('about.tilePressScale', ABOUT_LINK_TILE_METRICS.pressScale, 0.97)
+  check('about.tileIconSize', ABOUT_LINK_TILE_METRICS.iconSize, 22)
+  check('about.hoverOffset', `${ABOUT_LINK_TILE_HOVER_OFFSET.x},${ABOUT_LINK_TILE_HOVER_OFFSET.y}`, '2,-2')
+  check('about.updateBarMinHeight', ABOUT_UPDATE_BAR_METRICS.minHeight, 56)
+  check('about.updateBarPadding', ABOUT_UPDATE_BAR_METRICS.horizontalPadding, 14)
+  check('about.pagePadding', `${ABOUT_PAGE_PADDING.horizontal},${ABOUT_PAGE_PADDING.bottom}`, '6,6')
+  check('about.updateTitle', ABOUT_AUTOMATIC_UPDATE_TITLE, '自动检查更新')
+  check('about.checkTitle', ABOUT_CHECK_UPDATES_TITLE, '检查更新')
+  check('about.checkHint', ABOUT_CHECK_UPDATES_HINT, '从 GitHub Release 检查并安装 DogSC 新版本')
+  check('about.sourceURL', APP_PROJECT_LINKS.source, 'https://github.com/laogou717/dogsc')
+  check('about.feedbackURL', APP_PROJECT_LINKS.feedback, 'https://github.com/laogou717/dogsc/issues')
+  check('about.tileCount', ABOUT_LINK_TILES.length, 3)
+  check('about.tileIcons', ABOUT_LINK_TILES.map((t) => t.icon).join(','), 'code,feedback,cup')
+  check('about.tileTitles', ABOUT_LINK_TILES.map((t) => t.title).join(','),
+    '开源仓库 (GitHub),反馈与建议,自愿赞赏支持')
+  check('about.tileTrailing', ABOUT_LINK_TILES.map((t) => t.trailingIcon).join(','), 'external,external,chevron')
+  check('about.tileSupportID', ABOUT_LINK_TILES[2].accessibilityIdentifier, 'settings.about.support')
+  check('about.tileSupportNoURL', ABOUT_LINK_TILES[2].opensURL, null)
+
+  {
+    const pending = aboutHeroArrival({ heroArrived: false, reducesMotion: false })
+    check('about.heroPendingScale', pending.scale, 0.84)
+    check('about.heroPendingOffset', pending.offsetY, 6)
+    const arrived = aboutHeroArrival({ heroArrived: true, reducesMotion: false })
+    check('about.heroArrivedScale', arrived.scale, 1)
+    check('about.heroArrivedOffset', arrived.offsetY, 0)
+    const reduced = aboutHeroArrival({ heroArrived: false, reducesMotion: true })
+    check('about.heroReducedScale', reduced.scale, 1)
+    check('about.heroReducedOffset', reduced.offsetY, 0)
+  }
+
+  {
+    const external = aboutLinkTileTrailingOffset({ hovered: true, reducesMotion: false, trailingIcon: 'external' })
+    check('about.externalHoverX', external.x, 2)
+    check('about.externalHoverY', external.y, -2)
+    const chevron = aboutLinkTileTrailingOffset({ hovered: true, reducesMotion: false, trailingIcon: 'chevron' })
+    check('about.chevronHoverX', chevron.x, 2)
+    check('about.chevronHoverY', chevron.y, 0)
+    const idle = aboutLinkTileTrailingOffset({ hovered: false, reducesMotion: false, trailingIcon: 'external' })
+    check('about.idleOffset', `${idle.x},${idle.y}`, '0,0')
+    const reducedHover = aboutLinkTileTrailingOffset({ hovered: true, reducesMotion: true, trailingIcon: 'external' })
+    check('about.reducedHoverOffset', `${reducedHover.x},${reducedHover.y}`, '0,0')
+  }
+
+  check('about.a11yFallback', aboutLinkTileAccessibilityIdentifier('反馈与建议', null),
+    'settings.about.反馈与建议')
+  check('about.a11yExplicit', aboutLinkTileAccessibilityIdentifier('自愿赞赏支持', 'settings.about.support'),
+    'settings.about.support')
+  check('about.checkEnabled', aboutCheckForUpdatesEnabled({ isFormalRelease: true, isReady: true }), true)
+  check('about.checkNotFormal', aboutCheckForUpdatesEnabled({ isFormalRelease: false, isReady: true }), false)
+  check('about.checkNotReady', aboutCheckForUpdatesEnabled({ isFormalRelease: true, isReady: false }), false)
+  check('about.autoUpdateFormal', aboutAutoUpdateEnabled(true), true)
+  check('about.autoUpdateNotFormal', aboutAutoUpdateEnabled(false), false)
+  check('about.helpPassthrough', aboutCheckForUpdatesHelp('可以从 GitHub 检查更新'), '可以从 GitHub 检查更新')
+
+  // ---------------------------------------------------------------------------
+  // EditorStylePresetStore.swift（146 行）
+  // ---------------------------------------------------------------------------
+  check('sp.presetKey', EDITOR_STYLE_PRESET_KEY, 'editor-style-presets-v1')
+  check('sp.lastUsedKey', EDITOR_LAST_USED_STYLE_KEY, 'editor-last-used-style-v1')
+  check('sp.defaultIDKey', EDITOR_DEFAULT_PRESET_ID_KEY, 'editor-scene-preset.default-id')
+  check('sp.formatVersion', EDITOR_STYLE_PRESET_FORMAT_VERSION, 2)
+  check('sp.lastUsedFormatVersion', EDITOR_LAST_USED_STYLE_FORMAT_VERSION, 1)
+  check('sp.lastUsedName', EDITOR_LAST_USED_STYLE_NAME, '上次使用')
+  check('sp.cropMissingVersion', editorStylePresetIncludesCrop({ formatVersion: null }), false)
+  check('sp.cropV1', editorStylePresetIncludesCrop({ formatVersion: 1 }), false)
+  check('sp.cropV2', editorStylePresetIncludesCrop({ formatVersion: 2 }), true)
+
+  const baseProject = projectWith({
+    canvas: { crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 }, backgroundSource: { kind: 'pattern', patternPreset: '黑曜石网格' } },
+    camera: { isHidden: true },
+    motion: { defaultZoomScale: 1.5 },
+  })
+
+  {
+    const preset = makeEditorStylePreset({ name: '预设 A', project: baseProject })
+    check('sp.makeName', preset.name, '预设 A')
+    check('sp.makeIDDefault', preset.id, '')
+    check('sp.makeFormatVersion', preset.formatVersion, 2)
+    check('sp.makeIncludesBackground', preset.includesBackground, true)
+    check('sp.makeZoomScale', preset.motion.defaultZoomScale, 1.5)
+    check('sp.makeCameraHidden', preset.camera.isHidden, true)
+    check('sp.makeCrop', preset.canvas.crop.width, 0.5)
+    const scaled = makeEditorStylePreset({
+      name: 'B',
+      project: projectWith({ motion: { defaultZoomScale: null } }),
+      zoomCreationScale: 2.4,
+    })
+    check('sp.makeZoomCreationScale', scaled.motion.defaultZoomScale, 2.4)
+    const privateBackground = makeEditorStylePreset({
+      name: 'C',
+      project: projectWith({ canvas: { backgroundSource: { kind: 'projectImage', relativePath: 'a.png' } } }),
+    })
+    check('sp.makePrivateBackgroundExcluded', privateBackground.includesBackground, false)
+  }
+
+  {
+    const preset = makeEditorStylePreset({ name: 'V2', project: baseProject })
+    preset.canvas.crop = { x: 0, y: 0, width: 1, height: 1 }
+    const applied = applyEditorStylePreset({ preset, baseline: baseProject })
+    check('sp.applyCropReplaced', applied.canvas.crop.width, 1)
+    check('sp.applyCameraHidden', applied.camera.isHidden, true)
+    check('sp.applyNoMutation', baseProject.canvas.crop.width, 0.5)
+
+    const legacy = makeEditorStylePreset({ name: 'V1', project: baseProject })
+    legacy.formatVersion = 1
+    legacy.canvas.crop = { x: 0, y: 0, width: 1, height: 1 }
+    legacy.camera.isHidden = false
+    const legacyApplied = applyEditorStylePreset({ preset: legacy, baseline: baseProject })
+    check('sp.applyLegacyCropKept', legacyApplied.canvas.crop.width, 0.5)
+    check('sp.applyLegacyCameraKept', legacyApplied.camera.isHidden, true)
+  }
+
+  {
+    // 背景三重闸门
+    const preset = makeEditorStylePreset({ name: 'BG', project: baseProject })
+    preset.canvas.backgroundSource = { kind: 'systemImage', absolutePath: '/nope/a.png' }
+    const override = { kind: 'pattern', patternPreset: '极光' }
+    const withOverride = applyEditorStylePreset({
+      preset, baseline: baseProject, backgroundOverride: override,
+    })
+    check('sp.applyOverrideWins', withOverride.canvas.backgroundSource.patternPreset, '极光')
+
+    const missing = applyEditorStylePreset({
+      preset, baseline: baseProject, fileExists: () => false,
+    })
+    check('sp.applyMissingKeepsBaseline', missing.canvas.backgroundSource.kind, 'pattern')
+
+    const present = applyEditorStylePreset({
+      preset, baseline: baseProject, fileExists: () => true,
+    })
+    check('sp.applyPresentUsesPreset', present.canvas.backgroundSource.kind, 'systemImage')
+
+    const excluded = makeEditorStylePreset({
+      name: 'NB',
+      project: projectWith({ canvas: { backgroundSource: { kind: 'projectImage', relativePath: 'a.png' } } }),
+    })
+    excluded.canvas.backgroundSource = { kind: 'systemImage', absolutePath: '/x.png' }
+    const kept = applyEditorStylePreset({ preset: excluded, baseline: baseProject, fileExists: () => true })
+    check('sp.applyExcludedKeepsBaseline', kept.canvas.backgroundSource.kind, 'pattern')
+  }
+
+  {
+    const noScale = makeEditorStylePreset({
+      name: 'NS',
+      project: projectWith({ motion: { defaultZoomScale: null } }),
+    })
+    const applied = applyEditorStylePreset({ preset: noScale, baseline: baseProject })
+    check('sp.applyZoomScaleInherited', applied.motion.defaultZoomScale, 1.5)
+
+    const noAudio = makeEditorStylePreset({ name: 'NA', project: baseProject })
+    noAudio.audio = null
+    const noOpening = makeEditorStylePreset({ name: 'NO', project: baseProject })
+    noOpening.opening = null
+    const baselineAudio = baseProject.audio.systemVolume
+    const applied2 = applyEditorStylePreset({ preset: noAudio, baseline: baseProject })
+    check('sp.applyAudioKeptWhenNull', applied2.audio.systemVolume, baselineAudio)
+    const applied3 = applyEditorStylePreset({ preset: noOpening, baseline: baseProject })
+    check('sp.applyOpeningKeptWhenNull', applied3.openingSequence.duration, baseProject.openingSequence.duration)
+  }
+
+  {
+    const preset = makeEditorStylePreset({ name: 'M', project: baseProject })
+    check('sp.matchesSame', editorStylePresetMatchesConfiguration(preset, baseProject), true)
+    const changed = projectWith({ canvas: { padding: 20 } })
+    check('sp.matchesChanged', editorStylePresetMatchesConfiguration(preset, changed), false)
+    // includesBackground / formatVersion 不参与比较
+    const shapeOnly = { ...preset, includesBackground: !preset.includesBackground, formatVersion: 1 }
+    check('sp.matchesIgnoresBookkeeping', editorStylePresetMatchesConfiguration(shapeOnly, baseProject), true)
+  }
+
+  check('sp.availablePattern', editorStylePresetHasAvailableBackground({
+    preset: { includesBackground: true, canvas: { backgroundSource: { kind: 'pattern', patternPreset: 'x' } } },
+  }), true)
+  check('sp.availableProjectImage', editorStylePresetHasAvailableBackground({
+    preset: { includesBackground: true, canvas: { backgroundSource: { kind: 'projectImage', relativePath: 'a.png' } } },
+  }), false)
+  check('sp.availableExcluded', editorStylePresetHasAvailableBackground({
+    preset: { includesBackground: false, canvas: { backgroundSource: { kind: 'pattern', patternPreset: 'x' } } },
+  }), false)
+  check('sp.availableAssetMissing', editorStylePresetHasAvailableBackground({
+    preset: { includesBackground: true, canvas: { backgroundSource: { kind: 'pattern', patternPreset: 'x' } }, backgroundAsset: { filename: 'scene-a.png', isVideo: false } },
+    assetDirectory: '/assets',
+    fileExists: () => false,
+  }), false)
+  check('sp.availableAssetPresent', editorStylePresetHasAvailableBackground({
+    preset: { includesBackground: true, canvas: { backgroundSource: { kind: 'pattern', patternPreset: 'x' } }, backgroundAsset: { filename: 'scene-a.png', isVideo: false } },
+    assetDirectory: '/assets',
+    fileExists: (path) => path === '/assets/scene-a.png',
+  }), true)
+  check('sp.availableAssetTraversal', editorStylePresetHasAvailableBackground({
+    preset: { includesBackground: true, canvas: { backgroundSource: { kind: 'pattern', patternPreset: 'x' } }, backgroundAsset: { filename: '../a.png', isVideo: false } },
+    assetDirectory: '/assets',
+    fileExists: () => true,
+  }), false)
+  check('sp.backgroundProjectVideo',
+    editorStylePresetBackgroundIsAvailable({ kind: 'projectVideo', relativePath: 'a.mov' }, () => true), false)
+  check('sp.backgroundDynamicFlow',
+    editorStylePresetBackgroundIsAvailable({ kind: 'dynamicFlow', dynamicPreset: '星辉漫步点阵' }, () => true), true)
+  check('sp.backgroundSystemVideo',
+    editorStylePresetBackgroundIsAvailable({ kind: 'systemVideo', absolutePath: '/a.mov' }, (p) => p === '/a.mov'), true)
+
+  {
+    const store = new Map()
+    const storage = {
+      read: (key) => (store.has(key) ? store.get(key) : null),
+      write: (key, value) => { if (value === null) store.delete(key); else store.set(key, value) },
+    }
+    check('sp.loadEmpty', loadEditorStylePresets(storage).length, 0)
+    store.set(EDITOR_STYLE_PRESET_KEY, 'not json')
+    check('sp.loadCorrupt', loadEditorStylePresets(storage).length, 0)
+    store.set(EDITOR_STYLE_PRESET_KEY, '{"a":1}')
+    check('sp.loadNonArray', loadEditorStylePresets(storage).length, 0)
+
+    const presets = [makeEditorStylePreset({ name: 'P1', project: baseProject, id: 'id-1' })]
+    saveEditorStylePresets(storage, presets)
+    const loaded = loadEditorStylePresets(storage)
+    check('sp.roundTripCount', loaded.length, 1)
+    check('sp.roundTripName', loaded[0].name, 'P1')
+    check('sp.roundTripCrop', loaded[0].canvas.crop.width, 0.5)
+
+    check('sp.defaultIDEmpty', readDefaultPresetID(storage), null)
+    writeDefaultPresetID(storage, 'id-1')
+    check('sp.defaultIDWritten', readDefaultPresetID(storage), 'id-1')
+    writeDefaultPresetID(storage, null)
+    check('sp.defaultIDCleared', readDefaultPresetID(storage), null)
+
+    const snapshot = rememberLastUsedStyle(storage, baseProject)
+    check('sp.rememberFormatVersion', snapshot.formatVersion, 1)
+    check('sp.rememberName', snapshot.name, '上次使用')
+    check('sp.rememberStored', store.has(EDITOR_LAST_USED_STYLE_KEY), true)
+
+    // 无默认预设时，隐式快照不会带上裁切
+    const target = projectWith({ canvas: { crop: { x: 0.2, y: 0.2, width: 0.3, height: 0.3 } } })
+    const restored = applyingLastUsedStyle({ storage, project: target })
+    check('sp.lastUsedKeepsTargetCrop', restored.canvas.crop.width, 0.3)
+
+    // 有默认预设时按显式预设应用（含裁切）
+    writeDefaultPresetID(storage, 'id-1')
+    const explicit = applyingLastUsedStyle({ storage, project: target })
+    check('sp.defaultPresetCropTravels', explicit.canvas.crop.width, 0.5)
+
+    const empty = new Map()
+    const emptyStorage = {
+      read: (key) => (empty.has(key) ? empty.get(key) : null),
+      write: (key, value) => { if (value === null) empty.delete(key); else empty.set(key, value) },
+    }
+    const untouched = applyingLastUsedStyle({ storage: emptyStorage, project: target })
+    check('sp.noStyleKeepsProject', untouched.canvas.crop.width, 0.3)
+    check('sp.noStyleNewObject', untouched !== target, true)
+
+    clearEditorStylePresetStorage(storage)
+    check('sp.clearedPresets', store.has(EDITOR_STYLE_PRESET_KEY), false)
+    check('sp.clearedLastUsed', store.has(EDITOR_LAST_USED_STYLE_KEY), false)
+  }
+
+  check('sp.valueEqualKeyOrder', styleValueEqual({ a: 1, b: 2 }, { b: 2, a: 1 }), true)
+  check('sp.valueEqualArrayOrder', styleValueEqual([1, 2], [2, 1]), false)
+  check('sp.valueEqualNested', styleValueEqual({ a: [{ b: 1 }] }, { a: [{ b: 1 }] }), true)
+  check('sp.valueEqualNull', styleValueEqual(null, { a: 1 }), false)
+}
+
+await runEditorChromeAndPresetBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

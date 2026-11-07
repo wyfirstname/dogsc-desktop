@@ -1190,3 +1190,148 @@ export {
   laneTransitionSpec,
   timelineRowHeights,
 } from '../src/renderer/src/core/EditorTimelineLaneLabel'
+
+// ---- 批次 24（聚焦检查器 / 性能采样 / 编辑窗口过滤 / 完成过渡 /
+//      键盘焦点外观 / 图标目录 / 关于页 / 样式预设）----
+export {
+  FOCUS_EFFECT_INSPECTOR_ACTION_NAME,
+  FOCUS_EFFECT_TARGET_TITLES,
+  FOCUS_EFFECT_INSPECTOR_TITLES,
+  FOCUS_EFFECT_INSPECTOR_TOGGLE_LABELS,
+  FOCUS_EFFECT_INSPECTOR_ROTATION_SLIDER,
+  FOCUS_EFFECT_INSPECTOR_SLIDERS,
+  focusEffectInspectorSelectionEffect,
+  focusEffectInspectorIsLinear,
+  focusEffectInspectorTitle,
+  focusEffectInspectorAccessibilityLabel,
+  focusEffectInspectorToggleProposal,
+  normalizeFocusEffectForLinear,
+  focusEffectInspectorAcceptsUpdate,
+  editorSelectionEqual,
+  focusEffectInspectorSlider,
+  focusEffectInspectorTargetChange,
+  focusEffectInspectorCenterChange,
+  focusEffectInspectorPositionPadVisible,
+  focusEffectInspectorSliderVisible,
+  focusEffectInspectorTargetPickerVisible,
+  focusEffectInspectorWritePlan,
+  applyFocusEffectWritePlan,
+} from '../src/renderer/src/core/EditorFocusEffectInspector'
+
+export {
+  NANOSECONDS_PER_SECOND,
+  subtractWrappingUInt64,
+  performanceSampleWallDelta,
+  processCPUPercent,
+  systemCPUPercent,
+  performanceDelta,
+  availableDiskBytesFromCandidates,
+  thermalStateFromName,
+  performanceSampleFrom,
+  RecordingPerformanceMonitor,
+} from '../src/renderer/src/core/RecordingPerformanceMonitor'
+
+export {
+  // EDITOR_WINDOW_IDENTIFIER 已在批次 21 从 EditorViewCropAndPreset 导出，此处不重复。
+  editorWindowRegistrationIDs,
+  CaptureEditorWindowsRegistry,
+  captureEditorRefreshSupported,
+  CAPTURE_EDITOR_REFRESH_RETRY_DELAYS_MS,
+  CAPTURE_EDITOR_REFRESH_FALLBACK_DETAIL,
+  captureEditorRefreshFailureMessage,
+  captureEditorRefreshPlan,
+  windowIDSetEqual,
+  runCaptureEditorRefresh,
+  CaptureEditorWindowRefresh,
+} from '../src/renderer/src/core/CaptureEditorWindowFilter'
+
+export {
+  RECORDING_COMPLETION_DURATION,
+  RECORDING_COMPLETION_REDUCED_DURATION,
+  RECORDING_COMPLETION_CARD_RADIUS,
+  completionTransitionDuration,
+  completionTransitionProgress,
+  completionTransitionGeometry,
+  completionTransitionElapsed,
+  completionTransitionTime,
+  completionTransitionFrame,
+  completionTransitionAlphas,
+  completionTransitionFrameAt,
+  COMPLETION_TRANSITION_INITIAL_STATE,
+  recordingCompletionCardOrigins,
+  COMPLETION_TRANSITION_RUN_LOOP_MODES,
+} from '../src/renderer/src/core/RecordingCompletionTransition'
+
+export {
+  APP_KEYBOARD_FOCUS_NAVIGATION_KEY_CODES,
+  APP_KEYBOARD_FOCUS_BLOCKING_MODIFIERS,
+  APP_SHOWS_KEYBOARD_FOCUS_DEFAULT,
+  APP_KEYBOARD_FOCUS_CUE_LINE_WIDTH,
+  APP_KEYBOARD_FOCUS_CUE_DEFAULT_CHROME_LEVEL,
+  APP_CONTROL_FOCUS_ROOT_ATTRIBUTE,
+  appKeyboardFocusEventAction,
+  keyboardFocusCueVisible,
+  keyboardFocusEnvironmentValue,
+  AppKeyboardFocusVisibility,
+} from '../src/renderer/src/core/AppControlFocusAppearance'
+
+export {
+  EDITOR_SYMBOL_SCALE,
+  EDITOR_SYMBOL_LABEL_DEFAULT_SIZE,
+  EDITOR_SYMBOL_CATALOG,
+  editorSymbolKind,
+  editorSymbolSize,
+  editorSymbolKinds,
+} from '../src/renderer/src/core/EditorSymbol'
+
+export {
+  ABOUT_SUBTITLE,
+  ABOUT_HERO_ICON_SIZE,
+  ABOUT_HERO_ICON_SHADOW,
+  ABOUT_HERO_ENTRY_SCALE,
+  ABOUT_HERO_ENTRY_OFFSET_Y,
+  ABOUT_HERO_ARRIVAL_DELAY,
+  ABOUT_TITLE_SIZE,
+  ABOUT_SUBTITLE_SIZE,
+  ABOUT_VERSION_PILL,
+  ABOUT_HERO_PADDING,
+  ABOUT_LINK_TILE_SPACING,
+  ABOUT_LINK_TILE_METRICS,
+  ABOUT_LINK_TILE_HOVER_OFFSET,
+  ABOUT_UPDATE_BAR_METRICS,
+  ABOUT_PAGE_PADDING,
+  ABOUT_AUTOMATIC_UPDATE_TITLE,
+  ABOUT_CHECK_UPDATES_TITLE,
+  ABOUT_CHECK_UPDATES_HINT,
+  APP_PROJECT_LINKS,
+  ABOUT_LINK_TILES,
+  aboutHeroArrival,
+  aboutLinkTileTrailingOffset,
+  aboutLinkTileAccessibilityIdentifier,
+  aboutCheckForUpdatesEnabled,
+  aboutAutoUpdateEnabled,
+  aboutCheckForUpdatesHelp,
+} from '../src/renderer/src/core/AppAboutSettingsView'
+
+export {
+  EDITOR_STYLE_PRESET_KEY,
+  EDITOR_LAST_USED_STYLE_KEY,
+  EDITOR_DEFAULT_PRESET_ID_KEY,
+  EDITOR_STYLE_PRESET_FORMAT_VERSION,
+  EDITOR_LAST_USED_STYLE_FORMAT_VERSION,
+  EDITOR_LAST_USED_STYLE_NAME,
+  styleValueEqual,
+  editorStylePresetIncludesCrop,
+  makeEditorStylePreset,
+  applyEditorStylePreset,
+  editorStylePresetMatchesConfiguration,
+  editorStylePresetHasAvailableBackground,
+  editorStylePresetBackgroundIsAvailable,
+  loadEditorStylePresets,
+  saveEditorStylePresets,
+  readDefaultPresetID,
+  writeDefaultPresetID,
+  rememberLastUsedStyle,
+  applyingLastUsedStyle,
+  clearEditorStylePresetStorage,
+} from '../src/renderer/src/core/EditorStylePresetStore'
