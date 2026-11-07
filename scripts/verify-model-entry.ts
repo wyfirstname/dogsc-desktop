@@ -519,3 +519,32 @@ export {
   scenePresetAssetPath,
   scenePresetBackgroundSource,
 } from '../src/renderer/src/core/ScenePresetBackgroundAsset'
+
+// ---------------------------------------------------------------- 批次 13：导出状态 / 进度中继 / 屏幕拓扑
+export {
+  EXPORT_STAGES,
+  ExportTimeEstimator,
+  exportDurationText,
+  exportStageFromRawValue,
+  exportStageRawValue,
+  exportStageTitle,
+  exportStatusElapsedLabel,
+  exportStatusRemainingLabel,
+  exportStatusTitle,
+  makeExportStatus,
+} from '../src/renderer/src/core/ExportStatus'
+export {
+  ExportProgressCoalescer,
+  ExportProgressRelay,
+  exportProgressDeliveryDelayNanoseconds,
+} from '../src/renderer/src/core/ExportProgressRelay'
+export {
+  ScreenTopologyDelta,
+  ScreenTopologyMonitor,
+  ScreenTopologyReconfigurationState,
+  ScreenTopologySnapshot,
+  makeScreenTopologyNode,
+  screenTopologyGeometryFacts,
+  screenTopologyModeFacts,
+  screenTopologyNodeEquals,
+} from '../src/renderer/src/core/ScreenTopology'

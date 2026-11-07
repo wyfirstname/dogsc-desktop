@@ -87,7 +87,10 @@
     "Sources/DogSCApp/CaptureAreaSelectionLayout.swift": "src/renderer/src/core/CaptureAreaSelectionLayout.ts",
     "Sources/DogSCApp/CaptureAreaSelectionMotion.swift": "src/renderer/src/core/CaptureAreaSelectionMotion.ts",
     "Sources/DogSCApp/RecordingPointerFinalization.swift": "src/renderer/src/core/RecordingPointerFinalization.ts",
-    "Sources/DogSCApp/ScenePresetBackgroundAsset.swift": "src/renderer/src/core/ScenePresetBackgroundAsset.ts"
+    "Sources/DogSCApp/ScenePresetBackgroundAsset.swift": "src/renderer/src/core/ScenePresetBackgroundAsset.ts",
+    "Sources/DogSCApp/ScreenTopology.swift": "src/renderer/src/core/ScreenTopology.ts",
+    "Sources/DogSCApp/ExportStatus.swift": "src/renderer/src/core/ExportStatus.ts",
+    "Sources/DogSCApp/ExportProgressRelay.swift": "src/renderer/src/core/ExportProgressRelay.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }

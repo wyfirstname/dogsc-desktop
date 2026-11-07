@@ -428,3 +428,14 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
 - `core/RecordingPointerFinalization.ts`（49 行）：采集轨全部停止后的重活（对齐 + 自动运镜规划）在后台跑，结果整块作为不可变值返回；三步间各一次取消检查；写盘前后也各一次 —— 取消必须能打断一次大文件写。
 - `core/ScenePresetBackgroundAsset.ts`（47 行）：预设资产与工程包分离（搬走源工程后场景仍可用）；`filename` 只接受纯文件名，带分隔符或 `.` / `..` 一律拒绝 —— 这是防止资产逃出 Assets 目录的唯一闸门；保留副本命名 `scene-<UUID>.<ext>`，扩展名缺省按 mov/png 兜底。
 - verify-model 断言 1062 → 1181（+119）：许可转移/排队/取消三态、就绪三级判定、显示器身份不降级、外部动作一律取消草稿、工具栏三级回落与横向夹取、缓动曲线与 reduceMotion、指针收尾的取消次数与写盘次序、资产文件名闸门与来源枚举。
+
+## 十九、导出状态 / 进度中继 / 屏幕拓扑（3 文件 / 483 行）
+
+- `core/ExportStatus.ts`（85 行）：`ExportStage` 四阶段（仅 `processing` 区分纯音频）；剩余时间标签是**五级优先级**——取消中 > 卡住 20s > 正在写入 > 无估算 > 有估算，顺序即用户看到的话。`durationText` 一律**向上取整**（4.2s 显示 0:05），非有限值按 0，≥1 小时走 `h:mm:ss`。
+- `core/ExportStatus.ts` 的 `ExportTimeEstimator`：只保留最近 24 秒样本；进度真正前进才刷新 `lastAdvance`；**近期与前半段速率比值必须落在 0.65~1.55**，否则直接隐藏估算 —— 加特效会显著改变编码速度，宁可不显示也不显示一个已经开始说谎的倒计时；结果向上取整到 5 秒。
+- `core/ExportProgressRelay.ts`（85 行）：纯状态机做合流。`submit` 只在「尚未安排投递」时返回 true，后续值覆盖 `latestValue`（**永不丢最新值、永不排队**）；`takePendingForDelivery` 取出即清空；`invalidate` 三字段全清。中继默认 15 次/秒（`round(1e9/ups)` 纳秒），渲染器可能比实时更快出帧，逐帧投递会让进度上报和编码器抢 CPU、并反复重建整个导出面板。
+- `core/ScreenTopology.ts`（313 行）：显示器**身份只有 id** —— 数组顺序与本地化名称都不是身份；同一 id 重复出现时后者胜出；`nodes` 恒按 id 升序。主屏用 CoreGraphics 的稳定主屏 id，且必须真的在列表里（`NSScreen.main` 会跟着键盘焦点窗口变）。
+  - `ScreenTopologyDelta` 把变化分成 added / removed / geometry / mode 四类，同一块屏可能**同时**出现在 geometry 与 mode 里；`isEmpty` 五条件全空。
+  - `ScreenTopologyReconfigurationState` 用无符号回绕代次作废旧拓扑下捕获的工作。
+  - `ScreenTopologyMonitor`：一次系统通知只合并成一次「稳定刷新」，`stop()` 之后在途刷新全部作废（lifecycleGeneration 比对）。
+- verify-model 断言 1181 → 1287（+106）：阶段/标题/五级标签/向上取整与边界、估算器的线性/过缓/过急/速率突变/完成/窗口裁剪七种情形、合流状态机三态与闸门、节流纳秒换算、拓扑节点夹取与 facts 分离、快照去重/排序/主屏存在性、Delta 四类与主屏变化、重配置代次、监视器合并刷新与 stop 作废在途刷新。

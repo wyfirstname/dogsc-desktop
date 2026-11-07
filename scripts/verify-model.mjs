@@ -3706,5 +3706,269 @@ async function runCaptureSupportBatch() {
 
 await runCaptureSupportBatch()
 
+async function runExportStatusBatch() {
+  const {
+    EXPORT_STAGES, exportDurationText, exportStageFromRawValue, exportStageRawValue,
+    exportStageTitle, exportStatusElapsedLabel, exportStatusRemainingLabel,
+    exportStatusTitle, makeExportStatus, ExportTimeEstimator,
+    ExportProgressCoalescer, ExportProgressRelay,
+    exportProgressDeliveryDelayNanoseconds,
+    makeScreenTopologyNode, screenTopologyGeometryFacts, screenTopologyModeFacts,
+    screenTopologyNodeEquals, ScreenTopologySnapshot, ScreenTopologyDelta,
+    ScreenTopologyReconfigurationState, ScreenTopologyMonitor,
+  } = m
+
+  // ================================================ ExportStatus（Swift 85 行）
+  check('es.stageCount', EXPORT_STAGES.length, 4)
+  check('es.rawCancelling', exportStageRawValue('cancelling'), 3)
+  check('es.fromRaw', exportStageFromRawValue(2), 'finishing')
+  check('es.fromRawOutOfRange', exportStageFromRawValue(9), null)
+  check('es.titlePreparing', exportStageTitle('preparing', false), '正在准备素材')
+  check('es.titleProcessingVideo', exportStageTitle('processing', false), '正在合成与编码')
+  check('es.titleProcessingAudio', exportStageTitle('processing', true), '正在处理音频')
+  check('es.titleFinishing', exportStageTitle('finishing', false), '正在完成文件')
+  check('es.titleCancelling', exportStageTitle('cancelling', false), '正在取消导出')
+
+  check('es.defaultStage', makeExportStatus().stage, 'preparing')
+  check('es.defaultRemaining', makeExportStatus().remaining, null)
+  check('es.title', exportStatusTitle(makeExportStatus({ stage: 'processing', audioOnly: true })), '正在处理音频')
+  check('es.elapsedLabel', exportStatusElapsedLabel(makeExportStatus({ elapsed: 65 })), '已用时 1:05')
+  // 五级优先级
+  check(
+    'es.labelCancellingFirst',
+    exportStatusRemainingLabel(makeExportStatus({ stage: 'cancelling', secondsWithoutProgress: 60 })),
+    '正在释放导出资源…'
+  )
+  check(
+    'es.labelStalled',
+    exportStatusRemainingLabel(makeExportStatus({ secondsWithoutProgress: 20, remaining: 30 })),
+    '暂未收到新进度，可继续等待或取消后重试'
+  )
+  check(
+    'es.labelFinishing',
+    exportStatusRemainingLabel(makeExportStatus({ stage: 'finishing', remaining: 30 })),
+    '正在写入最终文件…'
+  )
+  check(
+    'es.labelEstimating',
+    exportStatusRemainingLabel(makeExportStatus({ remaining: null })),
+    '正在估算剩余时间…'
+  )
+  check(
+    'es.labelRemaining',
+    exportStatusRemainingLabel(makeExportStatus({ remaining: 125 })),
+    '预计剩余约 2:05'
+  )
+  check(
+    'es.labelStalledBelowThreshold',
+    exportStatusRemainingLabel(makeExportStatus({ secondsWithoutProgress: 19.9, remaining: 10 })),
+    '预计剩余约 0:10'
+  )
+  // durationText 向上取整
+  check('es.durationZero', exportDurationText(0), '0:00')
+  check('es.durationCeil', exportDurationText(4.2), '0:05')
+  check('es.durationExact', exportDurationText(59), '0:59')
+  check('es.durationMinute', exportDurationText(60), '1:00')
+  check('es.durationLastMinute', exportDurationText(3599), '59:59')
+  check('es.durationHour', exportDurationText(3600), '1:00:00')
+  check('es.durationHourMinute', exportDurationText(3661), '1:01:01')
+  check('es.durationNaN', exportDurationText(NaN), '0:00')
+  check('es.durationNegative', exportDurationText(-5), '0:00')
+  check('es.durationInfinity', exportDurationText(Infinity), '0:00')
+
+  // ExportTimeEstimator：线性进度 → 精确剩余
+  const estimator = new ExportTimeEstimator()
+  estimator.restart(0, 0)
+  let lastEstimate = null
+  for (let t = 0; t <= 20; t++) {
+    lastEstimate = estimator.sample(t, t * 0.025)
+  }
+  check('es.estimateRemaining', lastEstimate.remaining, 20)
+  check('es.estimateIdle', lastEstimate.idle, 0)
+  // 早期不给估算（进度 < 3%）
+  const early = new ExportTimeEstimator()
+  early.restart(0, 0)
+  const earlySample = early.sample(1, 0.01)
+  check('es.estimateEarlyNull', earlySample.remaining, null)
+  // 卡住超过 5s 不给估算
+  const stalled = new ExportTimeEstimator()
+  stalled.restart(0, 0)
+  for (let t = 0; t <= 12; t++) stalled.sample(t, t * 0.025)
+  const stalledSample = stalled.sample(20, 12 * 0.025)
+  check('es.estimateStalledNull', stalledSample.remaining, null)
+  check('es.estimateStalledIdle', stalledSample.idle, 8)
+  // 速率突变 → 隐藏估算
+  const jumpy = new ExportTimeEstimator()
+  jumpy.restart(0, 0)
+  for (let t = 0; t <= 12; t++) jumpy.sample(t, t * 0.02)
+  const jumped = jumpy.sample(13, 0.6)
+  check('es.estimateRateMismatchNull', jumped.remaining, null)
+  // 完成时不给估算
+  const finished = new ExportTimeEstimator()
+  finished.restart(0, 0)
+  for (let t = 0; t <= 12; t++) finished.sample(t, t * 0.02)
+  check('es.estimateCompleteNull', finished.sample(13, 1).remaining, null)
+  // 样本窗口只留 24 秒
+  const pruning = new ExportTimeEstimator()
+  pruning.restart(0, 0)
+  for (let t = 0; t <= 60; t++) pruning.sample(t, Math.min(t * 0.02, 0.99))
+  const prunedSample = pruning.sample(61, 0.99)
+  check('es.estimatePrunedWindow', prunedSample.remaining, null)
+
+  // ================================================ ExportProgressRelay（Swift 85 行）
+  const coalescer = new ExportProgressCoalescer()
+  check('pr.initialActive', coalescer.isActive, true)
+  check('pr.firstSubmit', coalescer.submit(0.5), true)
+  check('pr.secondSubmit', coalescer.submit(0.7), false)
+  check('pr.latestKept', coalescer.latestValue, 0.7)
+  check('pr.scheduled', coalescer.deliveryIsScheduled, true)
+  const delivered = coalescer.takePendingForDelivery()
+  check('pr.takeValue', delivered, 0.7)
+  check('pr.clearedAfterTake', coalescer.latestValue, null)
+  check('pr.unscheduledAfterTake', coalescer.deliveryIsScheduled, false)
+  check('pr.takeAgain', coalescer.takePendingForDelivery(), null)
+  check('pr.clampLow', (coalescer.submit(-1), coalescer.latestValue), 0)
+  check('pr.clampHigh', (coalescer.submit(2), coalescer.latestValue), 1)
+  check('pr.clampNonFinite', (coalescer.submit(NaN), coalescer.latestValue), 0)
+  coalescer.invalidate()
+  check('pr.inactive', coalescer.isActive, false)
+  check('pr.submitAfterInvalidate', coalescer.submit(0.4), false)
+  check('pr.takeAfterInvalidate', coalescer.takePendingForDelivery(), null)
+
+  check('pr.delayDefault', exportProgressDeliveryDelayNanoseconds(15), 66666667)
+  check('pr.delayNonFinite', exportProgressDeliveryDelayNanoseconds(NaN), 66666667)
+  check('pr.delayFloorOne', exportProgressDeliveryDelayNanoseconds(0), 1_000_000_000)
+  check('pr.delaySixty', exportProgressDeliveryDelayNanoseconds(60), 16666667)
+
+  const deliveries = []
+  const relay = new ExportProgressRelay({
+    maximumUpdatesPerSecond: 15,
+    delivery: (value) => deliveries.push(value)
+  })
+  check('pr.relayDelay', relay.deliveryDelayMilliseconds, 66.666667, 1e-6)
+  relay.submit(0.1)
+  relay.submit(0.2)
+  relay.submit(0.3)
+  check('pr.relayPending', deliveries.length, 0)
+  relay.flush()
+  check('pr.relayOneDelivery', deliveries.length, 1)
+  check('pr.relayLatestValue', deliveries[0], 0.3)
+  relay.invalidate()
+  relay.submit(0.9)
+  relay.flush()
+  check('pr.relayInvalidatedNoDelivery', deliveries.length, 1)
+
+  // ================================================ ScreenTopology（Swift 313 行）
+  const makeNode = (overrides = {}) =>
+    makeScreenTopologyNode({
+      id: 1,
+      name: '内建',
+      frame: { x: 0, y: 0, width: 1440, height: 900 },
+      visibleFrame: { x: 0, y: 0, width: 1440, height: 875 },
+      pixelWidth: 2880,
+      pixelHeight: 1800,
+      backingScale: 2,
+      maximumFramesPerSecond: 120,
+      ...overrides
+    })
+  const nodeA = makeNode()
+  check('st.pixelWidth', nodeA.pixelSize.width, 2880)
+  check('st.clampedPixel', makeNode({ pixelWidth: 0, pixelHeight: -5 }).pixelSize.width, 1)
+  check('st.clampedScale', makeNode({ backingScale: 0.5 }).backingScale, 1)
+  check('st.clampedFps', makeNode({ maximumFramesPerSecond: 0 }).maximumFramesPerSecond, 1)
+  check('st.geometryFacts', screenTopologyGeometryFacts(nodeA), '0,0,1440,900|0,0,1440,875')
+  check('st.modeFacts', screenTopologyModeFacts(nodeA), '2880x1800@2#120')
+  // 名称变化不算几何变化，也不算模式变化
+  check('st.nameNotIdentity', screenTopologyGeometryFacts(makeNode({ name: '改名' })), screenTopologyGeometryFacts(nodeA))
+
+  const nodeB = makeNode({ id: 2, name: '外接' })
+  const snapshotA = new ScreenTopologySnapshot(0, [nodeB, nodeA], 1)
+  check('st.nodesSorted', snapshotA.nodes.map((n) => n.id).join(','), '1,2')
+  check('st.nodeLookup', snapshotA.node(2).name, '外接')
+  check('st.nodeMissing', snapshotA.node(9), null)
+  check('st.mainResolved', ScreenTopologySnapshot.mainDisplayIDFor([nodeA, nodeB], 2), 2)
+  check('st.mainMissing', ScreenTopologySnapshot.mainDisplayIDFor([nodeA], 9), null)
+  // 同 id 重复 → 后者胜出
+  const deduped = new ScreenTopologySnapshot(0, [nodeA, makeNode({ name: '新' })], 1)
+  check('st.dedupeNewestWins', deduped.node(1).name, '新')
+  check('st.assignGeneration', snapshotA.assigningGeneration(7).generation, 7)
+  check('st.assignKeepsNodes', snapshotA.assigningGeneration(7).nodes.length, 2)
+  check('st.equals', snapshotA.equals(snapshotA.assigningGeneration(0)), true)
+  check('st.notEqualsGeneration', snapshotA.equals(snapshotA.assigningGeneration(3)), false)
+
+  // Delta：新增 / 移除 / 几何 / 模式 / 主屏
+  const snapshotB = new ScreenTopologySnapshot(1, [nodeA, makeNode({ id: 3, name: '第三块' })], 2)
+  const deltaAdd = ScreenTopologyDelta.between(snapshotA, snapshotB)
+  check('st.deltaAdded', [...deltaAdd.added].join(','), '3')
+  check('st.deltaRemoved', [...deltaAdd.removed].join(','), '2')
+  check('st.deltaNoGeometry', deltaAdd.geometryChanged.size, 0)
+  check('st.deltaMainChanged', deltaAdd.mainChanged, true)
+  check('st.deltaNotEmpty', deltaAdd.isEmpty, false)
+  check('st.deltaGenerations', `${deltaAdd.previousGeneration}->${deltaAdd.generation}`, '0->1')
+
+  const movedNode = makeNode({ frame: { x: 100, y: 0, width: 1440, height: 900 } })
+  const deltaMove = ScreenTopologyDelta.between(
+    snapshotA,
+    new ScreenTopologySnapshot(2, [nodeA, movedNode], 1)
+  )
+  check('st.deltaGeometry', [...deltaMove.geometryChanged].join(','), '1')
+  check('st.deltaModeUnchanged', deltaMove.modeChanged.size, 0)
+  check('st.deltaMainSame', deltaMove.mainChanged, false)
+
+  const scaledNode = makeNode({ pixelWidth: 3840, pixelHeight: 2160 })
+  const deltaMode = ScreenTopologyDelta.between(
+    snapshotA,
+    new ScreenTopologySnapshot(3, [nodeA, scaledNode], 1)
+  )
+  check('st.deltaMode', [...deltaMode.modeChanged].join(','), '1')
+  check('st.deltaGeometryUnchanged', deltaMode.geometryChanged.size, 0)
+
+  const deltaSame = ScreenTopologyDelta.between(snapshotA, snapshotA.assigningGeneration(4))
+  check('st.deltaEmpty', deltaSame.isEmpty, true)
+
+  // 重配置状态
+  const reconfig = new ScreenTopologyReconfigurationState()
+  check('st.reconfigInitial', reconfig.generation, 0)
+  check('st.reconfigAdvance', reconfig.advance(), 1)
+  check('st.reconfigCurrentHit', reconfig.isCurrent(1), true)
+  check('st.reconfigCurrentMiss', reconfig.isCurrent(0), false)
+  reconfig.invalidate()
+  check('st.reconfigInvalidated', reconfig.generation, 2)
+  check('st.reconfigDefault', new ScreenTopologyReconfigurationState(5).isCurrent(5), true)
+
+  // Monitor：一次通知合并成一次稳定刷新
+  const monitorEvents = []
+  const pendingRefreshes = []
+  const monitor = new ScreenTopologyMonitor({
+    snapshotProvider: () => new ScreenTopologySnapshot(999, [nodeA, nodeB], 1),
+    scheduleStableRefresh: (operation) => {
+      pendingRefreshes.push(operation)
+    }
+  })
+  check('st.monitorInitialGeneration', monitor.snapshot.generation, 0)
+  check('st.monitorNotRunning', monitor.isRunning, false)
+  monitor.start()
+  check('st.monitorRunning', monitor.isRunning, true)
+  monitor.onChange = (snapshot, delta) => monitorEvents.push({ snapshot, delta })
+  monitor.screenParametersDidChange()
+  monitor.screenParametersDidChange()
+  check('st.monitorCoalesced', pendingRefreshes.length, 1)
+  pendingRefreshes.shift()()
+  check('st.monitorPublished', monitor.snapshot.generation, 1)
+  check('st.monitorEvents', monitorEvents.length, 1)
+  check('st.monitorDeltaEmpty', monitorEvents[0].delta.isEmpty, true)
+  // stop 会作废在途刷新
+  monitor.screenParametersDidChange()
+  const staleRefresh = pendingRefreshes.shift()
+  monitor.stop()
+  check('st.monitorStopped', monitor.isRunning, false)
+  staleRefresh()
+  check('st.monitorStaleIgnored', monitor.snapshot.generation, 1)
+  check('st.monitorNoExtraEvent', monitorEvents.length, 1)
+
+}
+
+await runExportStatusBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
