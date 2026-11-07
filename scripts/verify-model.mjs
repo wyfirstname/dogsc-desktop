@@ -8414,5 +8414,753 @@ async function runEditorChromeAndPresetBatch() {
 
 await runEditorChromeAndPresetBatch()
 
+
+async function runHoverAndInputBatch() {
+  // ========== 8 文件 / 1480 行：悬浮预览 / 控制台配色 / 波形缓存 / 旋钮输入 /
+  //            本地化 / 动作菜单 / 源文件交换 / 设备生命周期
+  const {
+    // ---- EditorPlaybackHoverPreview.swift
+    HOVER_SEEK_TIMESCALE, hoverRenderTick, canStartHoverPreview, hoverPreviewTarget,
+    shouldScheduleHoverSeek, hoverPreviewEndPlan, hoverRestoreTarget,
+    hoverSeekResultShouldPublish, hoverInFlightCountAfterLanding, EditorHoverPreview,
+    // ---- EditorInspectorPalette.swift
+    EDITOR_CONSOLE_SCROLL_SPACE, paletteRGB, rgbHex, blendTowardWhite, rgbaString,
+    CONSOLE_SOFT_ALPHA, CONSOLE_LIFTED_FILL_FRACTION, vividPalette,
+    EDITOR_CONSOLE_PRIMARY, EDITOR_CONSOLE_TRACK_HEX, EDITOR_CONSOLE_TRACK_HUES,
+    EDITOR_CONSOLE_TRACKS, EDITOR_CONSOLE_WAVEFORM_INK, consolePaletteForTab,
+    consolePaletteForSelection, paletteAdaptiveWash, INSPECTOR_TABS_ORDER,
+    // ---- EditorTimelineWaveformCache.swift
+    WAVEFORM_CACHE_SCHEMA_VERSION, WAVEFORM_CACHE_ENTRY_LIMIT, WAVEFORM_MAX_SAMPLES,
+    WAVEFORM_CACHE_IDENTITY_VERSION, WAVEFORM_CACHE_SUBDIRECTORY,
+    waveformCacheEntryLimit, waveformCacheDirectory, waveformSampleIsValid,
+    waveformSamplesAreValid, waveformCacheEnvelopeAccepts, waveformCacheIdentityFields,
+    waveformCacheIdentity, doubleBitPattern, waveformOverflowEvictionCount,
+    waveformOverflowEvictions, waveformCacheEntryEligible, waveformCacheFileName,
+    // ---- EditorKnobInput.swift
+    KNOB_WHEEL_IDLE_TIMEOUT_MS, KNOB_CURSOR_IDLE, KNOB_CURSOR_ACTIVE, KNOB_INPUT_TRAITS,
+    KNOB_TRACKING_OPTIONS, knobInputIsLive, knobHitTestEnabled, knobInputShouldFinish,
+    knobPointerAction, knobMouseDownPlan, knobWheelAction, knobWheelShouldBegin,
+    knobWheelCompletionIsCurrent, knobWheelEndEmitsEnd, knobFinishPlan,
+    // ---- AppLocalization.swift
+    APP_SUPPORTED_LANGUAGES, APP_LANGUAGE_FALLBACK, APP_LANGUAGE_DID_CHANGE,
+    resolveAppLanguage, appLanguageSnapshot, appLocalizedString, LocalizedStringCache,
+    AppLocalizationStore, appLocaleTag, localizeWindowTitle, formatWithArguments,
+    // ---- EditorActionMenu.swift
+    EDITOR_ACTION_MENU_MIN_WIDTH, EDITOR_ACTION_MENU_MAX_WIDTH,
+    EDITOR_ACTION_MENU_WIDTH_SLACK, EDITOR_ACTION_MENU_MAX_CONTENT_HEIGHT,
+    EDITOR_ACTION_MENU_INFO_SLACK, EDITOR_ACTION_MENU_ACTION_SLACK,
+    EDITOR_ACTION_MENU_ICON_COLUMN, EDITOR_ACTION_MENU_ROW_HEIGHTS,
+    EDITOR_ACTION_MENU_SEPARATOR_HEIGHT, EDITOR_ACTION_MENU_LAYOUT,
+    EDITOR_ACTION_MENU_BUTTON_RADIUS, editorActionMenuWidth,
+    editorActionMenuContentHeight, editorActionRowMinHeight, editorActionRowShowsIcon,
+    editorActionRowCheckmarkOpacity, editorActionRowForeground, editorActionRowIsLit,
+    editorActionRowFill, EDITOR_ACTION_ROW_SELECTED_FILL, editorActionRowBorderOpacity,
+    EDITOR_ACTION_ROW_BORDER_WIDTH, editorActionRowOffset, editorActionRowScale,
+    editorActionMenuReturnKeyAction, editorActionMenuPerformPlan,
+    editorActionRowAccessibilityTraits, editorActionRowHelpText,
+    // ---- ProjectMediaExchange.swift
+    PROJECT_MEDIA_EXPORT_BASENAMES, PROJECT_MEDIA_EXPORT_FOLDER_SUFFIX,
+    MEDIA_COPY_FALLBACK_EXTENSION, MEDIA_MINIMUM_DURATION, UNTITLED_RECORDING_NAME,
+    CAMERA_REPLACEMENT_FOLDER_PREFIX, sanitizedMediaFilename, exportFolderBaseName,
+    uniqueExportFolderName, mediaCopyExtension, mediaCopySourceIsReadable,
+    mediaInspectionAccepts, cameraReplacementRequirements, cameraReplacementFolderName,
+    cameraRelativePath, mediaExchangeErrorMessage, missingMediaFileMessage,
+    missingMediaTrackMessage, mediaExportPlan,
+    // ---- CaptureDeviceLifecycle.swift
+    CAPTURE_DEVICE_OPERATION_DOMAINS, captureDeviceGenerationNext,
+    CaptureDeviceGenerationState, CAPTURE_DEVICE_REFRESH_DELAYS_MS,
+    captureDeviceRefreshShouldSleep, captureDeviceNotificationAction,
+    captureDeviceRefreshPlan, captureDeviceRefreshShouldContinue,
+    CAPTURE_DEVICE_CONNECTION_NOTIFICATIONS, CaptureDeviceLifecycle,
+  } = m
+
+  // ---------------------------------------------------------------------------
+  // EditorPlaybackHoverPreview.swift（147 行）
+  // ---------------------------------------------------------------------------
+  check('hp.timescale', HOVER_SEEK_TIMESCALE, 60000)
+  check('hp.tickNoEndpoints',
+    hoverRenderTick({ hasEndpoints: false, mediaGeneration: 1, discontinuityID: 0, hoverPreviewTime: 3, duration: 10, cameraIsAvailable: true }), null)
+  check('hp.tickNoPreview',
+    hoverRenderTick({ hasEndpoints: true, mediaGeneration: 1, discontinuityID: 0, hoverPreviewTime: null, duration: 10, cameraIsAvailable: true }), null)
+  {
+    const tick = hoverRenderTick({ hasEndpoints: true, mediaGeneration: 7, discontinuityID: 2, hoverPreviewTime: 12.5, duration: 10, cameraIsAvailable: false })
+    check('hp.tickClamped', tick.outputTime, 10)
+    check('hp.tickGeneration', tick.mediaGeneration, 7)
+    check('hp.tickDiscontinuity', tick.discontinuityID, 2)
+    check('hp.tickItemTime', `${tick.itemTime.seconds},${tick.itemTime.timescale}`, '10,60000')
+    check('hp.tickCamera', tick.cameraIsAvailable, false)
+    check('hp.tickNotPlaying', tick.isPlaying, false)
+  }
+
+  check('hp.canStart',
+    canStartHoverPreview({ isPlaying: false, scrubIsActive: false, hasPrimaryPlayer: true }), true)
+  check('hp.cannotWhilePlaying',
+    canStartHoverPreview({ isPlaying: true, scrubIsActive: false, hasPrimaryPlayer: true }), false)
+  check('hp.cannotWhileScrubbing',
+    canStartHoverPreview({ isPlaying: false, scrubIsActive: true, hasPrimaryPlayer: true }), false)
+  check('hp.cannotWithoutPlayer',
+    canStartHoverPreview({ isPlaying: false, scrubIsActive: false, hasPrimaryPlayer: false }), false)
+  check('hp.targetClampLow', hoverPreviewTarget(-4, 10), 0)
+  check('hp.targetClampHigh', hoverPreviewTarget(40, 10), 10)
+  check('hp.targetKeep', hoverPreviewTarget(3.5, 10), 3.5)
+
+  check('hp.scheduleOk',
+    shouldScheduleHoverSeek({ hoverSeekTaskRunning: false, hoverSeekInFlightCount: 0, isPlaying: false, scrubIsActive: false }), true)
+  check('hp.scheduleTaskRunning',
+    shouldScheduleHoverSeek({ hoverSeekTaskRunning: true, hoverSeekInFlightCount: 0, isPlaying: false, scrubIsActive: false }), false)
+  check('hp.scheduleInFlight',
+    shouldScheduleHoverSeek({ hoverSeekTaskRunning: false, hoverSeekInFlightCount: 1, isPlaying: false, scrubIsActive: false }), false)
+  check('hp.schedulePlaying',
+    shouldScheduleHoverSeek({ hoverSeekTaskRunning: false, hoverSeekInFlightCount: 0, isPlaying: true, scrubIsActive: false }), false)
+
+  {
+    const idle = hoverPreviewEndPlan({ hoverPreviewTime: null, hoverSeekInFlightCount: 0, hoverSeekTaskRunning: false, coalescerPendingTarget: null, hasPrimaryPlayer: true, restoreTransport: true })
+    check('hp.endIdleInvalidate', idle.shouldInvalidate, false)
+
+    const previewing = hoverPreviewEndPlan({ hoverPreviewTime: 4, hoverSeekInFlightCount: 0, hoverSeekTaskRunning: false, coalescerPendingTarget: null, hasPrimaryPlayer: true, restoreTransport: true })
+    check('hp.endPreviewInvalidate', previewing.shouldInvalidate, true)
+    check('hp.endPreviewWasPreviewing', previewing.wasPreviewing, true)
+    check('hp.endPreviewNeedsRestore', previewing.needsTransportRestore, true)
+    check('hp.endPreviewRestores', previewing.shouldRestoreTransport, true)
+
+    const handoff = hoverPreviewEndPlan({ hoverPreviewTime: 4, hoverSeekInFlightCount: 0, hoverSeekTaskRunning: false, coalescerPendingTarget: null, hasPrimaryPlayer: true, restoreTransport: false })
+    check('hp.endHandoffInvalidate', handoff.shouldInvalidate, true)
+    check('hp.endHandoffNoRestore', handoff.shouldRestoreTransport, false)
+
+    const inFlightOnly = hoverPreviewEndPlan({ hoverPreviewTime: null, hoverSeekInFlightCount: 2, hoverSeekTaskRunning: false, coalescerPendingTarget: null, hasPrimaryPlayer: true, restoreTransport: true })
+    check('hp.endInFlightOnlyNotPreviewing', inFlightOnly.wasPreviewing, false)
+    check('hp.endInFlightOnlyRestores', inFlightOnly.shouldRestoreTransport, true)
+
+    const scheduledOnly = hoverPreviewEndPlan({ hoverPreviewTime: null, hoverSeekInFlightCount: 0, hoverSeekTaskRunning: true, coalescerPendingTarget: 5, hasPrimaryPlayer: true, restoreTransport: true })
+    check('hp.endScheduledInvalidate', scheduledOnly.shouldInvalidate, true)
+    check('hp.endScheduledNoRestore', scheduledOnly.shouldRestoreTransport, false)
+
+    const noPlayer = hoverPreviewEndPlan({ hoverPreviewTime: 4, hoverSeekInFlightCount: 0, hoverSeekTaskRunning: false, coalescerPendingTarget: null, hasPrimaryPlayer: false, restoreTransport: true })
+    check('hp.endNoPlayerNeedsRestore', noPlayer.needsTransportRestore, true)
+    check('hp.endNoPlayerNoSeek', noPlayer.shouldRestoreTransport, false)
+  }
+
+  check('hp.publishOk',
+    hoverSeekResultShouldPublish({ belongsToCurrentHoverSession: true, seekTokenMatches: true, generationMatches: true, finished: true }), true)
+  check('hp.publishOtherSession',
+    hoverSeekResultShouldPublish({ belongsToCurrentHoverSession: false, seekTokenMatches: true, generationMatches: true, finished: true }), false)
+  check('hp.publishStaleToken',
+    hoverSeekResultShouldPublish({ belongsToCurrentHoverSession: true, seekTokenMatches: false, generationMatches: true, finished: true }), false)
+  check('hp.publishStaleGeneration',
+    hoverSeekResultShouldPublish({ belongsToCurrentHoverSession: true, seekTokenMatches: true, generationMatches: false, finished: true }), false)
+  check('hp.publishUnfinished',
+    hoverSeekResultShouldPublish({ belongsToCurrentHoverSession: true, seekTokenMatches: true, generationMatches: true, finished: false }), false)
+  check('hp.inFlightDecrement', hoverInFlightCountAfterLanding(2, true), 1)
+  check('hp.inFlightFloor', hoverInFlightCountAfterLanding(0, true), 0)
+  check('hp.inFlightIgnoredForOtherSession', hoverInFlightCountAfterLanding(2, false), 2)
+  check('hp.restoreClampLow', hoverRestoreTarget(-1, 10), 0)
+  check('hp.restoreClampHigh', hoverRestoreTarget(20, 10), 10)
+  check('hp.restoreKeep', hoverRestoreTarget(4, 10), 4)
+
+  {
+    const host = {
+      playing: false,
+      scrubbing: false,
+      duration: 10,
+      isPlaying() { return this.playing },
+      scrubIsActive() { return this.scrubbing },
+      duration() { return this.duration },
+      outputTime() { return 0 },
+      cancelPendingSeeks() {},
+      seekTransport: async () => true,
+    }
+    const hover = new EditorHoverPreview()
+    check('hp.machineInitialTime', hover.hoverPreviewTime, null)
+    check('hp.machineRequestWhilePlaying', (() => { host.playing = true; const ok = hover.request(2, 10, host); host.playing = false; return ok })(), false)
+    check('hp.machineRequestOk', hover.request(2, 10, host), true)
+    check('hp.machinePending', hover.pendingHoverTarget, 2)
+    check('hp.machinePendingClamped', (() => { hover.request(20, 10, host); return hover.pendingHoverTarget })(), 10)
+    check('hp.machineTakePending', hover.takePending(), 10)
+    check('hp.machineTakePendingClears', hover.pendingHoverTarget, null)
+    const generation = hover.beginSeek()
+    check('hp.machineInFlight', hover.inFlightCount, 1)
+    check('hp.machineLandMatch', hover.land(generation), 0)
+    check('hp.machineLandOtherSession', (() => { hover.beginSeek(); return hover.land(generation + 99) })(), 1)
+    hover.publish(3)
+    check('hp.machinePublished', hover.hoverPreviewTime, 3)
+    const plan = hover.end(true, host)
+    check('hp.machineEndPlanInvalidate', plan.shouldInvalidate, true)
+    check('hp.machineEndCleared', hover.hoverPreviewTime, null)
+    check('hp.machineEndInFlight', hover.inFlightCount, 0)
+    check('hp.machineEndGeneration', hover.hoverGeneration, 1)
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorInspectorPalette.swift（149 行）
+  // ---------------------------------------------------------------------------
+  check('pal.scrollSpace', EDITOR_CONSOLE_SCROLL_SPACE, 'inspector.scroll')
+  check('pal.tabOrder', INSPECTOR_TABS_ORDER.join(','), 'frame,opening,zoom,cursor,camera,audio')
+  {
+    const rgb = paletteRGB(0xb5e655)
+    check('pal.rgbRed', rgb.r, 181 / 255)
+    check('pal.rgbGreen', rgb.g, 230 / 255)
+    check('pal.rgbBlue', rgb.b, 85 / 255)
+    check('pal.rgbRoundTrip', rgbHex(rgb), '#b5e655')
+    check('pal.rgbBlack', rgbHex(paletteRGB(0x000000)), '#000000')
+    check('pal.rgbWhite', rgbHex(paletteRGB(0xffffff)), '#ffffff')
+  }
+  check('pal.liftFraction', CONSOLE_LIFTED_FILL_FRACTION, 0.38)
+  {
+    const lifted = blendTowardWhite({ r: 0, g: 0, b: 0 }, 0.38)
+    check('pal.liftBlack', lifted.r, 0.38)
+    const untouched = blendTowardWhite({ r: 1, g: 1, b: 1 }, 0.38)
+    check('pal.liftWhite', untouched.r, 1)
+    const clamped = blendTowardWhite({ r: 0.5, g: 0.5, b: 0.5 }, 5)
+    check('pal.liftClamp', clamped.r, 1)
+  }
+  check('pal.softAlphaLight', CONSOLE_SOFT_ALPHA.light, 0.24)
+  check('pal.softAlphaDark', CONSOLE_SOFT_ALPHA.dark, 0.2)
+  check('pal.rgbaLight', rgbaString({ r: 181 / 255, g: 230 / 255, b: 85 / 255 }, 0.24),
+    'rgba(181, 230, 85, 0.24)')
+  check('pal.rgbaDark', rgbaString({ r: 181 / 255, g: 230 / 255, b: 85 / 255 }, 0.2),
+    'rgba(181, 230, 85, 0.2)')
+
+  {
+    const zoom = EDITOR_CONSOLE_TRACKS.zoom
+    check('pal.zoomFill', zoom.fill, '#b5e655')
+    check('pal.zoomStrokeLight', zoom.stroke.light, '#5a9e1c')
+    check('pal.zoomStrokeDark', zoom.stroke.dark, '#b5e655')
+    check('pal.zoomInk', zoom.ink, '#223400')
+    check('pal.zoomTextLight', zoom.text.light, '#2f5a05')
+    check('pal.zoomTextDark', zoom.text.dark, '#b5e655')
+    check('pal.zoomSoftLight', zoom.soft.light, 'rgba(181, 230, 85, 0.24)')
+    check('pal.zoomSoftDark', zoom.soft.dark, 'rgba(181, 230, 85, 0.2)')
+    check('pal.zoomSoftInkLight', zoom.softInk.light, '#223400')
+    check('pal.zoomSoftInkLifted', zoom.softInk.dark !== zoom.fill, true)
+  }
+
+  check('pal.trackHexOrder', Object.keys(EDITOR_CONSOLE_TRACK_HEX).join(','),
+    'zoom,screenMotion,cameraMotion,overlay,cameraSync')
+  check('pal.trackHues', Object.values(EDITOR_CONSOLE_TRACK_HUES).join(','), '80,45,18,172,340')
+  check('pal.screenMotionFill', EDITOR_CONSOLE_TRACKS.screenMotion.fill, '#f7c548')
+  check('pal.cameraMotionFill', EDITOR_CONSOLE_TRACKS.cameraMotion.fill, '#ff8a5c')
+  check('pal.overlayFill', EDITOR_CONSOLE_TRACKS.overlay.fill, '#45cbb8')
+  check('pal.cameraSyncFill', EDITOR_CONSOLE_TRACKS.cameraSync.fill, '#f27e9f')
+  check('pal.vividMatchesTable',
+    vividPalette(EDITOR_CONSOLE_TRACK_HEX.zoom).fill, EDITOR_CONSOLE_TRACKS.zoom.fill)
+
+  check('pal.primaryIsShared',
+    consolePaletteForTab('zoom') === EDITOR_CONSOLE_PRIMARY, true)
+  check('pal.allTabsPrimary',
+    INSPECTOR_TABS_ORDER.every((tab) => consolePaletteForTab(tab) === EDITOR_CONSOLE_PRIMARY), true)
+  check('pal.selectionZoom', consolePaletteForSelection('zoom') === EDITOR_CONSOLE_TRACKS.zoom, true)
+  check('pal.selectionZoomTrack', consolePaletteForSelection('zoomTrack') === EDITOR_CONSOLE_TRACKS.zoom, true)
+  check('pal.selectionScreenMotion',
+    consolePaletteForSelection('screenMotion') === EDITOR_CONSOLE_TRACKS.screenMotion, true)
+  check('pal.selectionCameraMotion',
+    consolePaletteForSelection('cameraMotion') === EDITOR_CONSOLE_TRACKS.cameraMotion, true)
+  check('pal.selectionMosaic',
+    consolePaletteForSelection('mosaic') === EDITOR_CONSOLE_TRACKS.overlay, true)
+  check('pal.selectionSticker',
+    consolePaletteForSelection('sticker') === EDITOR_CONSOLE_TRACKS.overlay, true)
+  check('pal.selectionCanvas', consolePaletteForSelection('canvas') === EDITOR_CONSOLE_PRIMARY, true)
+  check('pal.selectionNull', consolePaletteForSelection(null) === EDITOR_CONSOLE_PRIMARY, true)
+  check('pal.waveformInkLight', EDITOR_CONSOLE_WAVEFORM_INK.lightAlpha, 0.34)
+  check('pal.waveformInkDark', EDITOR_CONSOLE_WAVEFORM_INK.darkAlpha, 0.4)
+  {
+    const wash = paletteAdaptiveWash(EDITOR_CONSOLE_TRACKS.zoom, 0.5, 0.3)
+    check('pal.washLight', wash.light, 'rgba(181, 230, 85, 0.5)')
+    check('pal.washDark', wash.dark, 'rgba(181, 230, 85, 0.3)')
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorTimelineWaveformCache.swift（149 行）
+  // ---------------------------------------------------------------------------
+  check('wfc.schemaVersion', WAVEFORM_CACHE_SCHEMA_VERSION, 2)
+  check('wfc.entryLimit', WAVEFORM_CACHE_ENTRY_LIMIT, 24)
+  check('wfc.maxSamples', WAVEFORM_MAX_SAMPLES, 6000)
+  check('wfc.identityVersion', WAVEFORM_CACHE_IDENTITY_VERSION, 'waveform-v1')
+  check('wfc.subdirectory', WAVEFORM_CACHE_SUBDIRECTORY, 'cn.laogou.dogsc/Waveforms')
+  check('wfc.dirJoin', waveformCacheDirectory('/root'), '/root/cn.laogou.dogsc/Waveforms')
+  check('wfc.dirTrailingSlash', waveformCacheDirectory('/root/'), '/root/cn.laogou.dogsc/Waveforms')
+  check('wfc.limitFloor', waveformCacheEntryLimit(0), 1)
+  check('wfc.limitNegative', waveformCacheEntryLimit(-3), 1)
+  check('wfc.limitKeep', waveformCacheEntryLimit(24), 24)
+  check('wfc.sampleZero', waveformSampleIsValid(0), true)
+  check('wfc.sampleOne', waveformSampleIsValid(1), true)
+  check('wfc.sampleNegative', waveformSampleIsValid(-0.01), false)
+  check('wfc.sampleAbove', waveformSampleIsValid(1.01), false)
+  check('wfc.sampleNaN', waveformSampleIsValid(Number.NaN), false)
+  check('wfc.samplesValid', waveformSamplesAreValid([0, 0.5, 1], 3), true)
+  check('wfc.samplesCountMismatch', waveformSamplesAreValid([0, 0.5], 3), false)
+  check('wfc.samplesBadValue', waveformSamplesAreValid([0, 2, 1], 3), false)
+
+  check('wfc.envelopeNull', waveformCacheEnvelopeAccepts(null, 3), false)
+  check('wfc.envelopeVersionMismatch',
+    waveformCacheEnvelopeAccepts({ schemaVersion: 1, samples: [0, 0, 0] }, 3), false)
+  check('wfc.envelopeOk',
+    waveformCacheEnvelopeAccepts({ schemaVersion: 2, samples: [0, 0.5, 1] }, 3), true)
+  check('wfc.envelopeCountMismatch',
+    waveformCacheEnvelopeAccepts({ schemaVersion: 2, samples: [0, 1] }, 3), false)
+
+  {
+    const version = {
+      standardizedPath: '/media/screen.mov',
+      fileSystemNumber: 12345,
+      fileNumber: 678,
+      fileSize: 99_000_000,
+      modificationDate: 700_000_000.25,
+    }
+    const range = { start: 1.5, end: 11.5 }
+    const fields = waveformCacheIdentityFields({ version, sourceRange: range, sampleCount: 6000 })
+    check('wfc.fieldCount', fields.length, 9)
+    check('wfc.fieldPrefix', fields[0], 'waveform-v1')
+    check('wfc.fieldPath', fields[1], '/media/screen.mov')
+    check('wfc.fieldFileSystem', fields[2], '12345')
+    check('wfc.fieldFileNumber', fields[3], '678')
+    check('wfc.fieldFileSize', fields[4], '99000000')
+    check('wfc.fieldModification', fields[5], '700000000.25')
+    check('wfc.fieldStart', fields[6], '1.5')
+    check('wfc.fieldDuration', fields[7], '10')
+    check('wfc.fieldSampleCount', fields[8], '6000')
+    check('wfc.identitySeparator', waveformCacheIdentity({ version, sourceRange: range, sampleCount: 6000 }).split('\u0000').length, 9)
+
+    const missing = waveformCacheIdentityFields({
+      version: { standardizedPath: '/a.mov', fileSystemNumber: null, fileNumber: null, fileSize: null, modificationDate: null },
+      sourceRange: { start: 0, end: 1 },
+      sampleCount: 10,
+    })
+    check('wfc.fieldPlaceholders', missing.slice(2, 6).join(','), '-,-,-,-')
+
+    // 时长相同但区间不同的两段必须得到不同的键
+    const a = waveformCacheIdentity({ version, sourceRange: { start: 0, end: 10 }, sampleCount: 100 })
+    const b = waveformCacheIdentity({ version, sourceRange: { start: 5, end: 15 }, sampleCount: 100 })
+    check('wfc.identityDistinguishesOffset', a !== b, true)
+    const sameA = waveformCacheIdentity({ version, sourceRange: { start: 0, end: 10 }, sampleCount: 100 })
+    check('wfc.identityStable', a === sameA, true)
+  }
+
+  check('wfc.bitPatternZero', doubleBitPattern(0), '0')
+  check('wfc.bitPatternNegativeZero', doubleBitPattern(-0), '-0')
+  check('wfc.bitPatternNaN', doubleBitPattern(Number.NaN), 'nan')
+  check('wfc.bitPatternValue', doubleBitPattern(1.25), '1.25')
+
+  check('wfc.evictionNone', waveformOverflowEvictionCount(24, 24), 0)
+  check('wfc.evictionSome', waveformOverflowEvictionCount(30, 24), 6)
+  check('wfc.evictionLimitFloor', waveformOverflowEvictionCount(5, 0), 4)
+  {
+    const evicted = waveformOverflowEvictions([
+      { name: 'b.plist', modifiedAt: 20 },
+      { name: 'a.plist', modifiedAt: 10 },
+      { name: 'c.plist', modifiedAt: 30 },
+    ], 2)
+    check('wfc.evictOldestFirst', evicted.join(','), 'a.plist')
+  }
+  check('wfc.entryEligible', waveformCacheEntryEligible({ pathExtension: 'plist', isRegularFile: true }), true)
+  check('wfc.entryDirectory', waveformCacheEntryEligible({ pathExtension: 'plist', isRegularFile: false }), false)
+  check('wfc.entryOtherExtension', waveformCacheEntryEligible({ pathExtension: 'json', isRegularFile: true }), false)
+  check('wfc.fileName', waveformCacheFileName('abc'), 'abc.plist')
+
+  // ---------------------------------------------------------------------------
+  // EditorKnobInput.swift（153 行）
+  // ---------------------------------------------------------------------------
+  check('ki.idleTimeout', KNOB_WHEEL_IDLE_TIMEOUT_MS, 220)
+  check('ki.idleCursor', KNOB_CURSOR_IDLE, 'openHand')
+  check('ki.activeCursor', KNOB_CURSOR_ACTIVE, 'closedHand')
+  check('ki.traits', `${KNOB_INPUT_TRAITS.isFlipped},${KNOB_INPUT_TRAITS.mouseDownCanMoveWindow},${KNOB_INPUT_TRAITS.acceptsFirstMouse}`,
+    'true,false,true')
+  check('ki.trackingOptions', KNOB_TRACKING_OPTIONS.join(','),
+    'mouseEnteredAndExited,activeInKeyWindow,inVisibleRect')
+  check('ki.liveEnabled', knobInputIsLive(true), true)
+  check('ki.liveDisabled', knobInputIsLive(false), false)
+  check('ki.hitTestEnabled', knobHitTestEnabled(true), true)
+  check('ki.hitTestDisabled', knobHitTestEnabled(false), false)
+  check('ki.finishNoWindow', knobInputShouldFinish({ hasWindow: false, windowResignedKey: false }), true)
+  check('ki.finishResignedKey', knobInputShouldFinish({ hasWindow: true, windowResignedKey: true }), true)
+  check('ki.finishStay', knobInputShouldFinish({ hasWindow: true, windowResignedKey: false }), false)
+
+  check('ki.pointerHoverIn', knobPointerAction({ event: 'entered', rotating: false }), 'hoverIn')
+  check('ki.pointerHoverOut', knobPointerAction({ event: 'exited', rotating: false }), 'hoverOut')
+  check('ki.pointerDragged', knobPointerAction({ event: 'dragged', rotating: true }), 'dragChange')
+  check('ki.pointerDraggedIdle', knobPointerAction({ event: 'dragged', rotating: false }), 'ignore')
+  check('ki.pointerUp', knobPointerAction({ event: 'up', rotating: true }), 'dragEnd')
+  check('ki.pointerUpIdle', knobPointerAction({ event: 'up', rotating: false }), 'ignore')
+  check('ki.mouseDownBegin', knobMouseDownPlan({ isEnabled: true, dragBeginAccepted: true }).beginDrag, true)
+  check('ki.mouseDownRejected', knobMouseDownPlan({ isEnabled: true, dragBeginAccepted: false }).beginDrag, false)
+  check('ki.mouseDownDisabled', knobMouseDownPlan({ isEnabled: false, dragBeginAccepted: true }).beginDrag, false)
+  check('ki.mouseDownAlwaysFinishesWheel', knobMouseDownPlan({ isEnabled: false, dragBeginAccepted: false }).finishWheel, true)
+
+  {
+    const base = {
+      isEnabled: true, isKeyWindow: true, rotating: false, hasCommandModifier: false,
+      momentumPhaseEmpty: true, phaseEndedOrCancelled: false,
+      vertical: -40, horizontal: 0, precise: true, inverted: false, fine: false,
+      scrolling: false, wheelBeginAccepted: true,
+    }
+    check('ki.wheelBegin', knobWheelAction(base).kind, 'begin')
+    check('ki.wheelChange', knobWheelAction({ ...base, scrolling: true }).kind, 'change')
+    check('ki.wheelBeginRejected', knobWheelAction({ ...base, wheelBeginAccepted: false }).kind, 'passThrough')
+    check('ki.wheelDisabled', knobWheelAction({ ...base, isEnabled: false }).kind, 'passThrough')
+    check('ki.wheelNotKeyWindow', knobWheelAction({ ...base, isKeyWindow: false }).kind, 'passThrough')
+    check('ki.wheelRotating', knobWheelAction({ ...base, rotating: true }).kind, 'passThrough')
+    check('ki.wheelCommand', knobWheelAction({ ...base, hasCommandModifier: true }).kind, 'passThrough')
+    check('ki.wheelMomentum', knobWheelAction({ ...base, momentumPhaseEmpty: false }).kind, 'finishWheel')
+    check('ki.wheelPhaseEnded', knobWheelAction({ ...base, phaseEndedOrCancelled: true }).kind, 'finishWheel')
+    check('ki.wheelHorizontalOnly', knobWheelAction({ ...base, vertical: 0, horizontal: 40 }).kind, 'passThrough')
+    check('ki.wheelInvertedFlips', (() => {
+      const forward = knobWheelAction({ ...base, vertical: -40 })
+      const inverted = knobWheelAction({ ...base, vertical: -40, inverted: true })
+      return forward.delta * inverted.delta < 0
+    })(), true)
+  }
+
+  check('ki.wheelShouldBegin', knobWheelShouldBegin({ scrolling: false, wheelBeginAccepted: true }), true)
+  check('ki.wheelShouldBeginAlready', knobWheelShouldBegin({ scrolling: true, wheelBeginAccepted: true }), false)
+  check('ki.wheelShouldBeginRejected', knobWheelShouldBegin({ scrolling: false, wheelBeginAccepted: false }), false)
+  check('ki.completionCurrent', knobWheelCompletionIsCurrent(3, 3), true)
+  check('ki.completionStale', knobWheelCompletionIsCurrent(4, 3), false)
+  check('ki.wheelEndEmits', knobWheelEndEmitsEnd(true), true)
+  check('ki.wheelEndSilent', knobWheelEndEmitsEnd(false), false)
+  {
+    const plan = knobFinishPlan({ scrolling: true, rotating: true })
+    check('ki.finishPlan', `${plan.finishWheel},${plan.endDrag},${plan.setHoverOut},${plan.invalidateCursorRects}`,
+      'true,true,true,true')
+    const idle = knobFinishPlan({ scrolling: false, rotating: false })
+    check('ki.finishPlanIdle', `${idle.finishWheel},${idle.endDrag},${idle.setHoverOut}`,
+      'false,false,true')
+  }
+
+  // ---------------------------------------------------------------------------
+  // AppLocalization.swift（159 行）
+  // ---------------------------------------------------------------------------
+  check('loc.supported', APP_SUPPORTED_LANGUAGES.join(','), 'en,zh-Hans')
+  check('loc.fallback', APP_LANGUAGE_FALLBACK, 'en')
+  check('loc.notification', APP_LANGUAGE_DID_CHANGE, 'cn.laogou.dogsc.language.changed')
+  check('loc.resolveZh',
+    resolveAppLanguage({ preferenceLanguages: ['zh-Hans'], systemLanguages: [] }), 'zh-Hans')
+  check('loc.resolveZhHant',
+    resolveAppLanguage({ preferenceLanguages: ['zh-Hant'], systemLanguages: [] }), 'zh-Hans')
+  check('loc.resolveEnUS',
+    resolveAppLanguage({ preferenceLanguages: ['en-US'], systemLanguages: [] }), 'en')
+  check('loc.resolveUnknown',
+    resolveAppLanguage({ preferenceLanguages: ['fr-FR'], systemLanguages: [] }), 'en')
+  check('loc.resolveFallsBackToSystem',
+    resolveAppLanguage({ preferenceLanguages: null, systemLanguages: ['zh-Hans'] }), 'zh-Hans')
+  check('loc.resolvePreferenceWins',
+    resolveAppLanguage({ preferenceLanguages: ['en'], systemLanguages: ['zh-Hans'] }), 'en')
+  check('loc.resolveEmpty',
+    resolveAppLanguage({ preferenceLanguages: [], systemLanguages: ['en'] }), 'en')
+  check('loc.snapshot', appLanguageSnapshot('zh-Hans').locale, 'zh-Hans')
+  check('loc.localeTag', appLocaleTag(appLanguageSnapshot('en')), 'en')
+  check('loc.localizedHit', appLocalizedString('确定', { 确定: 'OK' }), 'OK')
+  check('loc.localizedMiss', appLocalizedString('确定', {}), '确定')
+
+  {
+    const cache = new LocalizedStringCache()
+    let calls = 0
+    const first = cache.string('k', () => { calls += 1; return 'v' })
+    const second = cache.string('k', () => { calls += 1; return 'v2' })
+    check('loc.cacheFirst', first, 'v')
+    check('loc.cacheSecond', second, 'v')
+    check('loc.cacheResolveOnce', calls, 1)
+    check('loc.cacheSize', cache.size, 1)
+    cache.reset()
+    check('loc.cacheReset', cache.size, 0)
+  }
+
+  {
+    const store = new AppLocalizationStore({ identifier: 'en', table: { 打开: 'Open' } })
+    check('loc.storeInitial', store.language.identifier, 'en')
+    check('loc.storeTranslate', store.localizedString('打开'), 'Open')
+    check('loc.storeMissingKey', store.localizedString('关闭'), '关闭')
+    check('loc.storeApplySame', store.apply('en'), false)
+    check('loc.storeApplyNew', store.apply('zh-Hans'), true)
+    check('loc.storeSwitched', store.language.identifier, 'zh-Hans')
+    check('loc.storeLocale', store.locale, 'zh-Hans')
+  }
+
+  check('loc.formatSingle', formatWithArguments('%d 项已导出', []), '%d 项已导出')
+  check('loc.formatOne', formatWithArguments('已导出 %d 项', []), '已导出 %d 项')
+  check('loc.formatTwo', formatWithArguments('%@ / %@', ['a', 'b']), 'a / b')
+  check('loc.formatMissingArgument', formatWithArguments('%@ %@', ['a']), 'a %@')
+  check('loc.titleNoPrefix', localizeWindowTitle({ key: '设置', prefix: null, arguments: [], translate: (k) => k }), '设置')
+  check('loc.titleWithPrefix',
+    localizeWindowTitle({ key: '设置', prefix: 'DogSC', arguments: [], translate: (k) => k }), 'DogSC 设置')
+  check('loc.titleWithArguments',
+    localizeWindowTitle({ key: '导出 %@', prefix: null, arguments: ['项目 A'], translate: (k) => k }),
+    '导出 项目 A')
+
+  // ---------------------------------------------------------------------------
+  // EditorActionMenu.swift（159 行）
+  // ---------------------------------------------------------------------------
+  check('am.minWidth', EDITOR_ACTION_MENU_MIN_WIDTH, 270)
+  check('am.maxWidth', EDITOR_ACTION_MENU_MAX_WIDTH, 360)
+  check('am.widthSlack', EDITOR_ACTION_MENU_WIDTH_SLACK, 2)
+  check('am.maxContentHeight', EDITOR_ACTION_MENU_MAX_CONTENT_HEIGHT, 360)
+  check('am.infoSlack', EDITOR_ACTION_MENU_INFO_SLACK, 36)
+  check('am.actionSlack', EDITOR_ACTION_MENU_ACTION_SLACK, 88)
+  check('am.iconColumn', EDITOR_ACTION_MENU_ICON_COLUMN, 34)
+  check('am.rowHeights',
+    `${EDITOR_ACTION_MENU_ROW_HEIGHTS.separator},${EDITOR_ACTION_MENU_ROW_HEIGHTS.info},${EDITOR_ACTION_MENU_ROW_HEIGHTS.actionCompact},${EDITOR_ACTION_MENU_ROW_HEIGHTS.actionWithDetail}`,
+    '15,40,40,56')
+  check('am.separatorHeight', EDITOR_ACTION_MENU_SEPARATOR_HEIGHT, 6)
+  check('am.buttonRadius', EDITOR_ACTION_MENU_BUTTON_RADIUS, 'capsule')
+  check('am.layoutGaps', `${EDITOR_ACTION_MENU_LAYOUT.outerSpacing},${EDITOR_ACTION_MENU_LAYOUT.rowSpacing},${EDITOR_ACTION_MENU_LAYOUT.cardPadding}`,
+    '4,4,8')
+  check('am.rowPadding', EDITOR_ACTION_MENU_LAYOUT.rowHorizontalPadding, 12)
+  check('am.iconTile', `${EDITOR_ACTION_MENU_LAYOUT.iconTileSize},${EDITOR_ACTION_MENU_LAYOUT.iconGlyphSize}`,
+    '30,15')
+
+  const measure = (text) => text.length * 7
+  check('am.widthMin', editorActionMenuWidth([{ kind: 'info', title: 'info' }], measure), 270)
+  check('am.widthMiddle',
+    editorActionMenuWidth([{ kind: 'action', title: 'x'.repeat(30) }], measure), 300)
+  check('am.widthCapped',
+    editorActionMenuWidth([{ kind: 'action', title: 'x'.repeat(45) }], measure), 360)
+  check('am.widthWithIcon',
+    editorActionMenuWidth([{ kind: 'action', title: 'x'.repeat(30), systemImage: 'plus' }], measure), 334)
+  check('am.widthDetailDominates',
+    editorActionMenuWidth([{ kind: 'action', title: 'x'.repeat(5), detail: 'y'.repeat(30) }], measure), 300)
+  check('am.widthSeparatorOnly',
+    editorActionMenuWidth([{ kind: 'separator', title: '' }], measure), 270)
+  check('am.widthEmpty', editorActionMenuWidth([], measure), 270)
+  check('am.widthInfoWins',
+    editorActionMenuWidth([
+      { kind: 'info', title: 'x'.repeat(40) },
+      { kind: 'action', title: 'y'.repeat(10) },
+    ], measure), 318)
+
+  check('am.heightMixed', editorActionMenuContentHeight([
+    { kind: 'separator', title: '' },
+    { kind: 'info', title: 'i' },
+    { kind: 'action', title: 'a' },
+    { kind: 'action', title: 'b', detail: 'd' },
+  ]), 151)
+  check('am.heightCapped', editorActionMenuContentHeight(
+    Array.from({ length: 10 }, (_, i) => ({ kind: 'action', title: `a${i}`, detail: 'd' }))
+  ), 360)
+  check('am.heightEmpty', editorActionMenuContentHeight([]), 0)
+
+  check('am.rowMinHeightCompact', editorActionRowMinHeight({ kind: 'action', title: 'a' }), 36)
+  check('am.rowMinHeightDetail', editorActionRowMinHeight({ kind: 'action', title: 'a', detail: 'd' }), 52)
+  check('am.rowShowsIcon', editorActionRowShowsIcon({ kind: 'action', title: 'a', systemImage: 'plus' }), true)
+  check('am.rowHidesIcon', editorActionRowShowsIcon({ kind: 'action', title: 'a', systemImage: null }), false)
+  check('am.checkmarkOn', editorActionRowCheckmarkOpacity(true), 1)
+  check('am.checkmarkOff', editorActionRowCheckmarkOpacity(false), 0)
+
+  check('am.foregroundIdle', editorActionRowForeground({ isEnabled: true, hovered: false }), 0.86)
+  check('am.foregroundHover', editorActionRowForeground({ isEnabled: true, hovered: true }), 0.96)
+  check('am.foregroundDisabled', editorActionRowForeground({ isEnabled: false, hovered: true }), 0.32)
+  check('am.litEnabledHover', editorActionRowIsLit({ isEnabled: true, hovered: true }), true)
+  check('am.litDisabledHover', editorActionRowIsLit({ isEnabled: false, hovered: true }), false)
+
+  check('am.fillPressed',
+    editorActionRowFill({ isEnabled: true, isPressed: true, hovered: false, selected: false }).kind, 'pressed')
+  check('am.fillHover',
+    editorActionRowFill({ isEnabled: true, isPressed: false, hovered: true, selected: false }).kind, 'hover')
+  check('am.fillSelected',
+    editorActionRowFill({ isEnabled: true, isPressed: false, hovered: false, selected: true }).kind, 'selected')
+  check('am.fillSelectedOpacity', EDITOR_ACTION_ROW_SELECTED_FILL, 0.045)
+  check('am.fillNone',
+    editorActionRowFill({ isEnabled: true, isPressed: false, hovered: false, selected: false }).kind, 'none')
+  check('am.fillDisabledPressed',
+    editorActionRowFill({ isEnabled: false, isPressed: true, hovered: true, selected: true }).kind, 'selected')
+  check('am.borderLit', editorActionRowBorderOpacity(true), 0.06)
+  check('am.borderIdle', editorActionRowBorderOpacity(false), 0)
+  check('am.borderWidth', EDITOR_ACTION_ROW_BORDER_WIDTH, 0.5)
+  check('am.offsetHover',
+    editorActionRowOffset({ isEnabled: true, hovered: true, reducesMotion: false }), 2)
+  check('am.offsetReduced',
+    editorActionRowOffset({ isEnabled: true, hovered: true, reducesMotion: true }), 0)
+  check('am.offsetIdle',
+    editorActionRowOffset({ isEnabled: true, hovered: false, reducesMotion: false }), 0)
+  check('am.scalePressed',
+    editorActionRowScale({ isEnabled: true, isPressed: true, reducesMotion: false }), 0.985)
+  check('am.scaleReduced',
+    editorActionRowScale({ isEnabled: true, isPressed: true, reducesMotion: true }), 1)
+  check('am.scaleIdle',
+    editorActionRowScale({ isEnabled: true, isPressed: false, reducesMotion: false }), 1)
+  check('am.returnPerforms', editorActionMenuReturnKeyAction({ isEnabled: true, modifiers: [] }), 'perform')
+  check('am.returnWithModifier',
+    editorActionMenuReturnKeyAction({ isEnabled: true, modifiers: ['shift'] }), 'ignored')
+  check('am.returnDisabled',
+    editorActionMenuReturnKeyAction({ isEnabled: false, modifiers: [] }), 'ignored')
+  check('am.performPlan', editorActionMenuPerformPlan().dismissFirst, true)
+  check('am.traitsOn', editorActionRowAccessibilityTraits(true).join(','), 'selected')
+  check('am.traitsOff', editorActionRowAccessibilityTraits(false).length, 0)
+  check('am.helpUsesDetail',
+    editorActionRowHelpText({ kind: 'action', title: 'a', detail: 'd' }), 'd')
+  check('am.helpFallsBack', editorActionRowHelpText({ kind: 'action', title: 'a' }), 'a')
+
+  // ---------------------------------------------------------------------------
+  // ProjectMediaExchange.swift（164 行）
+  // ---------------------------------------------------------------------------
+  check('pmx.basenames',
+    `${PROJECT_MEDIA_EXPORT_BASENAMES.screen},${PROJECT_MEDIA_EXPORT_BASENAMES.camera},${PROJECT_MEDIA_EXPORT_BASENAMES.microphone}`,
+    '屏幕,摄像头,麦克风')
+  check('pmx.folderSuffix', PROJECT_MEDIA_EXPORT_FOLDER_SUFFIX, '-源文件')
+  check('pmx.audioFallback', MEDIA_COPY_FALLBACK_EXTENSION.audio, 'm4a')
+  check('pmx.videoFallback', MEDIA_COPY_FALLBACK_EXTENSION.video, 'mov')
+  check('pmx.minimumDuration', MEDIA_MINIMUM_DURATION, 0.01)
+  check('pmx.untitled', UNTITLED_RECORDING_NAME, '未命名录制')
+  check('pmx.folderPrefix', CAMERA_REPLACEMENT_FOLDER_PREFIX, 'camera-replacement-')
+
+  check('pmx.sanitizeSlash', sanitizedMediaFilename('a/b'), 'a-b')
+  check('pmx.sanitizeColon', sanitizedMediaFilename('a:b'), 'a-b')
+  check('pmx.sanitizeBoth', sanitizedMediaFilename('a/b:c/d'), 'a-b-c-d')
+  check('pmx.sanitizeTrim', sanitizedMediaFilename('  录制  '), '录制')
+  check('pmx.sanitizeEmpty', sanitizedMediaFilename('   '), '未命名录制')
+  check('pmx.sanitizeKeepsSpaces', sanitizedMediaFilename('项目 一'), '项目 一')
+  check('pmx.exportBase', exportFolderBaseName('项目 A'), '项目 A-源文件')
+  check('pmx.exportBaseEmpty', exportFolderBaseName(''), '未命名录制-源文件')
+
+  {
+    const taken = new Set(['X', 'X-2', 'X-3'])
+    check('pmx.uniqueFirst', uniqueExportFolderName('Y', (n) => n === 'Y'), 'Y-2')
+    check('pmx.uniqueSkipsExisting', uniqueExportFolderName('X', (n) => taken.has(n)), 'X-4')
+    check('pmx.uniqueFree', uniqueExportFolderName('Z', () => false), 'Z')
+  }
+
+  check('pmx.extLowered', mediaCopyExtension('/a/b.MOV', PROJECT_MEDIA_EXPORT_BASENAMES.camera), 'mov')
+  check('pmx.extAudioFallback', mediaCopyExtension('/a/b', PROJECT_MEDIA_EXPORT_BASENAMES.microphone), 'm4a')
+  check('pmx.extAudioEnglish', mediaCopyExtension('/a/b', 'microphone'), 'm4a')
+  check('pmx.extVideoFallback', mediaCopyExtension('/a/b', PROJECT_MEDIA_EXPORT_BASENAMES.screen), 'mov')
+  check('pmx.extHiddenFile', mediaCopyExtension('/a/.hidden', PROJECT_MEDIA_EXPORT_BASENAMES.screen), 'mov')
+  check('pmx.extTrailingDot', mediaCopyExtension('/a/b.', PROJECT_MEDIA_EXPORT_BASENAMES.screen), 'mov')
+  check('pmx.extWindowsPath', mediaCopyExtension('C:\\media\\a.M4A', PROJECT_MEDIA_EXPORT_BASENAMES.microphone), 'm4a')
+
+  check('pmx.copyReadable', mediaCopySourceIsReadable(true), true)
+  check('pmx.copyMissing', mediaCopySourceIsReadable(false), false)
+  check('pmx.inspectNoTracks', mediaInspectionAccepts({ trackCount: 0, duration: 5 }), false)
+  check('pmx.inspectNaN', mediaInspectionAccepts({ trackCount: 1, duration: Number.NaN }), false)
+  check('pmx.inspectTooShort', mediaInspectionAccepts({ trackCount: 1, duration: 0.01 }), false)
+  check('pmx.inspectOk', mediaInspectionAccepts({ trackCount: 1, duration: 0.02 }), true)
+  check('pmx.cameraRequirementsOnlyVideo', cameraReplacementRequirements().requiredMediaType, 'video')
+  check('pmx.replacementFolder', cameraReplacementFolderName('ABC-123'), 'camera-replacement-abc-123')
+  check('pmx.relativePath', cameraRelativePath('f1', 'camera.mov'), 'media/f1/camera.mov')
+
+  check('pmx.errorMissing',
+    mediaExchangeErrorMessage('missingProjectMedia', '摄像头'), '项目没有可导出的摄像头源文件。')
+  check('pmx.errorInvalid', mediaExchangeErrorMessage('invalidMedia', '坏文件'), '坏文件')
+  check('pmx.missingFile', missingMediaFileMessage('/x/y.mov'), '选择的文件不存在：/x/y.mov')
+  check('pmx.missingVideoTrack',
+    missingMediaTrackMessage('a.mov', 'video'), 'a.mov 没有可用的视频轨。')
+  check('pmx.missingAudioTrack',
+    missingMediaTrackMessage('a.m4a', 'audio'), 'a.m4a 没有可用的音频轨。')
+
+  {
+    const plan = mediaExportPlan({
+      sources: { screen: '/r/screen.mov', camera: '/r/cam.mov', microphone: '/r/mic.m4a' },
+      projectTitle: '演示',
+      exists: () => false,
+    })
+    check('pmx.planFolder', plan.folderName, '演示-源文件')
+    check('pmx.planCopyCount', plan.copies.length, 3)
+    check('pmx.planOrder', plan.copies.map((c) => c.baseName).join(','), '屏幕,摄像头,麦克风')
+    check('pmx.planExtensions', plan.copies.map((c) => c.extension).join(','), 'mov,mov,m4a')
+    const screenOnly = mediaExportPlan({
+      sources: { screen: '/r/screen.mov', camera: null, microphone: null },
+      projectTitle: '演示',
+      exists: () => false,
+    })
+    check('pmx.planScreenOnly', screenOnly.copies.length, 1)
+    const taken = mediaExportPlan({
+      sources: { screen: '/r/screen.mov', camera: null, microphone: null },
+      projectTitle: '演示',
+      exists: (n) => n === '演示-源文件',
+    })
+    check('pmx.planDeduped', taken.folderName, '演示-源文件-2')
+  }
+
+  // ---------------------------------------------------------------------------
+  // CaptureDeviceLifecycle.swift（165 行）
+  // ---------------------------------------------------------------------------
+  check('cdl.domains', CAPTURE_DEVICE_OPERATION_DOMAINS.join(','),
+    'catalogRefresh,screenDevice,camera,microphone')
+  check('cdl.nextFirst', captureDeviceGenerationNext(0n), 1n)
+  check('cdl.nextIncrement', captureDeviceGenerationNext(5n), 6n)
+  check('cdl.nextWrapSkipsZero',
+    captureDeviceGenerationNext(0xffffffffffffffffn), 1n)
+  check('cdl.delays', CAPTURE_DEVICE_REFRESH_DELAYS_MS.join(','), '0,250,500,1000,2000,3000,5000')
+  check('cdl.sleepFirstImmediate', captureDeviceRefreshShouldSleep(0), false)
+  check('cdl.sleepLater', captureDeviceRefreshShouldSleep(250), true)
+  check('cdl.notifications', CAPTURE_DEVICE_CONNECTION_NOTIFICATIONS.length, 2)
+
+  {
+    const state = new CaptureDeviceGenerationState()
+    check('cdl.initialGeneration', state.generationOf('camera'), 0n)
+    const first = state.begin('camera')
+    check('cdl.tokenGeneration', first.generation, 1n)
+    check('cdl.tokenDomain', first.domain, 'camera')
+    check('cdl.isCurrentFirst', state.isCurrent(first), true)
+    const second = state.begin('camera')
+    check('cdl.secondGeneration', second.generation, 2n)
+    check('cdl.firstSuperseded', state.isCurrent(first), false)
+    check('cdl.secondCurrent', state.isCurrent(second), true)
+    check('cdl.domainsIndependent', state.generationOf('microphone'), 0n)
+    const mic = state.begin('microphone')
+    check('cdl.micFirst', mic.generation, 1n)
+    check('cdl.cameraUnchanged', state.generationOf('camera'), 2n)
+  }
+
+  check('cdl.actionNoSession',
+    captureDeviceNotificationAction({ observationSessionID: null, notificationSessionID: 'a' }), 'ignore')
+  check('cdl.actionMismatch',
+    captureDeviceNotificationAction({ observationSessionID: 'b', notificationSessionID: 'a' }), 'ignore')
+  check('cdl.actionMatch',
+    captureDeviceNotificationAction({ observationSessionID: 'a', notificationSessionID: 'a' }), 'scheduleRefresh')
+  check('cdl.continueOk',
+    captureDeviceRefreshShouldContinue({ cancelled: false, isCurrent: true }), true)
+  check('cdl.continueCancelled',
+    captureDeviceRefreshShouldContinue({ cancelled: true, isCurrent: true }), false)
+  check('cdl.continueStale',
+    captureDeviceRefreshShouldContinue({ cancelled: false, isCurrent: false }), false)
+
+  {
+    let refreshes = 0
+    const lifecycle = new CaptureDeviceLifecycle(() => { refreshes += 1 })
+    const observed = []
+    const started = lifecycle.start({
+      createSessionID: () => 's1',
+      observe: (handler) => {
+        observed.push(handler)
+        return { names: CAPTURE_DEVICE_CONNECTION_NOTIFICATIONS, dispose() {} }
+      },
+    })
+    check('cdl.startOk', started, true)
+    check('cdl.startRefreshesOnce', refreshes, 1)
+    check('cdl.sessionID', lifecycle.sessionID, 's1')
+    check('cdl.isObserving', lifecycle.isObserving, true)
+    check('cdl.startIdempotent', lifecycle.start({
+      createSessionID: () => 's2',
+      observe: () => ({ names: [], dispose() {} }),
+    }), false)
+
+    // 同一会话的通知会排一轮刷新
+    const plan = lifecycle.scheduleCatalogRefresh()
+    check('cdl.planOperation', plan.operation.domain, 'catalogRefresh')
+    check('cdl.planDelayCount', plan.delays.length, 7)
+    check('cdl.isRefreshing', lifecycle.isRefreshing, true)
+    check('cdl.refreshIfCurrent', lifecycle.refreshIfCurrent(plan, false), true)
+    check('cdl.refreshCount', refreshes, 2)
+    check('cdl.refreshIfCancelled', lifecycle.refreshIfCurrent(plan, true), false)
+
+    // 新计划作废旧计划
+    const newer = lifecycle.scheduleCatalogRefresh()
+    check('cdl.oldPlanStale', lifecycle.refreshIfCurrent(plan, false), false)
+    check('cdl.newPlanCurrent', lifecycle.refreshIfCurrent(newer, false), true)
+
+    lifecycle.finishCatalogRefresh()
+    check('cdl.finishedRefreshing', lifecycle.isRefreshing, false)
+
+    const token = lifecycle.beginOperation('camera')
+    check('cdl.lifecycleToken', lifecycle.isCurrent(token), true)
+
+    lifecycle.stop()
+    check('cdl.stoppedSession', lifecycle.sessionID, null)
+    check('cdl.stoppedObserving', lifecycle.isObserving, false)
+    check('cdl.stopInvalidatesPlans', lifecycle.refreshIfCurrent(newer, false), false)
+    // stop() 只推进 catalogRefresh；其它域的代次刻意不动。
+    check('cdl.stopKeepsOtherDomains', lifecycle.isCurrent(token), true)
+  }
+}
+
+await runHoverAndInputBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

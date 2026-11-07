@@ -166,7 +166,15 @@
   "Sources/DogSCApp/AppControlFocusAppearance.swift": "src/renderer/src/core/AppControlFocusAppearance.ts",
   "Sources/DogSCApp/EditorSymbol.swift": "src/renderer/src/core/EditorSymbol.ts",
   "Sources/DogSCApp/AppAboutSettingsView.swift": "src/renderer/src/core/AppAboutSettingsView.ts",
-  "Sources/DogSCApp/EditorStylePresetStore.swift": "src/renderer/src/core/EditorStylePresetStore.ts"
+  "Sources/DogSCApp/EditorStylePresetStore.swift": "src/renderer/src/core/EditorStylePresetStore.ts",
+  "Sources/DogSCApp/EditorPlaybackHoverPreview.swift": "src/renderer/src/core/EditorPlaybackHoverPreview.ts",
+  "Sources/DogSCApp/EditorInspectorPalette.swift": "src/renderer/src/core/EditorInspectorPalette.ts",
+  "Sources/DogSCApp/EditorTimelineWaveformCache.swift": "src/renderer/src/core/EditorTimelineWaveformCache.ts",
+  "Sources/DogSCApp/EditorKnobInput.swift": "src/renderer/src/core/EditorKnobInput.ts",
+  "Sources/DogSCApp/AppLocalization.swift": "src/renderer/src/core/AppLocalization.ts",
+  "Sources/DogSCApp/EditorActionMenu.swift": "src/renderer/src/core/EditorActionMenu.ts",
+  "Sources/DogSCApp/ProjectMediaExchange.swift": "src/renderer/src/core/ProjectMediaExchange.ts",
+  "Sources/DogSCApp/CaptureDeviceLifecycle.swift": "src/renderer/src/core/CaptureDeviceLifecycle.ts"
  },
  "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }
