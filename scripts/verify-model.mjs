@@ -3027,5 +3027,378 @@ async function runMediaAnalysisBatch() {
 
 await runMediaAnalysisBatch()
 
+async function runFileBoundaryBatch() {
+  const {
+    EXPORT_TEMP_DEFAULT_EXTENSION, EXPORT_TEMP_INFIX, canonicalExportPath,
+    exportFileTransactionCollides, exportPromotionMode, exportPromotionPlan,
+    normalizePath, splitFilePath, temporaryExportPath,
+    EXPORT_WATCHDOG_DEFAULT_TIMEOUT, ExportActivityWatchdog, watchdogRepeatInterval,
+    DisposalCancelledError, moveProjectPackageToTrash, performDisposalWork,
+    removeProjectPackageIfPresent,
+    ProjectDocument, projectsEqual, replaceProjectSnapshot, stableStringify,
+    PROJECT_CATALOG_PRESENTED_RECENT_LIMIT, PROJECT_CATALOG_RECENT_QUERY_LIMIT,
+    loadProjectCatalogSnapshot, projectCatalogSnapshotEquals,
+    RECOVERY_DEFAULT_SCREEN_RELATIVE_PATH, RecordingRecoveryJournal,
+    makeRecordingRecoverySnapshot,
+    SC_FRAME_STATUS, SC_STREAM_FRAME_INFO_STATUS_KEY, decodeFrameStatus,
+    frameStatusHasContent, frameStatusName, readAttachmentStatus,
+    screenCaptureFrameStatus,
+    CAPTURE_STREAM_EXTRA_SURFACE_COST_MIB, CAPTURE_STREAM_MAXIMUM_FPS,
+    CAPTURE_STREAM_QUEUE_DEPTH, RECORDING_PERFORMANCE_ACTIVITY_OPTIONS,
+    captureStreamMinimumFrameInterval, captureStreamMinimumFrameIntervalSeconds,
+    cmTimeSeconds, recordingActivityDisablesIdleSleep,
+    makeRecorderProject,
+  } = m
+
+  // ================================================ ExportFileTransaction（Swift 33 行）
+  check('ft.normalizeDots', normalizePath('/a/b/../c//d/./e'), '/a/c/d/e')
+  check('ft.normalizeRoot', normalizePath('/'), '/')
+  check('ft.normalizeRelative', normalizePath('a/./b'), 'a/b')
+  check('ft.normalizeUp', normalizePath('../a'), '../a')
+  check('ft.splitFolder', splitFilePath('/out/a.b.mp4').folder, '/out')
+  check('ft.splitBase', splitFilePath('/out/a.b.mp4').base, 'a.b')
+  check('ft.splitExtension', splitFilePath('/out/a.b.mp4').fileExtension, 'mp4')
+  check('ft.splitNoExtension', splitFilePath('/out/clip').fileExtension, '')
+  check('ft.splitHidden', splitFilePath('/out/.hidden').fileExtension, '')
+  check('ft.tempInfix', EXPORT_TEMP_INFIX, 'dogsc-export')
+  check('ft.tempDefaultExt', EXPORT_TEMP_DEFAULT_EXTENSION, 'mp4')
+  check(
+    'ft.tempPath',
+    temporaryExportPath('/out/video.mp4', 'ABC-123'),
+    '/out/.video.dogsc-export-abc-123.tmp.mp4'
+  )
+  check(
+    'ft.tempPathNoExtension',
+    temporaryExportPath('/out/video', 'U1'),
+    '/out/.video.dogsc-export-u1.tmp.mp4'
+  )
+  check(
+    'ft.tempPathDotBase',
+    temporaryExportPath('/out/final.cut.mp4', 'U2'),
+    '/out/.final.cut.dogsc-export-u2.tmp.mp4'
+  )
+  check('ft.collides', exportFileTransactionCollides('/out/a.mp4', ['/out/a.mp4']), true)
+  check('ft.collidesDots', exportFileTransactionCollides('/out/./a.mp4', ['/out/a.mp4']), true)
+  check('ft.notCollides', exportFileTransactionCollides('/out/a.mp4', ['/out/b.mp4']), false)
+  check(
+    'ft.collidesSymlink',
+    exportFileTransactionCollides('/out/link.mp4', ['/out/real.mp4'], (p) =>
+      p === '/out/link.mp4' ? '/out/real.mp4' : p
+    ),
+    true
+  )
+  check('ft.promoteExisting', exportPromotionMode(true), 'replace')
+  check('ft.promoteNew', exportPromotionMode(false), 'move')
+  check('ft.planMode', exportPromotionPlan('/out/.t.tmp.mp4', '/out/a.mp4', true).mode, 'replace')
+
+  // ================================================ ExportActivityWatchdog（Swift 54 行）
+  check('wd.defaultTimeout', EXPORT_WATCHDOG_DEFAULT_TIMEOUT, 120)
+  check('wd.repeatLong', watchdogRepeatInterval(120), 2)
+  check('wd.repeatShort', watchdogRepeatInterval(3), 1.5)
+
+  const makeScheduler = () => {
+    let clock = 0
+    const timers = []
+    return {
+      now: () => clock,
+      schedule: (delaySeconds, repeatSeconds, callback) => {
+        const entry = { delaySeconds, repeatSeconds, callback, active: true }
+        timers.push(entry)
+        return () => {
+          entry.active = false
+        }
+      },
+      advance: (seconds) => {
+        clock += seconds
+      },
+      fireActive: () => {
+        for (const entry of timers) if (entry.active) entry.callback()
+      },
+      timers
+    }
+  }
+
+  const sched = makeScheduler()
+  let stalls = 0
+  const watchdog = new ExportActivityWatchdog({
+    timeout: 120,
+    onStall: () => {
+      stalls++
+    },
+    scheduler: sched
+  })
+  check('wd.scheduleDelay', sched.timers[0].delaySeconds, 120)
+  check('wd.scheduleRepeat', sched.timers[0].repeatSeconds, 2)
+  sched.advance(119.9)
+  sched.fireActive()
+  check('wd.notYet', stalls, 0)
+  check('wd.notStopped', watchdog.isStopped, false)
+  sched.advance(0.2)
+  sched.fireActive()
+  check('wd.stalled', stalls, 1)
+  check('wd.stopped', watchdog.isStopped, true)
+  sched.advance(500)
+  sched.fireActive()
+  check('wd.stallOnceOnly', stalls, 1)
+
+  // 进度刷新会顺延：读与写都算进度
+  const sched2 = makeScheduler()
+  let stalls2 = 0
+  const watchdog2 = new ExportActivityWatchdog({
+    timeout: 10,
+    onStall: () => {
+      stalls2++
+    },
+    scheduler: sched2
+  })
+  sched2.advance(9)
+  watchdog2.recordProgress()
+  check('wd.progressTime', watchdog2.lastProgressTime, 9)
+  sched2.advance(5)
+  sched2.fireActive()
+  check('wd.progressResets', stalls2, 0)
+
+  // cancel 后不再触发
+  const sched3 = makeScheduler()
+  let stalls3 = 0
+  const watchdog3 = new ExportActivityWatchdog({
+    timeout: 10,
+    onStall: () => {
+      stalls3++
+    },
+    scheduler: sched3
+  })
+  watchdog3.cancel()
+  sched3.advance(100)
+  sched3.fireActive()
+  check('wd.cancelNoStall', stalls3, 0)
+  check('wd.cancelStopped', watchdog3.isStopped, true)
+  watchdog.dispose()
+  watchdog2.dispose()
+  watchdog3.dispose()
+
+  // ================================================ ProjectPackageDisposal（Swift 36 行）
+  const makeFileSystem = (existing) => {
+    const calls = []
+    return {
+      calls,
+      trashItem: (path) => calls.push(['trash', path]),
+      removeItem: (path) => calls.push(['remove', path]),
+      fileExists: (path) => existing.includes(path)
+    }
+  }
+  const fsTrash = makeFileSystem(['/P'])
+  await moveProjectPackageToTrash(fsTrash, '/P')
+  check('pd.trashCalled', fsTrash.calls.length, 1)
+  check('pd.trashPath', fsTrash.calls[0][1], '/P')
+  check('pd.trashNeverRemoves', fsTrash.calls.some((c) => c[0] === 'remove'), false)
+
+  const fsExisting = makeFileSystem(['/P'])
+  await removeProjectPackageIfPresent(fsExisting, '/P')
+  check('pd.removeExisting', fsExisting.calls.length, 1)
+  const fsAbsent = makeFileSystem([])
+  await removeProjectPackageIfPresent(fsAbsent, '/P')
+  check('pd.removeSkipped', fsAbsent.calls.length, 0)
+  const fsFailing = {
+    trashItem: () => {},
+    removeItem: () => {
+      throw new Error('权限不足')
+    },
+    fileExists: () => true
+  }
+  let swallowed = false
+  await removeProjectPackageIfPresent(fsFailing, '/P')
+  swallowed = true
+  check('pd.removeSwallows', swallowed, true)
+
+  let operated = 0
+  const cancelFlag = { cancelled: false }
+  let cancelThrown = false
+  try {
+    await performDisposalWork(
+      () => {
+        operated++
+      },
+      { isCancelled: () => true }
+    )
+  } catch (error) {
+    cancelThrown = error instanceof DisposalCancelledError
+  }
+  check('pd.cancelThrows', cancelThrown, true)
+  check('pd.cancelSkipsOperation', operated, 0)
+  let postCancel = false
+  try {
+    await performDisposalWork(
+      () => {
+        operated++
+        // 操作过程中被取消：结束后的检查必须抛
+        cancelFlag.cancelled = true
+      },
+      { isCancelled: () => cancelFlag.cancelled }
+    )
+  } catch (error) {
+    postCancel = error instanceof DisposalCancelledError
+  }
+  check('pd.cancelAfterOperation', postCancel, true)
+
+  // ================================================ ProjectDocument（Swift 24 行）
+  const docProjectA = makeRecorderProject({ title: 'A' })
+  const docProjectB = makeRecorderProject({ title: 'B' })
+  // 同一份数据的深拷贝（makeRecorderProject 每次都生成新 createdAt，不能直接对比两次构造）
+  const docProjectACopy = JSON.parse(JSON.stringify(docProjectA))
+  check('doc.equal', projectsEqual(docProjectA, docProjectACopy), true)
+  check('doc.notEqual', projectsEqual(docProjectA, docProjectB), false)
+  check(
+    'doc.keyOrderInsensitive',
+    stableStringify({ a: 1, b: 2 }) === stableStringify({ b: 2, a: 1 }),
+    true
+  )
+  const plainDoc = new ProjectDocument(docProjectA)
+  check('doc.noopReplace', plainDoc.replace(docProjectACopy), false)
+  check('doc.commitReplace', plainDoc.replace(docProjectB), true)
+  check('doc.projectUpdated', plainDoc.project.title, 'B')
+  let notified = 0
+  const observedDoc = new ProjectDocument(docProjectA, () => {
+    notified++
+  })
+  observedDoc.replace(docProjectB)
+  observedDoc.replace(docProjectB)
+  check('doc.notifyOnce', notified, 1)
+  const pureReplace = replaceProjectSnapshot(docProjectA, docProjectA)
+  check('doc.pureNoopKeepsReference', pureReplace.project === docProjectA, true)
+  check('doc.pureNoopFlag', pureReplace.didCommit, false)
+
+  // ================================================ ProjectCatalogSnapshot（Swift 19 行）
+  check('cat.queryLimit', PROJECT_CATALOG_RECENT_QUERY_LIMIT, 50)
+  check('cat.presentedLimit', PROJECT_CATALOG_PRESENTED_RECENT_LIMIT, 8)
+  const allProjects = Array.from({ length: 60 }, (_, i) => `/P/${i}`)
+  let receivedCandidates = null
+  const catalog = loadProjectCatalogSnapshot({
+    recentProjectPaths: (limit) => allProjects.slice(0, limit),
+    recoverableProjectPaths: (candidates) => {
+      receivedCandidates = candidates
+      return ['/P/40']
+    }
+  })
+  check('cat.recentTrimmed', catalog.recent.length, 8)
+  check('cat.recentFirst', catalog.recent[0], '/P/0')
+  check('cat.recoverableUsesFullQuery', receivedCandidates.length, 50)
+  check('cat.recoverableValue', catalog.recoverable[0], '/P/40')
+  check('cat.equals', projectCatalogSnapshotEquals(catalog, { ...catalog }), true)
+  check(
+    'cat.notEquals',
+    projectCatalogSnapshotEquals(catalog, { recent: catalog.recent, recoverable: [] }),
+    false
+  )
+
+  // ================================================ RecordingRecoveryJournal（Swift 44 行）
+  check('rj.defaultScreen', RECOVERY_DEFAULT_SCREEN_RELATIVE_PATH, 'media/screen-0001.mp4')
+  const recoverySnapshot = makeRecordingRecoverySnapshot({
+    state: 'recording',
+    session: { root: '/P' },
+    frameRate: 60
+  })
+  check('rj.defaultState', recoverySnapshot.state, 'recording')
+  check('rj.defaultNoSample', recoverySnapshot.appendsPerformanceSample, false)
+  check('rj.defaultScreenPath', recoverySnapshot.screenRelativePath, 'media/screen-0001.mp4')
+  check('rj.defaultMeasurement', recoverySnapshot.measurement, null)
+
+  const events = []
+  const journalStore = {
+    appendRecordingPerformanceSample: async (sample) => {
+      events.push(`sample:${sample.count}`)
+    },
+    writeRecoveryManifest: async (fields) => {
+      events.push(`manifest:${fields.state}:${fields.performanceSummary == null ? 'none' : 'summary'}`)
+    }
+  }
+  const journal = new RecordingRecoveryJournal(journalStore)
+  const monitor = {
+    sample: () => ({ count: 7 }),
+    summary: { sampleCount: 7 }
+  }
+  await journal.persist(
+    makeRecordingRecoverySnapshot({
+      state: 'recording',
+      session: {},
+      frameRate: 60,
+      performanceMonitor: monitor,
+      appendsPerformanceSample: true
+    })
+  )
+  check('rj.appendFirst', events[0], 'sample:7')
+  check('rj.manifestSecond', events[1], 'manifest:recording:summary')
+  await journal.persist(
+    makeRecordingRecoverySnapshot({
+      state: 'recording',
+      session: {},
+      frameRate: 60,
+      performanceMonitor: monitor,
+      appendsPerformanceSample: false
+    })
+  )
+  check('rj.skipsSample', events[2], 'manifest:recording:summary')
+  check('rj.eventsTotal', events.length, 3)
+  // 终态写与心跳写共用队列：顺序严格保持
+  const order = []
+  const slowStore = {
+    appendRecordingPerformanceSample: () => {},
+    writeRecoveryManifest: async (fields) => {
+      await new Promise((resolve) => setTimeout(resolve, fields.state === 'recording' ? 20 : 0))
+      order.push(fields.state)
+    }
+  }
+  const journal2 = new RecordingRecoveryJournal(slowStore)
+  const heartbeat = journal2.persist(
+    makeRecordingRecoverySnapshot({ state: 'recording', session: {}, frameRate: 60 })
+  )
+  const complete = journal2.persist(
+    makeRecordingRecoverySnapshot({ state: 'complete', session: {}, frameRate: 60 })
+  )
+  await Promise.all([heartbeat, complete])
+  await journal2.drain()
+  check('rj.serializedFirst', order[0], 'recording')
+  check('rj.serializedSecond', order[1], 'complete')
+
+  // ================================================ ScreenCaptureFrameMetadata（Swift 31 行）
+  check('sm.statusKey', SC_STREAM_FRAME_INFO_STATUS_KEY, 'status')
+  check('sm.complete', SC_FRAME_STATUS.complete, 0)
+  check('sm.stopped', SC_FRAME_STATUS.stopped, 5)
+  check('sm.dictComplete', screenCaptureFrameStatus([{ status: 0 }]), 0)
+  check('sm.dictIdle', screenCaptureFrameStatus([{ status: 1 }]), 1)
+  check('sm.mapValue', screenCaptureFrameStatus([new Map([['status', 3]])]), 3)
+  check('sm.stringNumber', screenCaptureFrameStatus([{ status: '2' }]), 2)
+  check('sm.missingKey', screenCaptureFrameStatus([{}]), null)
+  check('sm.emptyArray', screenCaptureFrameStatus([]), null)
+  check('sm.nullArray', screenCaptureFrameStatus(null), null)
+  check('sm.unknownRaw', screenCaptureFrameStatus([{ status: 9 }]), null)
+  check('sm.unknownDecode', decodeFrameStatus(42), null)
+  check('sm.readNumber', readAttachmentStatus({ status: 4 }), 4)
+  check('sm.readNonObject', readAttachmentStatus(4), null)
+  check('sm.nameComplete', frameStatusName(0), 'complete')
+  check('sm.nameUnknown', frameStatusName(null), 'unknown')
+  check('sm.hasContentComplete', frameStatusHasContent(0), true)
+  check('sm.hasContentIdle', frameStatusHasContent(1), false)
+  check('sm.hasContentBlank', frameStatusHasContent(2), false)
+
+  // ================================================ CaptureStreamCadence（Swift 40 行）
+  check('cs.maxFps', CAPTURE_STREAM_MAXIMUM_FPS, 60)
+  const displayInterval = captureStreamMinimumFrameInterval('display')
+  check('cs.displayValue', displayInterval.value, 1)
+  check('cs.displayTimescale', displayInterval.timescale, 60)
+  check('cs.windowSame', cmTimeSeconds(captureStreamMinimumFrameInterval('window')), 1 / 60)
+  check('cs.areaSame', cmTimeSeconds(captureStreamMinimumFrameInterval('area')), 1 / 60)
+  check('cs.deviceZero', cmTimeSeconds(captureStreamMinimumFrameInterval('device')), 0)
+  check('cs.deviceSeconds', captureStreamMinimumFrameIntervalSeconds('device'), 0)
+  check('cs.displaySeconds', captureStreamMinimumFrameIntervalSeconds('display'), 1 / 60)
+  check('cs.queueDepth', CAPTURE_STREAM_QUEUE_DEPTH, 8)
+  check('cs.surfaceCost', CAPTURE_STREAM_EXTRA_SURFACE_COST_MIB, 42)
+  check('cs.activityCount', RECORDING_PERFORMANCE_ACTIVITY_OPTIONS.length, 3)
+  check('cs.activityNoIdleSleep', recordingActivityDisablesIdleSleep(), true)
+
+}
+
+await runFileBoundaryBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

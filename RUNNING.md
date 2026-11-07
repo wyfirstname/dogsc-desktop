@@ -401,3 +401,18 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
   - 只升级未被改动过的旧预设：屏幕弹簧 1/180/24 → 2.4/210/42、光标弹簧 1/260/30 → 2.8/450/66、`三次方缓动 0.55s` → `弹簧 0.7s`；`弹簧 0.6s` 仅改时长为 0.7s（不动用户手写时长）。任一参数对不上就整块保持原样。
 - 依赖补齐：`MediaTimeRange.ts` 增加 `bucketIndex`（Swift L28-38）。
 - verify-model 断言 791 → 959（+168）：桶映射边界、波形最小值/曲率/噪声底、帧边界容差与夹取、单声道/立体声 PCM 扫描、取消回调节律、探测结果三路取 max 与有效性闸门、网格尺寸、纹理带间隙桥接、合成位图的包围盒与内收一格、竖屏分支、离群帧聚类、Core Image y 翻转、缓存单飞与淘汰、9 种打开警告的顺序与文案、时间戳代理回迁、遗留运镜升级。
+
+## 十七、文件边界 / 看门狗 / 平台策略（8 文件 / 281 行）
+
+这一批全是「短小但决定行为边界」的支撑件：它们不做视觉，只定义**何时算卡住、
+删到哪去、写盘顺序、限流上限**。逐文件 1:1 转写。
+
+- `core/ExportFileTransaction.ts`（33 行）：输出路径与任一输入路径**符号链接别名也算同一文件**（`standardizedFileURL.resolvingSymlinksInPath()`）；临时文件必须落在输出同目录（跨卷 rename 会失败），命名 `.基线.dogsc-export-<uuid>.tmp.<ext>`，隐藏文件避免污染视野；落地走 `replace`（已存在，原子替换）/ `move`（不存在）两条路径。
+- `core/ExportActivityWatchdog.ts`（54 行）：超时默认 120s，检查周期 `min(timeout/2, 2)`；**读与写都算进度** —— 解码长加速区间不能被当成卡住的输出帧；`stopped` 是单向闩锁，触发后不再复活。DispatchSourceTimer 换成可注入 `WatchdogScheduler`，主进程用 `intervalWatchdogScheduler()`。
+- `core/ProjectPackageDisposal.ts`（36 行）：大录制包**绝不在主线程移动或递归删除**（APFS 元数据、外接卷、访达废纸篓记账都可能阻塞，哪怕动作看起来只是改名）。删除一律走回收站；`removeIfPresent` 用 `try?` 语义吞错，清理失败不打断主流程。
+- `core/ProjectDocument.ts`（24 行）：全应用**唯一**的可变工程所有者，唯一写入口 `replace` 返回布尔让调用方区分「真提交」与「空操作」；编辑器不得持有第二份持久化快照。
+- `core/ProjectCatalogSnapshot.ts`（19 行）：两个不同集合 —— `recent` 只展示前 8 条，但 `recoverable` 用**完整 50 条**候选去筛（第 9~50 条里的可恢复工程仍要出现）。
+- `core/RecordingRecoveryJournal.ts`（44 行）：所有恢复写都排进**同一条串行队列**，心跳写与终态写共用队列，因此进行中的心跳永远不可能覆盖更晚的 `complete` / `failed` / `discarded` 清单；先追加性能样本（受 `appendsPerformanceSample` 与监视器存在双重门控），再写清单并带上此刻 `summary`。
+- `core/ScreenCaptureFrameMetadata.ts`（31 行）：只从第一份附件字典取 `status`，不整份桥接 CFArray/CFDictionary（每帧都做会拖慢采集）；未知 rawValue 按失败初始化器返回 null。
+- `core/CaptureStreamCadence.ts`（40 行）：产品录制上限 60 FPS —— 120Hz 合成器/独立窗口要无限更新只会产出 60 FPS 导出留不住的帧，还把同一份实时 HEVC 预算摊到两倍画面上；屏幕类源最少间隔 1/60s，**设备源返回 .zero**（摄像头自有帧率协商）；表面池深度 8（多三张 4K NV12 约 42 MiB，换取编码器短暂占用旧表面时 WindowServer 仍能出帧）；录制期间禁用空闲睡眠。
+- verify-model 断言 959 → 1062（+103）：路径归一化与符号链接冲突、临时文件命名、落地模式、看门狗首次/重复间隔与延迟触发/单向闩锁/取消、回收站永不永久删除、取消前后两处检查、文档空写不通知、目录快照双集合语义、恢复日志顺序与串行化、帧状态解码、限流上限与表面池。

@@ -71,7 +71,15 @@
     "Sources/DogSCApp/MediaAnalysis.swift": "src/renderer/src/core/MediaAnalysis.ts",
     "Sources/DogSCApp/CameraLetterboxAnalysis.swift": "src/renderer/src/core/CameraLetterboxAnalysis.ts",
     "Sources/DogSCApp/ProjectOpening.swift": "src/renderer/src/core/ProjectOpening.ts",
-    "Sources/DogSCApp/AppModel.swift#LegacyMotionDefaultsUpgrade": "src/renderer/src/core/LegacyMotionDefaultsUpgrade.ts"
+    "Sources/DogSCApp/AppModel.swift#LegacyMotionDefaultsUpgrade": "src/renderer/src/core/LegacyMotionDefaultsUpgrade.ts",
+    "Sources/DogSCApp/ExportFileTransaction.swift": "src/renderer/src/core/ExportFileTransaction.ts",
+    "Sources/DogSCApp/ExportActivityWatchdog.swift": "src/renderer/src/core/ExportActivityWatchdog.ts",
+    "Sources/DogSCApp/ProjectPackageDisposal.swift": "src/renderer/src/core/ProjectPackageDisposal.ts",
+    "Sources/DogSCApp/ProjectDocument.swift": "src/renderer/src/core/ProjectDocument.ts",
+    "Sources/DogSCApp/ProjectCatalogSnapshot.swift": "src/renderer/src/core/ProjectCatalogSnapshot.ts",
+    "Sources/DogSCApp/RecordingRecoveryJournal.swift": "src/renderer/src/core/RecordingRecoveryJournal.ts",
+    "Sources/DogSCApp/ScreenCaptureFrameMetadata.swift": "src/renderer/src/core/ScreenCaptureFrameMetadata.ts",
+    "Sources/DogSCApp/CaptureStreamCadence.swift": "src/renderer/src/core/CaptureStreamCadence.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }

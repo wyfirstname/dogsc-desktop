@@ -398,3 +398,64 @@ export {
   upgradeLegacyMotionDefaults,
 } from '../src/renderer/src/core/LegacyMotionDefaultsUpgrade'
 export { bucketIndex } from '../src/renderer/src/core/MediaTimeRange'
+
+// ---------------------------------------------------------------- 批次 11：文件边界 / 看门狗 / 平台策略
+export {
+  EXPORT_TEMP_DEFAULT_EXTENSION,
+  EXPORT_TEMP_INFIX,
+  canonicalExportPath,
+  exportFileTransactionCollides,
+  exportPromotionMode,
+  exportPromotionPlan,
+  normalizePath,
+  splitFilePath,
+  temporaryExportPath,
+} from '../src/renderer/src/core/ExportFileTransaction'
+export {
+  EXPORT_WATCHDOG_DEFAULT_TIMEOUT,
+  ExportActivityWatchdog,
+  intervalWatchdogScheduler,
+  watchdogRepeatInterval,
+} from '../src/renderer/src/core/ExportActivityWatchdog'
+export {
+  DisposalCancelledError,
+  moveProjectPackageToTrash,
+  performDisposalWork,
+  removeProjectPackageIfPresent,
+} from '../src/renderer/src/core/ProjectPackageDisposal'
+export {
+  ProjectDocument,
+  projectsEqual,
+  replaceProjectSnapshot,
+  stableStringify,
+} from '../src/renderer/src/core/ProjectDocument'
+export {
+  PROJECT_CATALOG_PRESENTED_RECENT_LIMIT,
+  PROJECT_CATALOG_RECENT_QUERY_LIMIT,
+  loadProjectCatalogSnapshot,
+  projectCatalogSnapshotEquals,
+} from '../src/renderer/src/core/ProjectCatalogSnapshot'
+export {
+  RECOVERY_DEFAULT_SCREEN_RELATIVE_PATH,
+  RecordingRecoveryJournal,
+  makeRecordingRecoverySnapshot,
+} from '../src/renderer/src/core/RecordingRecoveryJournal'
+export {
+  SC_FRAME_STATUS,
+  SC_STREAM_FRAME_INFO_STATUS_KEY,
+  decodeFrameStatus,
+  frameStatusHasContent,
+  frameStatusName,
+  readAttachmentStatus,
+  screenCaptureFrameStatus,
+} from '../src/renderer/src/core/ScreenCaptureFrameMetadata'
+export {
+  CAPTURE_STREAM_EXTRA_SURFACE_COST_MIB,
+  CAPTURE_STREAM_MAXIMUM_FPS,
+  CAPTURE_STREAM_QUEUE_DEPTH,
+  RECORDING_PERFORMANCE_ACTIVITY_OPTIONS,
+  captureStreamMinimumFrameInterval,
+  captureStreamMinimumFrameIntervalSeconds,
+  cmTimeSeconds,
+  recordingActivityDisablesIdleSleep,
+} from '../src/renderer/src/core/CaptureStreamCadence'
