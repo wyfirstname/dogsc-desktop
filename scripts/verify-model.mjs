@@ -12672,5 +12672,867 @@ async function runPreviewSurfaceBatch() {
 }
 await runPreviewSurfaceBatch()
 
+
+
+async function runCanvasInteractionBatch() {
+  // ========== 6 文件 / 1,386 行：画布场景求值 / 预览栅格策略 /
+  //            线性虚化直接操作 / 叠加层渲染 / 键盘焦点滚动 / 拖拽读数
+  const {
+    // ---- EditorCanvasPreviewLayout.swift
+    previewSourcePixelSize, canvasPreviewStickerTrackDecision, canvasPreviewAutomaticClip,
+    canvasPreviewAutomaticCameraPosition, canvasPreviewInheritedAutomaticPosition,
+    canvasPreviewShouldReanchorAutomaticEntry, canvasPreviewOverlayAuthoringPlan,
+    OVERLAY_AUTHORING_FRAME_TOLERANCE, overlayAuthoringFrameDuration,
+    overlayAuthoringClipIsOnFirstFrame, CANVAS_PREVIEW_CAMERA_SOURCE_SIZE_IS_PIXELS,
+    CANVAS_PREVIEW_POINT_SCENE_IS_INTERACTION_ONLY, CANVAS_PREVIEW_LAYOUT_FIELDS,
+    // ---- EditorCanvasPreviewSupport.swift
+    EDITOR_PREVIEW_RESOLUTION_MODES, EDITOR_PREVIEW_RESOLUTION_DEFAULT,
+    EDITOR_PREVIEW_RESOLUTION_LABELS, EDITOR_PREVIEW_RESOLUTION_DETAILS,
+    editorPreviewResolutionLabel, editorPreviewResolutionDetail,
+    CANVAS_PREVIEW_MAXIMUM_TEXTURE_DIMENSION, canvasPreviewRasterPixelSize,
+    canvasPreviewDrawablePixelSize, canvasPreviewShowsEditingOverlays,
+    pausedPreviewFrameAppliesTrackTransform, PAUSED_PREVIEW_FRAME_TIME_TOLERANCE,
+    CANVAS_PREVIEW_PLAYBACK_CADENCE_FPS, canvasPreviewPlaybackSampleTime,
+    canvasPreviewFrameSampleTime, CANVAS_PLAYBACK_EVALUATION_FIELDS,
+    canvasPreviewReusesEvaluatedScene, immutablePreviewAssetIsTransferable,
+    // ---- EditorLinearFocusCanvasOverlay.swift
+    LINEAR_FOCUS_MINIMUM_DRAG, LINEAR_FOCUS_HANDLE_SIZE, LINEAR_FOCUS_HANDLE_EDGE_INSET,
+    LINEAR_FOCUS_ROTATION_HANDLE_FACTOR, LINEAR_FOCUS_FEATHER_DASH,
+    LINEAR_FOCUS_GUIDE_WIDTH, LINEAR_FOCUS_GUIDE_ACTIVE_WIDTH, LINEAR_FOCUS_HIT_WIDTH,
+    LINEAR_FOCUS_SHADOW_ALPHA, LINEAR_FOCUS_LINE_ALPHA, LINEAR_FOCUS_HANDLE_IDLE_ALPHA,
+    LINEAR_FOCUS_PARALLEL_EPSILON, linearFocusPlane, linearFocusShortEdge,
+    linearFocusCenter, linearFocusTangent, linearFocusNormal, linearFocusOffset,
+    linearFocusProjectedAngle, linearFocusBandMetrics, linearFocusGuidePoints,
+    linearFocusRotationHandlePoint, linearFocusHandlePoint, clipPolygonByHalfPlane,
+    linearFocusClearBandVertices, linearFocusLineClip, linearFocusDragAccepted,
+    linearFocusDragResult, linearFocusNormalDelta, linearFocusSuppressesImplicitAnimation,
+    linearFocusShouldDropOwnedInteraction, LINEAR_FOCUS_HELP_POSITION,
+    LINEAR_FOCUS_HELP_REGION, LINEAR_FOCUS_HELP_FEATHER, LINEAR_FOCUS_TITLE_POSITION,
+    LINEAR_FOCUS_TITLE_DIRECTION, LINEAR_FOCUS_COMMIT_ACTION,
+    // ---- SharedFrameOverlayRenderer.swift
+    OVERLAY_TRANSITION_MINIMUM_PROGRESS, MOSAIC_BLUR_BASE_RADIUS,
+    MOSAIC_BLUR_INTENSITY_RADIUS, MOSAIC_SAMPLE_EXPANSION_FACTOR,
+    OVERLAY_MINIMUM_RECT_EDGE, OVERLAY_MINIMUM_STICKER_WIDTH, OVERLAY_DESIGN_REFERENCE_WIDTH,
+    OVERLAY_MINIMUM_BORDER_WIDTH, OVERLAY_SHADOW_MINIMUM_OPACITY,
+    OVERLAY_ROTATION_MINIMUM_RADIANS, OVERLAY_OPACITY_MAXIMUM, mosaicBlurShouldApply,
+    mosaicBlurRect, mosaicBlurRadius, mosaicSampleRect, mosaicCornerRadius,
+    stickerTargetRect, stickerCornerRadius, stickerBorderWidth, stickerOuterCornerRadius,
+    stickerShadowRadius, stickerShadowTranslation, stickerShadowShouldApply,
+    stickerRotationApplies, stickerRotationCoreImageRadians, stickerOpacityApplies,
+    stickerOpacityVector, overlayClippedExtent, overlayNormalizingTranslation,
+    OVERLAY_RENDERER_EXCLUDES_SPOTLIGHT, intersectRects, insetRect,
+    // ---- AppKeyboardFocusScrollView.swift
+    KEYBOARD_FOCUS_SCROLL_DURATION, KEYBOARD_FOCUS_SCROLL_DEFAULT_ENABLED,
+    keyboardFocusScrollRequestAccepted, keyboardFocusScrollAnimation,
+    scrollRememberedOffset, scrollRestoreOffset, scrollRestoreY, scrollRestoreCanSchedule,
+    scrollRestoreIsReady, scrollRememberCanRun, keyboardFocusScrollTargetValue,
+    keyboardFocusScrollPreferenceReduce, scrollObserverAcceptsHitTesting,
+    scrollBridgeConfigureStep, scrollBridgeNeedsReattach, AppScrollPositionMemory,
+    // ---- EditorCanvasDragFeedback.swift
+    CANVAS_MANIPULATION_SNAP_ANGLES, CANVAS_MANIPULATION_SNAP_TOLERANCE,
+    CANVAS_MANIPULATION_READOUT_FLIP_THRESHOLD, CANVAS_MANIPULATION_READOUT_EDGE_INSET,
+    CANVAS_MANIPULATION_READOUT_HEIGHT, CANVAS_MANIPULATION_READOUT_CORNER_RADIUS,
+    CANVAS_MANIPULATION_READOUT_HORIZONTAL_PADDING, CANVAS_MANIPULATION_READOUT_SPACING,
+    CANVAS_MANIPULATION_READOUT_DIVIDER_WIDTH, CANVAS_MANIPULATION_READOUT_DIVIDER_HEIGHT,
+    CANVAS_MANIPULATION_READOUT_FONT_SIZE, CANVAS_MANIPULATION_READOUT_BORDER_WIDTH,
+    CANVAS_MANIPULATION_READOUT_SHADOW_OPACITY, CANVAS_MANIPULATION_READOUT_SHADOW_RADIUS,
+    CANVAS_MANIPULATION_READOUT_SHADOW_OFFSET_Y, CANVAS_MANIPULATION_READOUT_BACKGROUND,
+    CANVAS_MANIPULATION_READOUT_BACKGROUND_ALPHA, CANVAS_MANIPULATION_TITLE_ALPHA,
+    CANVAS_MANIPULATION_DIVIDER_ALPHA, CANVAS_SNAP_DOT_SIZE, CANVAS_SNAP_DOT_BORDER_WIDTH,
+    CANVAS_SNAP_DOT_SHADOW_OPACITY, CANVAS_SNAP_DOT_SHADOW_RADIUS, CANVAS_SNAP_GUIDE_WIDTH,
+    CANVAS_SNAP_GUIDE_DASH, CANVAS_SNAP_GUIDE_ALPHA, canvasManipulationDirectSelection,
+    canvasManipulationReadoutY, canvasManipulationFixed, canvasManipulationPercent,
+    canvasManipulationPositionValue, canvasManipulationMosaicSizeValue,
+    canvasManipulationMosaicCenterValue, canvasManipulationStickerWidthValue,
+    canvasManipulationStickerRotationValue, canvasManipulationCameraScaleValue,
+    canvasManipulationScreenScaleValue, canvasManipulationScreenReadout,
+    canvasManipulationCameraReadout, canvasManipulationPositionReadout,
+    canvasManipulationMosaicReadout, canvasManipulationStickerReadout,
+    CANVAS_MANIPULATION_CLEAR_ORDER, CANVAS_MANIPULATION_CLEAR_SCHEDULES,
+    canvasSnapGuideSegments, canvasManipulationSuppressesAnimation,
+  } = m
+
+  // ---------------- 源像素尺寸
+  const glPx = previewSourcePixelSize({ width: 100.4, height: 0.2 })
+  check('gl.sourcePixelW', glPx.width, 100)
+  check('gl.sourcePixelH', glPx.height, 2)
+  const glPx2 = previewSourcePixelSize({ width: 2.6, height: 3.4 })
+  check('gl.sourcePixelRoundW', glPx2.width, 3)
+  check('gl.sourcePixelRoundH', glPx2.height, 3)
+  const glPx3 = previewSourcePixelSize({ width: 0, height: 0 })
+  check('gl.sourcePixelZero', glPx3.width, 2)
+  check('gl.sourcePixelZeroH', glPx3.height, 2)
+
+  // ---------------- 贴图过渡轨复用
+  check('gl.trackReuse', canvasPreviewStickerTrackDecision({
+    evaluatedClipsMatchProject: true, hasSuppliedTrack: true }), 'reuse')
+  check('gl.trackRebuildNoSupplied', canvasPreviewStickerTrackDecision({
+    evaluatedClipsMatchProject: true, hasSuppliedTrack: false }), 'rebuild')
+  check('gl.trackRebuildChanged', canvasPreviewStickerTrackDecision({
+    evaluatedClipsMatchProject: false, hasSuppliedTrack: true }), 'rebuild')
+
+  // ---------------- 自动构图
+  const glAutoClip = { id: 'z1', origin: 'automatic', startTime: 0, endTime: 2, focus: { x: 0.4, y: 0.6 } }
+  const glManualClip = { id: 'z2', origin: 'manual', startTime: 2, endTime: 4, focus: { x: 0.1, y: 0.1 } }
+  check('gl.automaticNull', canvasPreviewAutomaticClip(null), null)
+  check('gl.automaticKept', canvasPreviewAutomaticClip(glAutoClip).id, 'z1')
+  check('gl.automaticDropsManual', canvasPreviewAutomaticClip(glManualClip), null)
+
+  check('gl.cameraPosNoClip', canvasPreviewAutomaticCameraPosition({
+    automaticClip: null, trackedFocus: { x: 1, y: 1 } }), null)
+  check('gl.cameraPosTracked', canvasPreviewAutomaticCameraPosition({
+    automaticClip: glAutoClip, trackedFocus: { x: 0.2, y: 0.3 } }).x, 0.2)
+  check('gl.cameraPosFallback', canvasPreviewAutomaticCameraPosition({
+    automaticClip: glAutoClip, trackedFocus: null }).x, 0.4)
+
+  check('gl.inheritedNoActive', canvasPreviewInheritedAutomaticPosition({
+    activeClip: null, previousClip: glAutoClip, trackedFocus: null }), null)
+  check('gl.inheritedNoPrevious', canvasPreviewInheritedAutomaticPosition({
+    activeClip: glAutoClip, previousClip: null, trackedFocus: null }), null)
+  check('gl.inheritedManualPrevious', canvasPreviewInheritedAutomaticPosition({
+    activeClip: glAutoClip, previousClip: glManualClip, trackedFocus: null }), null)
+  check('gl.inheritedTracked', canvasPreviewInheritedAutomaticPosition({
+    activeClip: glAutoClip, previousClip: { ...glAutoClip, id: 'z0' },
+    trackedFocus: { x: 0.9, y: 0.1 } }).x, 0.9)
+  check('gl.inheritedFallback', canvasPreviewInheritedAutomaticPosition({
+    activeClip: glAutoClip, previousClip: { ...glAutoClip, id: 'z0' },
+    trackedFocus: null }).y, 0.6)
+
+  check('gl.reanchorNoClip', canvasPreviewShouldReanchorAutomaticEntry({
+    automaticClip: null, startsAfterCut: true }), false)
+  check('gl.reanchorAfterCut', canvasPreviewShouldReanchorAutomaticEntry({
+    automaticClip: glAutoClip, startsAfterCut: true }), true)
+  check('gl.reanchorNotAfterCut', canvasPreviewShouldReanchorAutomaticEntry({
+    automaticClip: glAutoClip, startsAfterCut: false }), false)
+
+  // ---------------- 暂停授权
+  check('gl.frameTolerance', OVERLAY_AUTHORING_FRAME_TOLERANCE, 0.0001)
+  check('gl.frameDuration60', overlayAuthoringFrameDuration(60), 1 / 60)
+  check('gl.frameDurationZero', overlayAuthoringFrameDuration(0), 1)
+  check('gl.firstFrameYes', overlayAuthoringClipIsOnFirstFrame({
+    playbackTime: 0.01, startTime: 0, endTime: 1, frameDuration: 1 / 60 }), true)
+  check('gl.firstFrameNo', overlayAuthoringClipIsOnFirstFrame({
+    playbackTime: 0.02, startTime: 0, endTime: 1, frameDuration: 1 / 60 }), false)
+  check('gl.firstFrameOutside', overlayAuthoringClipIsOnFirstFrame({
+    playbackTime: 1.5, startTime: 0, endTime: 1, frameDuration: 1 / 60 }), false)
+
+  const glClips = [
+    { id: 'a', startTime: 0, endTime: 2 },
+    { id: 'b', startTime: 0, endTime: 2 },
+    { id: 'c', startTime: 5, endTime: 7 },
+  ]
+  const glPlanBase = {
+    frameRate: 60, playbackTime: 0.005, stickerClips: glClips, mosaicClips: [],
+    hasJoinedEntry: (id) => id === 'b',
+  }
+  check('gl.planPlaying', canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, isPlaying: true, selection: { kind: 'sticker', id: 'a' } }).action,
+    'unchanged-playing')
+  check('gl.planOther', canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, isPlaying: false, selection: { kind: 'other' } }).action,
+    'unchanged-not-selected')
+  check('gl.planMissingClip', canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, isPlaying: false, selection: { kind: 'sticker', id: 'zz' } }).action,
+    'unchanged-clip-missing')
+  check('gl.planLateFrame', canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, playbackTime: 0.5, isPlaying: false,
+    selection: { kind: 'sticker', id: 'a' } }).action, 'unchanged-outside-first-frame')
+  const glStickerPlan = canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, isPlaying: false, selection: { kind: 'sticker', id: 'a' } })
+  check('gl.planClearSticker', glStickerPlan.action, 'clear-sticker-entrances')
+  check('gl.planClearStickerIDs', glStickerPlan.stickerClipIDsToClear.join(','), 'a')
+  check('gl.planClearStickerMosaic', glStickerPlan.mosaicClipIndexToClear, -1)
+
+  const glMosaicClips = [{ id: 'm0', startTime: 0, endTime: 3 }, { id: 'm1', startTime: 0, endTime: 3 }]
+  const glMosaicPlan = canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, mosaicClips: glMosaicClips, isPlaying: false,
+    selection: { kind: 'mosaic', id: 'm1' } })
+  check('gl.planClearMosaic', glMosaicPlan.action, 'clear-mosaic-transition')
+  check('gl.planClearMosaicIndex', glMosaicPlan.mosaicClipIndexToClear, 1)
+  check('gl.planClearMosaicStickers', glMosaicPlan.stickerClipIDsToClear.length, 0)
+  check('gl.planMosaicLate', canvasPreviewOverlayAuthoringPlan({
+    ...glPlanBase, mosaicClips: glMosaicClips, playbackTime: 1, isPlaying: false,
+    selection: { kind: 'mosaic', id: 'm1' } }).action, 'unchanged-outside-first-frame')
+
+  check('gl.cameraPixels', CANVAS_PREVIEW_CAMERA_SOURCE_SIZE_IS_PIXELS, true)
+  check('gl.pointSceneInteractionOnly', CANVAS_PREVIEW_POINT_SCENE_IS_INTERACTION_ONLY, true)
+  check('gl.layoutFields', CANVAS_PREVIEW_LAYOUT_FIELDS.length, 6)
+  check('gl.layoutRasterField', CANVAS_PREVIEW_LAYOUT_FIELDS.includes('rasterFrameScene'), true)
+
+  // ---------------- 栅格策略
+  check('gs.modes', EDITOR_PREVIEW_RESOLUTION_MODES.join(','), 'low,full')
+  check('gs.defaultMode', EDITOR_PREVIEW_RESOLUTION_DEFAULT, 'full')
+  check('gs.labelLow', editorPreviewResolutionLabel('low'), '清晰预览')
+  check('gs.labelFull', editorPreviewResolutionLabel('full'), '完整分辨率')
+  check('gs.detailLow', editorPreviewResolutionDetail('low'), '播放更流畅')
+  check('gs.detailFull', editorPreviewResolutionDetail('full'), '保留素材细节')
+  check('gs.labelTable', EDITOR_PREVIEW_RESOLUTION_LABELS.full, '完整分辨率')
+  check('gs.detailTable', EDITOR_PREVIEW_RESOLUTION_DETAILS.low, '播放更流畅')
+  check('gs.textureLimit', CANVAS_PREVIEW_MAXIMUM_TEXTURE_DIMENSION, 16384)
+
+  const gsLow = canvasPreviewRasterPixelSize({
+    points: { width: 800.2, height: 600.1 }, mode: 'low' })
+  check('gs.lowCeilW', gsLow.width, 801)
+  check('gs.lowCeilH', gsLow.height, 601)
+  const gsLowIgnoresFull = canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, mode: 'low',
+    fullResolution: { width: 1920, height: 1080 } })
+  check('gs.lowIgnoresFull', gsLowIgnoresFull.width, 800)
+  const gsFull = canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, mode: 'full',
+    fullResolution: { width: 1920, height: 1080 } })
+  check('gs.fullW', gsFull.width, 1920)
+  check('gs.fullH', gsFull.height, 1080)
+  check('gs.fullNoResolution', canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, mode: 'full', fullResolution: null }).width, 800)
+  check('gs.fullZeroWidth', canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, mode: 'full',
+    fullResolution: { width: 0, height: 1080 } }).width, 800)
+  check('gs.fullNaN', canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, mode: 'full',
+    fullResolution: { width: Number.NaN, height: 1080 } }).width, 800)
+  check('gs.fullTinyClamped', canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, mode: 'full',
+    fullResolution: { width: 0.5, height: 0.5 } }).width, 2)
+  check('gs.defaultIsFull', canvasPreviewRasterPixelSize({
+    points: { width: 10, height: 10 },
+    fullResolution: { width: 100, height: 50 } }).width, 100)
+  check('gs.displayScaleIgnored', canvasPreviewRasterPixelSize({
+    points: { width: 800, height: 600 }, displayScale: 2, mode: 'low' }).width, 800)
+
+  const gsDrawable = canvasPreviewDrawablePixelSize({
+    rasterCanvasSize: { width: 1920, height: 1080 } })
+  check('gs.drawableW', gsDrawable.width, 1920)
+  check('gs.drawableH', gsDrawable.height, 1080)
+  const gsClamped = canvasPreviewDrawablePixelSize({
+    rasterCanvasSize: { width: 20000, height: 1000 } })
+  check('gs.drawableClampedW', gsClamped.width, 16384)
+  check('gs.drawableClampedH', gsClamped.height, 819)
+  const gsTinyDrawable = canvasPreviewDrawablePixelSize({
+    rasterCanvasSize: { width: 1, height: 1 } })
+  check('gs.drawableFloorW', gsTinyDrawable.width, 2)
+  check('gs.drawableFloorH', gsTinyDrawable.height, 2)
+  const gsCustomLimit = canvasPreviewDrawablePixelSize({
+    rasterCanvasSize: { width: 1000, height: 500 }, maximumTextureDimension: 100 })
+  check('gs.drawableCustomLimitW', gsCustomLimit.width, 100)
+  check('gs.drawableCustomLimitH', gsCustomLimit.height, 50)
+
+  check('gs.overlaysHiddenWhilePlaying', canvasPreviewShowsEditingOverlays(true), false)
+  check('gs.overlaysShownPaused', canvasPreviewShowsEditingOverlays(false), true)
+  check('gs.trackTransformWithoutComposition', pausedPreviewFrameAppliesTrackTransform(false), true)
+  check('gs.trackTransformWithComposition', pausedPreviewFrameAppliesTrackTransform(true), false)
+  check('gs.timeTolerance', PAUSED_PREVIEW_FRAME_TIME_TOLERANCE, 0)
+  check('gs.cadence', CANVAS_PREVIEW_PLAYBACK_CADENCE_FPS, 60)
+  check('gs.sampleDown', canvasPreviewPlaybackSampleTime(0.008), 0)
+  check('gs.sampleUp', canvasPreviewPlaybackSampleTime(0.01), 1 / 60)
+  check('gs.sampleNaN', canvasPreviewPlaybackSampleTime(Number.NaN), 0)
+  check('gs.sampleNegative', canvasPreviewPlaybackSampleTime(-1), 0)
+  check('gs.sampleExact', canvasPreviewPlaybackSampleTime(1), 1)
+  check('gs.frameSampleExact', canvasPreviewFrameSampleTime('exact', 0.008), 0.008)
+  check('gs.frameSamplePlayback', canvasPreviewFrameSampleTime('playback', 0.01), 1 / 60)
+  check('gs.evaluationFields', CANVAS_PLAYBACK_EVALUATION_FIELDS.length, 14)
+  check('gs.reusesScene', canvasPreviewReusesEvaluatedScene(), true)
+  check('gs.assetTransferable', immutablePreviewAssetIsTransferable({ hasAsset: true }), true)
+
+  // ---------------- 线性虚化：常量
+  check('lf.minimumDrag', LINEAR_FOCUS_MINIMUM_DRAG, 2)
+  check('lf.handleSize', LINEAR_FOCUS_HANDLE_SIZE, 28)
+  check('lf.edgeInset', LINEAR_FOCUS_HANDLE_EDGE_INSET, 18)
+  check('lf.rotationFactor', LINEAR_FOCUS_ROTATION_HANDLE_FACTOR, 0.36)
+  check('lf.featherDash', LINEAR_FOCUS_FEATHER_DASH.join(','), '4,6')
+  check('lf.guideWidth', LINEAR_FOCUS_GUIDE_WIDTH, 1)
+  check('lf.guideActiveWidth', LINEAR_FOCUS_GUIDE_ACTIVE_WIDTH, 1.5)
+  check('lf.hitWidth', LINEAR_FOCUS_HIT_WIDTH, 10)
+  check('lf.shadowAlpha', LINEAR_FOCUS_SHADOW_ALPHA, 0.38)
+  check('lf.lineAlpha', LINEAR_FOCUS_LINE_ALPHA, 0.8)
+  check('lf.idleAlpha', LINEAR_FOCUS_HANDLE_IDLE_ALPHA, 0.65)
+  check('lf.parallelEpsilon', LINEAR_FOCUS_PARALLEL_EPSILON, 0.00001)
+
+  // ---------------- 线性虚化：源平面
+  const lfPlane = linearFocusPlane({
+    crop: { x: 0, y: 0, width: 1, height: 1 }, sourceAspect: 16 / 9,
+    baseRect: { x: 0, y: 0, width: 1600, height: 900 },
+    finalRect: { x: 0, y: 0, width: 1600, height: 900 },
+  })
+  check('lf.planeWidth', lfPlane.width, 1600)
+  check('lf.planeHeight', lfPlane.height, 900)
+  check('lf.planeX', lfPlane.x, 0)
+  const lfPlaneSquare = linearFocusPlane({
+    crop: { x: 0, y: 0, width: 1, height: 1 }, sourceAspect: 1,
+    baseRect: { x: 0, y: 0, width: 1600, height: 900 },
+    finalRect: { x: 0, y: 0, width: 1600, height: 900 },
+  })
+  check('lf.planeSquareWidth', lfPlaneSquare.width, 900)
+  check('lf.planeSquareX', lfPlaneSquare.x, 350)
+  check('lf.shortEdge', linearFocusShortEdge({ x: 0, y: 0, width: 100, height: 40 }), 40)
+
+  const lfCenterPoint = linearFocusCenter({
+    effect: { center: { x: 0.25, y: 0.75 } },
+    plane: { x: 0, y: 0, width: 100, height: 100 },
+    crop: { x: 0, y: 0, width: 1, height: 1 },
+  })
+  check('lf.centerX', lfCenterPoint.x, 25)
+  check('lf.centerY', lfCenterPoint.y, 75)
+  const lfCenterCrop = linearFocusCenter({
+    effect: { center: { x: 0.5, y: 0.5 } },
+    plane: { x: 0, y: 0, width: 100, height: 100 },
+    crop: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 },
+  })
+  check('lf.centerCropX', lfCenterCrop.x, 50)
+  check('lf.centerCropMissing', linearFocusCenter({
+    effect: { center: { x: 0.5, y: 0.5 } },
+    plane: { x: 0, y: 0, width: 100, height: 100 },
+    crop: { x: 0.5, y: 0.5, width: 0.5, height: 0.5 },
+  }).x, 0)
+
+  const lfTan0 = linearFocusTangent(0)
+  check('lf.tangentX', lfTan0.x, 1)
+  check('lf.tangentY', lfTan0.y, 0)
+  const lfTan90 = linearFocusTangent(90)
+  check('lf.tangent90X', lfTan90.x, 0)
+  check('lf.tangent90Y', lfTan90.y, 1)
+  check('lf.tangentNull', linearFocusTangent(null).x, 1)
+  check('lf.normalX', linearFocusNormal({ x: 1, y: 0 }).x, 0)
+  check('lf.normalY', linearFocusNormal({ x: 1, y: 0 }).y, 1)
+  check('lf.normalFlip', linearFocusNormal({ x: 0, y: 1 }).x, -1)
+  check('lf.offsetX', linearFocusOffset({ x: 0, y: 0 }, { x: 1, y: 0 }, 5).x, 5)
+
+  check('lf.projectedAngleAlongX', linearFocusProjectedAngle({
+    point: { x: 10, y: 20 }, tangent: { x: 1, y: 0 }, project: (p) => p }), 0)
+  check('lf.projectedAngleAlongY', linearFocusProjectedAngle({
+    point: { x: 10, y: 20 }, tangent: { x: 0, y: 1 }, project: (p) => p }), 90)
+  check('lf.projectedAngleScaled', linearFocusProjectedAngle({
+    point: { x: 0, y: 0 }, tangent: { x: 1, y: 1 }, project: (p) => ({ x: p.x, y: p.y * 2 }) }), 63.43494882292201)
+
+  const lfMetrics = linearFocusBandMetrics({
+    effect: { size: 0.5, softness: 0.2 }, shortEdge: 100 })
+  check('lf.radius', lfMetrics.radius, 25)
+  check('lf.feather', lfMetrics.feather, 8)
+  check('lf.featherFloor', linearFocusBandMetrics({
+    effect: { size: 0.5, softness: 0 }, shortEdge: 100 }).feather, 1)
+
+  const lfGuides = linearFocusGuidePoints({
+    center: { x: 0, y: 0 }, normal: { x: 0, y: 1 }, radius: 10, feather: 5 })
+  check('lf.guideCount', lfGuides.length, 2)
+  check('lf.guideNegInner', lfGuides[0].inner.y, -10)
+  check('lf.guideNegOuter', lfGuides[0].outer.y, -15)
+  check('lf.guidePosInner', lfGuides[1].inner.y, 10)
+  check('lf.guidePosOuter', lfGuides[1].outer.y, 15)
+  check('lf.rotationHandlePoint', linearFocusRotationHandlePoint({
+    center: { x: 0, y: 0 }, tangent: { x: 1, y: 0 }, shortEdge: 100 }).x, 36)
+
+  const lfHandleIn = linearFocusHandlePoint({ point: { x: 5, y: 5 }, canvasSize: { width: 800, height: 600 } })
+  check('lf.handleClampMinX', lfHandleIn.x, 18)
+  check('lf.handleClampMinY', lfHandleIn.y, 18)
+  const lfHandleOut = linearFocusHandlePoint({ point: { x: 790, y: 590 }, canvasSize: { width: 800, height: 600 } })
+  check('lf.handleClampMaxX', lfHandleOut.x, 782)
+  check('lf.handleClampMaxY', lfHandleOut.y, 582)
+  check('lf.handleTinyCanvas', linearFocusHandlePoint({
+    point: { x: 5, y: 5 }, canvasSize: { width: 30, height: 30 } }).x, 18)
+
+  // ---------------- 线性虚化：裁剪
+  const lfSquare = [
+    { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 },
+  ]
+  const lfClipped = clipPolygonByHalfPlane({
+    vertices: lfSquare, center: { x: 5, y: 5 }, normal: { x: 1, y: 0 },
+    radius: 2, side: 1 })
+  check('lf.clipCount', lfClipped.length, 4)
+  check('lf.clipMaxX', Math.max(...lfClipped.map((p) => p.x)), 7)
+  const lfClippedBoth = clipPolygonByHalfPlane({
+    vertices: lfClipped, center: { x: 5, y: 5 }, normal: { x: 1, y: 0 },
+    radius: 2, side: -1 })
+  check('lf.clipBothCount', lfClippedBoth.length, 4)
+  check('lf.clipBothMinX', Math.min(...lfClippedBoth.map((p) => p.x)), 3)
+  check('lf.clipEmptyInput', clipPolygonByHalfPlane({
+    vertices: [], center: { x: 0, y: 0 }, normal: { x: 1, y: 0 }, radius: 1, side: 1 }).length, 0)
+
+  check('lf.bandNoProjector', linearFocusClearBandVertices({
+    plane: { x: 0, y: 0, width: 10, height: 10 }, center: { x: 5, y: 5 },
+    normal: { x: 1, y: 0 }, radius: 2, hasProjector: false }).length, 0)
+  check('lf.bandZeroPlane', linearFocusClearBandVertices({
+    plane: { x: 0, y: 0, width: 0, height: 10 }, center: { x: 5, y: 5 },
+    normal: { x: 1, y: 0 }, radius: 2, hasProjector: true }).length, 0)
+  check('lf.bandCoversAll', linearFocusClearBandVertices({
+    plane: { x: 0, y: 0, width: 10, height: 10 }, center: { x: 5, y: 5 },
+    normal: { x: 1, y: 0 }, radius: 50, hasProjector: true }).length, 4)
+  check('lf.bandMissesAll', linearFocusClearBandVertices({
+    plane: { x: 0, y: 0, width: 10, height: 10 }, center: { x: 100, y: 100 },
+    normal: { x: 1, y: 0 }, radius: 2, hasProjector: true }).length, 0)
+
+  const lfLine = linearFocusLineClip({
+    point: { x: 50, y: 50 }, tangent: { x: 1, y: 0 },
+    plane: { x: 0, y: 0, width: 100, height: 100 } })
+  check('lf.lineLower', lfLine.lower, -50)
+  check('lf.lineUpper', lfLine.upper, 50)
+  const lfLineOffset = linearFocusLineClip({
+    point: { x: 150, y: 50 }, tangent: { x: 1, y: 0 },
+    plane: { x: 0, y: 0, width: 100, height: 100 } })
+  check('lf.lineOffsetLower', lfLineOffset.lower, -150)
+  check('lf.lineOffsetUpper', lfLineOffset.upper, -50)
+  check('lf.lineParallelOutside', linearFocusLineClip({
+    point: { x: 150, y: 50 }, tangent: { x: 0, y: 1 },
+    plane: { x: 0, y: 0, width: 100, height: 100 } }), null)
+  check('lf.lineVerticalOutside', linearFocusLineClip({
+    point: { x: 50, y: 150 }, tangent: { x: 1, y: 0 },
+    plane: { x: 0, y: 0, width: 100, height: 100 } }), null)
+
+  // ---------------- 线性虚化：拖拽
+  check('lf.dragAccepted', linearFocusDragAccepted({
+    selectionIsOwnClip: true, hasInteractionID: true, interactionIDMatches: true }), true)
+  check('lf.dragWrongSelection', linearFocusDragAccepted({
+    selectionIsOwnClip: false, hasInteractionID: true, interactionIDMatches: true }), false)
+  check('lf.dragNoInteraction', linearFocusDragAccepted({
+    selectionIsOwnClip: true, hasInteractionID: false, interactionIDMatches: false }), false)
+  check('lf.dragStolenInteraction', linearFocusDragAccepted({
+    selectionIsOwnClip: true, hasInteractionID: true, interactionIDMatches: false }), false)
+
+  check('lf.normalDeltaAlongNormal', linearFocusNormalDelta({
+    delta: { x: 3, y: 4 }, tangent: { x: 1, y: 0 } }), 4)
+  check('lf.normalDeltaAlongTangent', linearFocusNormalDelta({
+    delta: { x: 3, y: 4 }, tangent: { x: 0, y: 1 } }), -3)
+
+  const lfDragBase = {
+    delta: { x: 10, y: 20 }, normalDelta: 10,
+    plane: { x: 0, y: 0, width: 100, height: 200 },
+    crop: { x: 0, y: 0, width: 1, height: 1 },
+    shortEdge: 100, startAngle: 0, currentAngle: 0,
+  }
+  const lfPos = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'position' },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } })
+  check('lf.dragPosKind', lfPos.kind, 'center')
+  check('lf.dragPosX', lfPos.center.x, 0.6)
+  check('lf.dragPosY', lfPos.center.y, 0.6)
+  const lfPosClamped = linearFocusDragResult({
+    ...lfDragBase, delta: { x: 1000, y: -1000 }, handle: { kind: 'position' },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } })
+  check('lf.dragPosClampMax', lfPosClamped.center.x, 1)
+  check('lf.dragPosClampMin', lfPosClamped.center.y, 0)
+
+  const lfAngle = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'direction' },
+    startAngle: 0, currentAngle: Math.PI / 2,
+    effect: { center: { x: 0.5, y: 0.5 }, angleDegrees: 350, size: 0.5, softness: 0.5 } })
+  check('lf.dragAngleKind', lfAngle.kind, 'angle')
+  check('lf.dragAngleWrapped', lfAngle.angleDegrees, 80)
+  const lfAngleBack = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'direction' },
+    startAngle: 0, currentAngle: (3 * Math.PI) / 2,
+    effect: { center: { x: 0.5, y: 0.5 }, angleDegrees: 350, size: 0.5, softness: 0.5 } })
+  check('lf.dragAngleShortest', lfAngleBack.angleDegrees, 260)
+
+  const lfSize = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'region', side: 1 },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } })
+  check('lf.dragSizeKind', lfSize.kind, 'size')
+  check('lf.dragSizeGrow', lfSize.size, 0.7)
+  const lfSizeShrink = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'region', side: -1 },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } })
+  check('lf.dragSizeShrink', lfSizeShrink.size, 0.3)
+  check('lf.dragSizeClamp', linearFocusDragResult({
+    ...lfDragBase, normalDelta: 1000, handle: { kind: 'region', side: 1 },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } }).size, 1)
+  check('lf.dragSizeFloor', linearFocusDragResult({
+    ...lfDragBase, normalDelta: -1000, handle: { kind: 'region', side: 1 },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } }).size, 0.1)
+
+  const lfFeather = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'feather', side: 1 },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } })
+  check('lf.dragFeatherKind', lfFeather.kind, 'softness')
+  check('lf.dragFeatherGrow', lfFeather.softness, 0.75)
+  const lfFeatherShrink = linearFocusDragResult({
+    ...lfDragBase, handle: { kind: 'feather', side: -1 },
+    effect: { center: { x: 0.5, y: 0.5 }, size: 0.5, softness: 0.5 } })
+  check('lf.dragFeatherShrink', lfFeatherShrink.softness, 0.25)
+
+  check('lf.suppressAnimation', linearFocusSuppressesImplicitAnimation(), true)
+  check('lf.dropNoOwned', linearFocusShouldDropOwnedInteraction({
+    ownedInteractionID: null, currentInteractionID: 'a' }), false)
+  check('lf.dropChanged', linearFocusShouldDropOwnedInteraction({
+    ownedInteractionID: 'a', currentInteractionID: 'b' }), true)
+  check('lf.dropSame', linearFocusShouldDropOwnedInteraction({
+    ownedInteractionID: 'a', currentInteractionID: 'a' }), false)
+  check('lf.helpPosition', LINEAR_FOCUS_HELP_POSITION, '拖动清晰区域移动位置')
+  check('lf.helpRegion', LINEAR_FOCUS_HELP_REGION, '拖动实线调整清晰区域')
+  check('lf.helpFeather', LINEAR_FOCUS_HELP_FEATHER, '拖动虚线调整羽化范围')
+  check('lf.titlePosition', LINEAR_FOCUS_TITLE_POSITION, '移动清晰带')
+  check('lf.titleDirection', LINEAR_FOCUS_TITLE_DIRECTION, '旋转清晰带')
+  check('lf.commitAction', LINEAR_FOCUS_COMMIT_ACTION, '调整线性虚化')
+
+  // ---------------- 叠加层渲染
+  check('ov.progressFloor', OVERLAY_TRANSITION_MINIMUM_PROGRESS, 0.001)
+  check('ov.blurBase', MOSAIC_BLUR_BASE_RADIUS, 4)
+  check('ov.blurIntensity', MOSAIC_BLUR_INTENSITY_RADIUS, 44)
+  check('ov.sampleExpansion', MOSAIC_SAMPLE_EXPANSION_FACTOR, 3)
+  check('ov.minRectEdge', OVERLAY_MINIMUM_RECT_EDGE, 1)
+  check('ov.minStickerWidth', OVERLAY_MINIMUM_STICKER_WIDTH, 2)
+  check('ov.designWidth', OVERLAY_DESIGN_REFERENCE_WIDTH, 1920)
+  check('ov.minBorderWidth', OVERLAY_MINIMUM_BORDER_WIDTH, 0.5)
+  check('ov.shadowFloor', OVERLAY_SHADOW_MINIMUM_OPACITY, 0.001)
+  check('ov.rotationFloor', OVERLAY_ROTATION_MINIMUM_RADIANS, 0.0001)
+  check('ov.opacityCeiling', OVERLAY_OPACITY_MAXIMUM, 0.999)
+
+  check('ov.blurSkipOtherStyle', mosaicBlurShouldApply({
+    style: 'pixelate', transitionProgress: 1 }), false)
+  check('ov.blurSkipTinyProgress', mosaicBlurShouldApply({
+    style: 'blur', transitionProgress: 0.0005 }), false)
+  check('ov.blurApply', mosaicBlurShouldApply({
+    style: 'blur', transitionProgress: 0.01 }), true)
+
+  const ovExtent = { x: 0, y: 0, width: 100, height: 200 }
+  const ovRect = mosaicBlurRect({
+    extent: ovExtent, sourceRect: { x: 0, y: 0, width: 0.5, height: 0.5 } })
+  check('ov.mosaicRectX', ovRect.x, 0)
+  check('ov.mosaicRectYFlipped', ovRect.y, 100)
+  check('ov.mosaicRectW', ovRect.width, 50)
+  check('ov.mosaicRectH', ovRect.height, 100)
+  const ovRect2 = mosaicBlurRect({
+    extent: { x: 0, y: 0, width: 100, height: 200 },
+    sourceRect: { x: 0.2, y: 0.3, width: 0.4, height: 0.4 } })
+  check('ov.mosaicRect2X', ovRect2.x, 20)
+  check('ov.mosaicRect2Y', ovRect2.y, 60)
+  check('ov.mosaicRect2W', ovRect2.width, 40)
+  check('ov.mosaicRect2H', ovRect2.height, 80)
+  const ovRectClipped = mosaicBlurRect({
+    extent: { x: 0, y: 0, width: 100, height: 100 },
+    sourceRect: { x: 0.9, y: 0.9, width: 0.5, height: 0.5 } })
+  check('ov.mosaicRectClippedX', ovRectClipped.x, 90)
+  check('ov.mosaicRectClippedY', ovRectClipped.y, 0)
+  check('ov.mosaicRectClippedW', ovRectClipped.width, 10)
+  check('ov.mosaicRectTooSmall', mosaicBlurRect({
+    extent: { x: 0, y: 0, width: 100, height: 100 },
+    sourceRect: { x: 0.999, y: 0, width: 0.001, height: 1 } }), null)
+
+  check('ov.blurRadiusMin', mosaicBlurRadius({ intensity: 0, transitionProgress: 1 }), 4)
+  check('ov.blurRadiusMax', mosaicBlurRadius({ intensity: 1, transitionProgress: 1 }), 48)
+  check('ov.blurRadiusHalf', mosaicBlurRadius({ intensity: 0.5, transitionProgress: 0.5 }), 13)
+
+  const ovSample = mosaicSampleRect({
+    rect: { x: 10, y: 10, width: 20, height: 20 }, radius: 2,
+    extent: { x: 0, y: 0, width: 100, height: 100 } })
+  check('ov.sampleX', ovSample.x, 4)
+  check('ov.sampleW', ovSample.width, 32)
+  const ovSampleClamped = mosaicSampleRect({
+    rect: { x: 10, y: 10, width: 20, height: 20 }, radius: 20,
+    extent: { x: 0, y: 0, width: 100, height: 100 } })
+  check('ov.sampleClampedW', ovSampleClamped.width, 90)
+  check('ov.cornerRadius', mosaicCornerRadius({
+    rect: { x: 0, y: 0, width: 100, height: 40 }, cornerRadius: 0.5 }), 20)
+
+  const ovSticker = stickerTargetRect({
+    canvasRect: { width: 1920, height: 1080 },
+    position: { x: 0.5, y: 0.5 }, offset: { x: 0, y: 0 },
+    width: 0.25, scale: 1, sourceSize: { width: 400, height: 200 } })
+  check('ov.stickerW', ovSticker.width, 480)
+  check('ov.stickerH', ovSticker.height, 240)
+  check('ov.stickerX', ovSticker.x, 720)
+  check('ov.stickerY', ovSticker.y, 420)
+  const ovStickerOffset = stickerTargetRect({
+    canvasRect: { width: 1920, height: 1080 },
+    position: { x: 0.5, y: 0.5 }, offset: { x: 0.1, y: -0.1 },
+    width: 0.25, scale: 1, sourceSize: { width: 400, height: 200 } })
+  check('ov.stickerOffsetX', ovStickerOffset.x, 912)
+  check('ov.stickerOffsetY', ovStickerOffset.y, 528)
+  check('ov.stickerMinWidth', stickerTargetRect({
+    canvasRect: { width: 1920, height: 1080 },
+    position: { x: 0.5, y: 0.5 }, offset: { x: 0, y: 0 },
+    width: 0, scale: 1, sourceSize: { width: 400, height: 200 } }).width, 2)
+
+  check('ov.cornerRadiusScaled', stickerCornerRadius({
+    cornerRadius: 20, width: 960, height: 540 }), 10)
+  check('ov.cornerRadiusShortEdge', stickerCornerRadius({
+    cornerRadius: 200, width: 960, height: 100 }), 50)
+  check('ov.cornerRadiusNegative', stickerCornerRadius({
+    cornerRadius: -5, width: 960, height: 540 }), 0)
+  check('ov.borderWidthFloor', stickerBorderWidth({ borderWidth: 0, canvasWidth: 1920 }), 0.5)
+  check('ov.borderWidthScaled', stickerBorderWidth({ borderWidth: 2, canvasWidth: 1920 }), 2)
+  check('ov.borderWidthHalfCanvas', stickerBorderWidth({ borderWidth: 1, canvasWidth: 960 }), 0.5)
+  check('ov.outerCorner', stickerOuterCornerRadius({ cornerRadius: 10, borderWidth: 2 }), 12)
+  check('ov.shadowRadius', stickerShadowRadius({ shadowRadius: 8, canvasWidth: 1920 }), 8)
+  check('ov.shadowRadiusHalf', stickerShadowRadius({ shadowRadius: 8, canvasWidth: 960 }), 4)
+  const ovShadowOffset = stickerShadowTranslation({ offset: { x: 4, y: 6 }, canvasWidth: 1920 })
+  check('ov.shadowOffsetX', ovShadowOffset.x, 4)
+  check('ov.shadowOffsetYFlipped', ovShadowOffset.y, -6)
+  check('ov.shadowSkip', stickerShadowShouldApply(0.001), false)
+  check('ov.shadowApply', stickerShadowShouldApply(0.0015), true)
+  check('ov.rotationSkip', stickerRotationApplies(0.00005), false)
+  check('ov.rotationApply', stickerRotationApplies(0.001), true)
+  check('ov.rotationSignFlipped', stickerRotationCoreImageRadians(0.5), -0.5)
+  check('ov.opacitySkip', stickerOpacityApplies(0.999), false)
+  check('ov.opacityApply', stickerOpacityApplies(0.5), true)
+  const ovVec = stickerOpacityVector(0.4)
+  check('ov.opacityVectorW', ovVec.w, 0.4)
+  check('ov.opacityVectorX', ovVec.x, 0)
+
+  const ovClip = overlayClippedExtent({
+    canvasRect: { x: 0, y: 0, width: 100, height: 100 },
+    maskExtent: { x: 50, y: 50, width: 100, height: 100 } })
+  check('ov.clipX', ovClip.x, 50)
+  check('ov.clipW', ovClip.width, 50)
+  check('ov.clipNoMask', overlayClippedExtent({
+    canvasRect: { x: 0, y: 0, width: 100, height: 100 }, maskExtent: null }), null)
+  check('ov.clipDisjoint', overlayClippedExtent({
+    canvasRect: { x: 0, y: 0, width: 10, height: 10 },
+    maskExtent: { x: 50, y: 50, width: 10, height: 10 } }), null)
+  check('ov.normalizeX', overlayNormalizingTranslation({ x: 10, y: 20, width: 1, height: 1 }).x, -10)
+  check('ov.normalizeY', overlayNormalizingTranslation({ x: 10, y: 20, width: 1, height: 1 }).y, -20)
+  check('ov.excludesSpotlight', OVERLAY_RENDERER_EXCLUDES_SPOTLIGHT, true)
+  check('ov.intersectOverlap', intersectRects(
+    { x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 }).width, 5)
+  check('ov.intersectTouching', intersectRects(
+    { x: 0, y: 0, width: 10, height: 10 }, { x: 10, y: 0, width: 10, height: 10 }), null)
+  check('ov.insetPositive', insetRect({ x: 0, y: 0, width: 10, height: 10 }, 2).width, 6)
+  check('ov.insetNegative', insetRect({ x: 10, y: 10, width: 10, height: 10 }, -2).x, 8)
+
+  // ---------------- 键盘焦点滚动
+  check('kf.duration', KEYBOARD_FOCUS_SCROLL_DURATION, 0.16)
+  check('kf.defaultEnabled', KEYBOARD_FOCUS_SCROLL_DEFAULT_ENABLED, false)
+  check('kf.requestNoTarget', keyboardFocusScrollRequestAccepted({
+    target: null, viewportWidth: 100, viewportHeight: 100 }), false)
+  check('kf.requestZeroViewport', keyboardFocusScrollRequestAccepted({
+    target: 'a', viewportWidth: 0, viewportHeight: 100 }), false)
+  check('kf.requestAccepted', keyboardFocusScrollRequestAccepted({
+    target: 'a', viewportWidth: 100, viewportHeight: 100 }), true)
+  const kfAnim = keyboardFocusScrollAnimation(false)
+  check('kf.animEasing', kfAnim.easing, 'ease-out')
+  check('kf.animDuration', kfAnim.duration, 0.16)
+  check('kf.animReduced', keyboardFocusScrollAnimation(true), null)
+
+  check('kf.rememberFlipped', scrollRememberedOffset({
+    isFlipped: true, viewportMinY: 100, viewportMaxY: 500,
+    documentMinY: 0, documentMaxY: 1000 }), 100)
+  check('kf.rememberUnflipped', scrollRememberedOffset({
+    isFlipped: false, viewportMinY: 0, viewportMaxY: 900,
+    documentMinY: 0, documentMaxY: 1000 }), 100)
+  check('kf.rememberClamped', scrollRememberedOffset({
+    isFlipped: false, viewportMinY: 0, viewportMaxY: 900,
+    documentMinY: 0, documentMaxY: 500 }), 0)
+
+  check('kf.restoreFits', scrollRestoreOffset({
+    topOffset: 300, documentHeight: 1000, clipHeight: 400 }), 300)
+  check('kf.restoreClamped', scrollRestoreOffset({
+    topOffset: 800, documentHeight: 1000, clipHeight: 400 }), 600)
+  check('kf.restoreShortDoc', scrollRestoreOffset({
+    topOffset: 800, documentHeight: 300, clipHeight: 400 }), 0)
+
+  check('kf.restoreYFlipped', scrollRestoreY({
+    isFlipped: true, documentMinY: 0, documentMaxY: 1000,
+    clipHeight: 400, offset: 300 }), 300)
+  check('kf.restoreYUnflipped', scrollRestoreY({
+    isFlipped: false, documentMinY: 0, documentMaxY: 1000,
+    clipHeight: 400, offset: 300 }), 300)
+  check('kf.restoreYScaled', scrollRestoreY({
+    isFlipped: true, documentMinY: 50, documentMaxY: 1050,
+    clipHeight: 400, offset: 300 }), 350)
+
+  check('kf.scheduleOk', scrollRestoreCanSchedule({
+    needsRestore: true, restoreIsScheduled: false }), true)
+  check('kf.scheduleBusy', scrollRestoreCanSchedule({
+    needsRestore: true, restoreIsScheduled: true }), false)
+  check('kf.scheduleNotNeeded', scrollRestoreCanSchedule({
+    needsRestore: false, restoreIsScheduled: false }), false)
+  check('kf.readyZeroClip', scrollRestoreIsReady({ clipHeight: 0, documentHeight: 100 }), false)
+  check('kf.readyOk', scrollRestoreIsReady({ clipHeight: 1, documentHeight: 1 }), true)
+
+  check('kf.rememberBlockedByRestore', scrollRememberCanRun({
+    needsRestore: true, hasPosition: true, hasScrollView: true, hasDocumentView: true }), false)
+  check('kf.rememberOk', scrollRememberCanRun({
+    needsRestore: false, hasPosition: true, hasScrollView: true, hasDocumentView: true }), true)
+  check('kf.rememberNoPosition', scrollRememberCanRun({
+    needsRestore: false, hasPosition: false, hasScrollView: true, hasDocumentView: true }), false)
+
+  check('kf.targetMechanismOff', keyboardFocusScrollTargetValue({
+    isScrollEnabled: false, isFocused: true, showsKeyboardFocus: true, isEnabled: true }),
+    'mechanism-off')
+  check('kf.targetRegistered', keyboardFocusScrollTargetValue({
+    isScrollEnabled: true, isFocused: true, showsKeyboardFocus: true, isEnabled: true }),
+    'registered')
+  check('kf.targetNoFocusRing', keyboardFocusScrollTargetValue({
+    isScrollEnabled: true, isFocused: true, showsKeyboardFocus: false, isEnabled: true }),
+    'not-registered')
+  check('kf.targetDisabled', keyboardFocusScrollTargetValue({
+    isScrollEnabled: true, isFocused: true, showsKeyboardFocus: true, isEnabled: false }),
+    'not-registered')
+
+  check('kf.reduceOverrides', keyboardFocusScrollPreferenceReduce('a', 'b'), 'b')
+  check('kf.reduceKeeps', keyboardFocusScrollPreferenceReduce('a', null), 'a')
+  check('kf.reduceEmpty', keyboardFocusScrollPreferenceReduce(null, null), null)
+  check('kf.noHitTesting', scrollObserverAcceptsHitTesting(), false)
+  check('kf.configureSame', scrollBridgeConfigureStep({ samePosition: true }), 'connect-only')
+  check('kf.configureChanged', scrollBridgeConfigureStep({ samePosition: false }),
+    'reconnect-and-restore')
+  check('kf.reattachFresh', scrollBridgeNeedsReattach({
+    currentScrollViewAttached: false, resolvedScrollViewChanged: false }), true)
+  check('kf.reattachChanged', scrollBridgeNeedsReattach({
+    currentScrollViewAttached: true, resolvedScrollViewChanged: true }), true)
+  check('kf.reattachStable', scrollBridgeNeedsReattach({
+    currentScrollViewAttached: true, resolvedScrollViewChanged: false }), false)
+
+  {
+    const memory = new AppScrollPositionMemory()
+    check('kf.memoryEmpty', memory.slotCount, 0)
+    const slotA = memory.position('a')
+    check('kf.memoryCreates', slotA.topOffset, 0)
+    check('kf.memorySlots', memory.slotCount, 1)
+    check('kf.memorySameReference', memory.position('a') === slotA, true)
+    slotA.topOffset = 40
+    check('kf.memoryOffsets', memory.offsets().a, 40)
+    memory.position('b')
+    check('kf.memoryTwoSlots', memory.slotCount, 2)
+    check('kf.memoryIndependent', memory.offsets().b, 0)
+  }
+
+  // ---------------- 拖拽读数
+  check('df.snapAngles', CANVAS_MANIPULATION_SNAP_ANGLES.join(','), '-180,-90,0,90,180')
+  check('df.snapTolerance', CANVAS_MANIPULATION_SNAP_TOLERANCE, 0.001)
+  check('df.flipThreshold', CANVAS_MANIPULATION_READOUT_FLIP_THRESHOLD, 0.65)
+  check('df.edgeInset', CANVAS_MANIPULATION_READOUT_EDGE_INSET, 22)
+  check('df.readoutHeight', CANVAS_MANIPULATION_READOUT_HEIGHT, 32)
+  check('df.readoutCorner', CANVAS_MANIPULATION_READOUT_CORNER_RADIUS, 9)
+  check('df.readoutPadding', CANVAS_MANIPULATION_READOUT_HORIZONTAL_PADDING, 12)
+  check('df.readoutSpacing', CANVAS_MANIPULATION_READOUT_SPACING, 7)
+  check('df.dividerWidth', CANVAS_MANIPULATION_READOUT_DIVIDER_WIDTH, 1)
+  check('df.dividerHeight', CANVAS_MANIPULATION_READOUT_DIVIDER_HEIGHT, 13)
+  check('df.fontSize', CANVAS_MANIPULATION_READOUT_FONT_SIZE, 12)
+  check('df.borderWidth', CANVAS_MANIPULATION_READOUT_BORDER_WIDTH, 0.75)
+  check('df.shadowOpacity', CANVAS_MANIPULATION_READOUT_SHADOW_OPACITY, 0.25)
+  check('df.shadowRadius', CANVAS_MANIPULATION_READOUT_SHADOW_RADIUS, 6)
+  check('df.shadowY', CANVAS_MANIPULATION_READOUT_SHADOW_OFFSET_Y, 2)
+  check('df.background', CANVAS_MANIPULATION_READOUT_BACKGROUND.join(','), '0.11,0.12,0.13')
+  check('df.backgroundAlpha', CANVAS_MANIPULATION_READOUT_BACKGROUND_ALPHA, 0.96)
+  check('df.titleAlpha', CANVAS_MANIPULATION_TITLE_ALPHA, 0.82)
+  check('df.dividerAlpha', CANVAS_MANIPULATION_DIVIDER_ALPHA, 0.25)
+  check('df.dotSize', CANVAS_SNAP_DOT_SIZE, 7)
+  check('df.dotBorder', CANVAS_SNAP_DOT_BORDER_WIDTH, 1.25)
+  check('df.dotShadowOpacity', CANVAS_SNAP_DOT_SHADOW_OPACITY, 0.38)
+  check('df.dotShadowRadius', CANVAS_SNAP_DOT_SHADOW_RADIUS, 4)
+  check('df.guideWidth', CANVAS_SNAP_GUIDE_WIDTH, 1)
+  check('df.guideDash', CANVAS_SNAP_GUIDE_DASH.join(','), '3,3')
+  check('df.guideAlpha', CANVAS_SNAP_GUIDE_ALPHA, 0.88)
+
+  const dfFlags = (over = {}) => ({
+    screenScaleOrigin: false, screenScaleSelection: null,
+    screenDragOrigin: false, screenDragSelection: null,
+    cameraSizeOrigin: false, cameraSizeSelection: null,
+    cameraDragOrigin: false, cameraDragSelection: null,
+    stickerRotationID: null, overlayResizeSelection: null, overlayDragSelection: null,
+    mosaicDragOrResizeActive: false, interactionSelection: null,
+    ...over,
+  })
+  check('df.noManipulation', canvasManipulationDirectSelection(dfFlags()), null)
+  check('df.screenScaleWins', canvasManipulationDirectSelection(dfFlags({
+    screenScaleOrigin: true, screenScaleSelection: 'screen',
+    screenDragOrigin: true, screenDragSelection: 'drag' })), 'screen')
+  check('df.screenDrag', canvasManipulationDirectSelection(dfFlags({
+    screenDragOrigin: true, screenDragSelection: 'drag' })), 'drag')
+  check('df.cameraSize', canvasManipulationDirectSelection(dfFlags({
+    cameraSizeOrigin: true, cameraSizeSelection: 'cam' })), 'cam')
+  check('df.stickerRotation', canvasManipulationDirectSelection(dfFlags({
+    stickerRotationID: 'x1' })), 'sticker:x1')
+  check('df.overlayResize', canvasManipulationDirectSelection(dfFlags({
+    overlayResizeSelection: 'ov' })), 'ov')
+  check('df.overlayDrag', canvasManipulationDirectSelection(dfFlags({
+    overlayDragSelection: 'od' })), 'od')
+  check('df.mosaicFromInteraction', canvasManipulationDirectSelection(dfFlags({
+    mosaicDragOrResizeActive: true, interactionSelection: 'sel' })), 'sel')
+  check('df.mosaicNoInteraction', canvasManipulationDirectSelection(dfFlags({
+    mosaicDragOrResizeActive: true })), null)
+
+  check('df.readoutYTop', canvasManipulationReadoutY({ objectY: 0.7, canvasHeight: 600 }), 22)
+  check('df.readoutYBottom', canvasManipulationReadoutY({ objectY: 0.5, canvasHeight: 600 }), 578)
+  check('df.readoutYAtThreshold', canvasManipulationReadoutY({ objectY: 0.65, canvasHeight: 600 }), 578)
+  check('df.readoutYTinyCanvas', canvasManipulationReadoutY({ objectY: 0.5, canvasHeight: 30 }), 22)
+
+  check('df.fixedOneDigit', canvasManipulationFixed(3.14159, 1), '3.1')
+  check('df.fixedNegativeZero', canvasManipulationFixed(-0, 1), '0.0')
+  check('df.fixedRound', canvasManipulationFixed(-2.6, 0), '-3')
+  check('df.percent', canvasManipulationPercent(0.1234), '12%')
+  check('df.percentRoundsUp', canvasManipulationPercent(0.995), '100%')
+  check('df.positionValue', canvasManipulationPositionValue({ x: 0.5, y: 0.25 }),
+    'X 50% · Y 25%')
+  check('df.mosaicSizeValue', canvasManipulationMosaicSizeValue({ width: 0.4, height: 0.6 }),
+    'W 40% · H 60%')
+  check('df.mosaicCenterValue', canvasManipulationMosaicCenterValue({
+    x: 0.2, y: 0.2, width: 0.4, height: 0.4 }), 'X 40% · Y 40%')
+  check('df.stickerWidthValue', canvasManipulationStickerWidthValue(0.35), 'W 35%')
+  check('df.rotationSnapped', canvasManipulationStickerRotationValue(-90), '-90° · 已吸附')
+  check('df.rotationZero', canvasManipulationStickerRotationValue(0), '0° · 已吸附')
+  check('df.rotationFree', canvasManipulationStickerRotationValue(12.34), '12.3°')
+  check('df.rotationNearSnap', canvasManipulationStickerRotationValue(90.0005), '90° · 已吸附')
+  check('df.cameraScale', canvasManipulationCameraScaleValue(0.75), '75%')
+  check('df.screenScale', canvasManipulationScreenScaleValue((v, u) => `${v}${u}`, 1.5), '1.5×')
+
+  const dfScreenScaling = canvasManipulationScreenReadout({
+    isScaling: true, position: { x: 0.5, y: 0.8 }, scale: 1.25,
+    compact: (v, u) => `${v}${u}` })
+  check('df.screenScalingTitle', dfScreenScaling.title, '屏幕大小')
+  check('df.screenScalingValue', dfScreenScaling.value, '1.25×')
+  check('df.screenScalingObjectY', dfScreenScaling.objectY, 0.8)
+  const dfScreenMoving = canvasManipulationScreenReadout({
+    isScaling: false, position: { x: 0.5, y: 0.5 }, scale: 1,
+    compact: (v, u) => `${v}${u}` })
+  check('df.screenMovingTitle', dfScreenMoving.title, '屏幕位置')
+  check('df.screenMovingValue', dfScreenMoving.value, 'X 50% · Y 50%')
+  check('df.screenMovingIcon', dfScreenMoving.systemImage, 'rectangle.on.rectangle')
+
+  check('df.cameraScalingTitle', canvasManipulationCameraReadout({
+    isScaling: true, position: { x: 0.1, y: 0.2 }, scale: 0.8 }).title, '摄像头大小')
+  check('df.cameraScalingValue', canvasManipulationCameraReadout({
+    isScaling: true, position: { x: 0.1, y: 0.2 }, scale: 0.8 }).value, '80%')
+  check('df.cameraMovingIcon', canvasManipulationCameraReadout({
+    isScaling: false, position: { x: 0.1, y: 0.2 }, scale: 0.8 }).systemImage, 'video.fill')
+
+  const dfMosaicResize = canvasManipulationMosaicReadout({
+    isResizing: true, rect: { x: 0.2, y: 0.2, width: 0.4, height: 0.2 } })
+  check('df.mosaicResizeTitle', dfMosaicResize.title, '区域大小')
+  check('df.mosaicResizeValue', dfMosaicResize.value, 'W 40% · H 20%')
+  check('df.mosaicResizeObjectY', dfMosaicResize.objectY, 0.30000000000000004)
+  const dfMosaicMove = canvasManipulationMosaicReadout({
+    isResizing: false, rect: { x: 0.2, y: 0.2, width: 0.4, height: 0.4 } })
+  check('df.mosaicMoveTitle', dfMosaicMove.title, '区域位置')
+  check('df.mosaicMoveValue', dfMosaicMove.value, 'X 40% · Y 40%')
+
+  check('df.stickerRotateTitle', canvasManipulationStickerReadout({
+    isRotating: true, rotationDegrees: 45, isResizing: true, width: 0.3,
+    position: { x: 0.1, y: 0.9 } }).title, '贴图旋转')
+  check('df.stickerRotateValue', canvasManipulationStickerReadout({
+    isRotating: true, rotationDegrees: 45, isResizing: false, width: 0.3,
+    position: { x: 0.1, y: 0.9 } }).value, '45.0°')
+  check('df.stickerResizeTitle', canvasManipulationStickerReadout({
+    isRotating: false, rotationDegrees: 0, isResizing: true, width: 0.3,
+    position: { x: 0.1, y: 0.9 } }).title, '贴图大小')
+  check('df.stickerMoveTitle', canvasManipulationStickerReadout({
+    isRotating: false, rotationDegrees: 0, isResizing: false, width: 0.3,
+    position: { x: 0.1, y: 0.9 } }).title, '贴图位置')
+  check('df.positionReadoutIcon', canvasManipulationPositionReadout(
+    'photo', '贴图位置', { x: 0.1, y: 0.9 }).systemImage, 'photo')
+
+  check('df.clearOrderCount', CANVAS_MANIPULATION_CLEAR_ORDER.length, 20)
+  check('df.clearOrderFirst', CANVAS_MANIPULATION_CLEAR_ORDER[0], 'screenDragOrigin')
+  check('df.clearOrderLast', CANVAS_MANIPULATION_CLEAR_ORDER[19], 'cameraCompositorSuppressed')
+  check('df.clearIncludesGuides', CANVAS_MANIPULATION_CLEAR_ORDER.includes('canvasSnapGuideX'), true)
+  check('df.clearSchedulesCount', CANVAS_MANIPULATION_CLEAR_SCHEDULES.length, 2)
+
+  const dfSegments = canvasSnapGuideSegments({
+    guideX: 0.5, guideY: 0.25, canvasSize: { width: 800, height: 600 } })
+  check('df.verticalFromY', dfSegments.vertical.from.y, 0)
+  check('df.verticalX', dfSegments.vertical.to.x, 400)
+  check('df.verticalToY', dfSegments.vertical.to.y, 600)
+  check('df.horizontalFromX', dfSegments.horizontal.from.x, 0)
+  check('df.horizontalY', dfSegments.horizontal.to.y, 150)
+  check('df.crossingX', dfSegments.crossing.x, 400)
+  check('df.crossingY', dfSegments.crossing.y, 150)
+  const dfNoSegments = canvasSnapGuideSegments({
+    guideX: null, guideY: null, canvasSize: { width: 800, height: 600 } })
+  check('df.noVertical', dfNoSegments.vertical, null)
+  check('df.noHorizontal', dfNoSegments.horizontal, null)
+  check('df.noCrossing', dfNoSegments.crossing, null)
+  check('df.suppressAnimation', canvasManipulationSuppressesAnimation(), true)
+}
+await runCanvasInteractionBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

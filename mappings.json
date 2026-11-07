@@ -201,7 +201,13 @@
     "Sources/DogSCApp/SharedPreviewLayerRetirement.swift": "src/renderer/src/core/SharedPreviewLayerRetirement.ts",
     "Sources/DogSCApp/SharedPreviewWindowVisibility.swift": "src/renderer/src/core/SharedPreviewWindowVisibility.ts",
     "Sources/DogSCApp/EditorTimelineMergedWaveform.swift": "src/renderer/src/core/EditorTimelineMergedWaveform.ts",
-    "Sources/DogSCApp/EditorMockupTurntable.swift": "src/renderer/src/core/EditorMockupTurntable.ts"
+    "Sources/DogSCApp/EditorMockupTurntable.swift": "src/renderer/src/core/EditorMockupTurntable.ts",
+    "Sources/DogSCApp/EditorCanvasPreviewLayout.swift": "src/renderer/src/core/EditorCanvasPreviewLayout.ts",
+    "Sources/DogSCApp/EditorCanvasPreviewSupport.swift": "src/renderer/src/core/EditorCanvasPreviewSupport.ts",
+    "Sources/DogSCApp/EditorLinearFocusCanvasOverlay.swift": "src/renderer/src/core/EditorLinearFocusCanvasOverlay.ts",
+    "Sources/DogSCApp/SharedFrameOverlayRenderer.swift": "src/renderer/src/core/SharedFrameOverlayRenderer.ts",
+    "Sources/DogSCApp/AppKeyboardFocusScrollView.swift": "src/renderer/src/core/AppKeyboardFocusScrollView.ts",
+    "Sources/DogSCApp/EditorCanvasDragFeedback.swift": "src/renderer/src/core/EditorCanvasDragFeedback.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }
