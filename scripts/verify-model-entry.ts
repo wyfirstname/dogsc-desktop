@@ -1124,3 +1124,69 @@ export {
   timelineClipShowsHandles,
   timelineClipSurface,
 } from '../src/renderer/src/core/EditorTimelineClipChrome'
+export {
+  WALLPAPER_SAMPLE_TOLERANCE,
+  LoopingWallpaperReader,
+  wallpaperAdvanceIndex,
+  wallpaperFallbackIndex,
+  wallpaperLoopPosition,
+  wallpaperReaderResetRequired,
+} from '../src/renderer/src/core/ExportLoopingWallpaperVideoReader'
+export {
+  INPUT_TOGGLE_FOCUS_RING_OPACITY,
+  INPUT_TOGGLE_LABEL_ACCESSIBILITY_HIDDEN,
+  INPUT_TOGGLE_MINIMUM_SPACER,
+  INPUT_TOGGLE_NATIVE_FOCUS_RING,
+  INPUT_TOGGLE_SPACING,
+  inputToggleFocusCueVisible,
+  inputToggleFocusReport,
+  inputToggleIsOn,
+  inputToggleRowLayout,
+} from '../src/renderer/src/core/RecorderInputToggle'
+export {
+  adjustTiming,
+  retimePath,
+  retimeSampleTimings,
+} from '../src/renderer/src/core/SampleBufferTimeRetimer'
+export {
+  CAMERA_AUTOMATIC_CADENCE_FRAME_DURATIONS,
+  cameraConfiguredLogLine,
+  cameraFormatFailureMessage,
+  cameraFormatNeedsApply,
+  cameraFormatPlan,
+  formatsMatchingDimensions,
+  preferredFormatPlan,
+  widestCadenceFormat,
+} from '../src/renderer/src/core/CameraCaptureDeviceConfigurator'
+export {
+  EFFECT_PREWARM_DELAY,
+  EFFECT_PREWARM_MINIMUM_SCALE,
+  EFFECT_PREWARM_MINIMUM_SIDE,
+  EFFECT_PREWARM_SIGNATURE_LIMIT,
+  EFFECT_PREWARM_TEXTURE,
+  effectPrewarmIsCurrent,
+  effectSignatureSetAction,
+  previewDestinationScale,
+  previewEffectPrewarmKey,
+  previewEffectPrewarmKeyString,
+} from '../src/renderer/src/core/SharedPreviewEffectPreparation'
+export {
+  LANE_HIDE_BUTTON_SIZE,
+  LANE_LABEL_COLLAPSED_INSET,
+  LANE_LABEL_HORIZONTAL_INSET,
+  LANE_LABEL_ICON_SIZE,
+  LANE_LABEL_SPACING,
+  LANE_LABEL_TEXT,
+  LANE_LABEL_TILE_RADIUS,
+  LANE_LABEL_TILE_SIZE,
+  LANE_LABEL_TILE_TINT_OPACITY,
+  LANE_ROW_DIVIDER_HEIGHT,
+  TIMELINE_SWAP_IN_DELAY,
+  laneHideButtonVisible,
+  laneLabelHorizontalPadding,
+  laneLabelShowsTitle,
+  laneLabelUsesPrimaryText,
+  laneRowDividerOpacity,
+  laneTransitionSpec,
+  timelineRowHeights,
+} from '../src/renderer/src/core/EditorTimelineLaneLabel'

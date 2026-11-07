@@ -7199,5 +7199,307 @@ async function runRecordingShellBatch() {
 
 await runRecordingShellBatch()
 
+async function runCapturePipelineBatch() {
+  // ========== 6 文件 / 649 行：循环壁纸读取 / 输入开关 / 样本重定基 /
+  //            摄像头格式配置 / 预览效果预热 / 轨道标签
+  const {
+    WALLPAPER_SAMPLE_TOLERANCE, wallpaperLoopPosition, wallpaperReaderResetRequired,
+    wallpaperAdvanceIndex, LoopingWallpaperReader, wallpaperFallbackIndex,
+    INPUT_TOGGLE_SPACING, INPUT_TOGGLE_MINIMUM_SPACER, INPUT_TOGGLE_FOCUS_RING_OPACITY,
+    INPUT_TOGGLE_NATIVE_FOCUS_RING, INPUT_TOGGLE_LABEL_ACCESSIBILITY_HIDDEN,
+    inputToggleIsOn, inputToggleFocusReport, inputToggleFocusCueVisible, inputToggleRowLayout,
+    retimePath, adjustTiming, retimeSampleTimings,
+    widestCadenceFormat, formatsMatchingDimensions, preferredFormatPlan, cameraFormatPlan,
+    cameraFormatNeedsApply, cameraFormatFailureMessage, CAMERA_AUTOMATIC_CADENCE_FRAME_DURATIONS,
+    cameraConfiguredLogLine,
+    EFFECT_PREWARM_DELAY, EFFECT_PREWARM_SIGNATURE_LIMIT, EFFECT_PREWARM_MINIMUM_SIDE,
+    EFFECT_PREWARM_MINIMUM_SCALE, EFFECT_PREWARM_TEXTURE, previewEffectPrewarmKey,
+    previewEffectPrewarmKeyString, effectPrewarmIsCurrent, effectSignatureSetAction,
+    previewDestinationScale,
+    LANE_LABEL_ICON_SIZE, LANE_LABEL_TILE_SIZE, LANE_LABEL_TILE_RADIUS,
+    LANE_LABEL_TILE_TINT_OPACITY, LANE_LABEL_SPACING, LANE_LABEL_HORIZONTAL_INSET,
+    LANE_LABEL_COLLAPSED_INSET, LANE_HIDE_BUTTON_SIZE, LANE_ROW_DIVIDER_HEIGHT,
+    TIMELINE_SWAP_IN_DELAY, LANE_LABEL_TEXT, laneLabelHorizontalPadding,
+    laneHideButtonVisible, laneLabelShowsTitle, laneLabelUsesPrimaryText,
+    laneRowDividerOpacity, laneTransitionSpec, timelineRowHeights,
+  } = m
+
+  // ---------------------------------- ExportLoopingWallpaperVideoReader.swift
+  check('wl.tolerance', WALLPAPER_SAMPLE_TOLERANCE, 0.0005)
+  {
+    const position = wallpaperLoopPosition(2.5, 2)
+    check('wl.loopIndex', position.loopIndex, 1)
+    check('wl.localTime', position.localTime, 0.5)
+    check('wl.zeroPosition', wallpaperLoopPosition(0, 2).loopIndex, 0)
+    check('wl.nanClamped', wallpaperLoopPosition(NaN, 2).localTime, 0)
+    check('wl.negativeClamped', wallpaperLoopPosition(-3, 2).loopIndex, 0)
+  }
+  check('wl.resetNoReader', wallpaperReaderResetRequired({ hasReader: false, loopIndex: 0, previousLoopIndex: -1, localTime: 0, currentLocalTime: -1 }), true)
+  check('wl.noResetForward', wallpaperReaderResetRequired({ hasReader: true, loopIndex: 1, previousLoopIndex: 1, localTime: 0.5, currentLocalTime: 0.2 }), false)
+  check('wl.resetOnLoopChange', wallpaperReaderResetRequired({ hasReader: true, loopIndex: 2, previousLoopIndex: 1, localTime: 0.1, currentLocalTime: 1.9 }), true)
+  // 同一圈内回拖：必须重建，否则只能拿到后面的帧
+  check('wl.resetOnRewind', wallpaperReaderResetRequired({ hasReader: true, loopIndex: 1, previousLoopIndex: 1, localTime: 0.2, currentLocalTime: 0.9 }), true)
+  {
+    const samples = [0, 1 / 30, 2 / 30, 3 / 30]
+    check('wl.advanceFirst', wallpaperAdvanceIndex({ sampleTimes: samples, startOffset: 0, localTime: 0 }), 0)
+    check('wl.advanceThird', wallpaperAdvanceIndex({ sampleTimes: samples, startOffset: 0, localTime: 0.071 }), 2)
+    check('wl.advanceWithOffset', wallpaperAdvanceIndex({ sampleTimes: [10, 10.5, 11], startOffset: 10, localTime: 0.4 }), 0)
+    check('wl.advanceNone', wallpaperAdvanceIndex({ sampleTimes: [5], startOffset: 0, localTime: 1 }), -1)
+  }
+  {
+    let threw = null
+    try {
+      new LoopingWallpaperReader(0)
+    } catch (error) {
+      threw = error
+    }
+    check('wl.zeroDurationThrows', threw instanceof RangeError, true)
+    check('wl.errorMessage', threw.message, 'unusableMediaRange')
+    const reader = new LoopingWallpaperReader(2)
+    const first = reader.plan(2.5)
+    check('wl.firstPlanResets', first.reset, true)
+    check('wl.firstPlanLoop', first.loopIndex, 1)
+    const second = reader.plan(2.6)
+    check('wl.forwardNoReset', second.reset, false)
+    const rewind = reader.plan(0.2)
+    check('wl.rewindResets', rewind.reset, true)
+    check('wl.readerStateLoop', reader.state.loopIndex, 0)
+    check('wl.failureMessage', LoopingWallpaperReader.failureMessage('背景素材'), '背景素材视频轨读取失败')
+  }
+  check('wl.fallbackKeep', wallpaperFallbackIndex({ hasCurrentFrame: true, hasNextSample: true }), 'keepCurrent')
+  check('wl.fallbackNext', wallpaperFallbackIndex({ hasCurrentFrame: false, hasNextSample: true }), 'takeNext')
+  check('wl.fallbackNone', wallpaperFallbackIndex({ hasCurrentFrame: false, hasNextSample: false }), 'none')
+
+  // ------------------------------------------------- RecorderInputToggle.swift
+  check('itg.spacing', INPUT_TOGGLE_SPACING, 8)
+  check('itg.minimumSpacer', INPUT_TOGGLE_MINIMUM_SPACER, 8)
+  check('itg.ringOpacity', INPUT_TOGGLE_FOCUS_RING_OPACITY, 0.4)
+  check('itg.nativeRing', INPUT_TOGGLE_NATIVE_FOCUS_RING, 'none')
+  check('itg.labelHidden', INPUT_TOGGLE_LABEL_ACCESSIBILITY_HIDDEN, true)
+  check('itg.onState', inputToggleIsOn('on'), true)
+  check('itg.offState', inputToggleIsOn('off'), false)
+  check('itg.mixedState', inputToggleIsOn('mixed'), false)
+  check('itg.focusReported', inputToggleFocusReport(true), true)
+  check('itg.focusCue', inputToggleFocusCueVisible(true, true), true)
+  check('itg.focusCueDisabled', inputToggleFocusCueVisible(true, false), false)
+  {
+    const layout = inputToggleRowLayout({ availableWidth: 200, switchWidth: 38 })
+    check('itg.labelWidth', layout.labelWidth, 146)
+    check('itg.switchWidth', layout.switchWidth, 38)
+    const tight = inputToggleRowLayout({ availableWidth: 40, switchWidth: 38 })
+    check('itg.tightFloors', tight.labelWidth, 8)
+  }
+
+  // ---------------------------------------------- SampleBufferTimeRetimer.swift
+  check('rt.pathSkip', retimePath(0), 'skip')
+  check('rt.pathSingle', retimePath(1), 'single')
+  check('rt.pathMultiple', retimePath(3), 'multiple')
+  {
+    const entries = [{ duration: 0.1, presentationTime: 5, decodeTime: null }]
+    check('rt.zeroOffsetUnchanged', retimeSampleTimings(entries, 0).kind, 'unchanged')
+    check('rt.negativeOffsetUnchanged', retimeSampleTimings(entries, -2).kind, 'unchanged')
+    check('rt.nanOffsetUnchanged', retimeSampleTimings(entries, NaN).kind, 'unchanged')
+    check('rt.emptyUnchanged', retimeSampleTimings([], 3).kind, 'unchanged')
+    const retimed = retimeSampleTimings(entries, 2)
+    check('rt.retimed', retimed.kind, 'retimed')
+    check('rt.presentationShifted', retimed.entries[0].presentationTime, 3)
+    check('rt.decodeStaysInvalid', retimed.entries[0].decodeTime, null)
+    check('rt.durationUntouched', retimed.entries[0].duration, 0.1)
+    const adjusted = adjustTiming({ duration: null, presentationTime: 10, decodeTime: 9 }, 4)
+    check('rt.adjustPresentation', adjusted.presentationTime, 6)
+    check('rt.adjustDecode', adjusted.decodeTime, 5)
+  }
+
+  // --------------------------------------- CameraCaptureDeviceConfigurator.swift
+  {
+    const formats = [
+      { width: 1920, height: 1080, frameRateMaximums: [30] },
+      { width: 1920, height: 1080, frameRateMaximums: [60] },
+      { width: 1920, height: 1080, frameRateMaximums: [60] },
+    ]
+    // 并列时保留先出现的（Swift 用严格小于）
+    const widest = widestCadenceFormat(formats)
+    check('cfg.widestTieKeepsFirst', widest.frameRateMaximums[0], 60)
+    check('cfg.widestIndexTwo', formats.indexOf(widest), 1)
+    check('cfg.widestEmpty', widestCadenceFormat([]), null)
+  }
+  {
+    const formats = [
+      { width: 1280, height: 720, frameRateMaximums: [30] },
+      { width: 1280, height: 720, frameRateMaximums: [] },
+      { width: 1920, height: 1080, frameRateMaximums: [30] },
+    ]
+    const matched = formatsMatchingDimensions(formats, { width: 1280, height: 720 })
+    check('cfg.matchExcludesNoCadence', matched.length, 1)
+    check('cfg.matchDimensions', matched[0].width, 1280)
+    const none = formatsMatchingDimensions(formats, { width: 640, height: 480 })
+    check('cfg.matchNone', none.length, 0)
+  }
+  {
+    const formats = [
+      { width: 1920, height: 1080, frameRateMaximums: [30] },
+      { width: 1920, height: 1080, frameRateMaximums: [60] },
+      { width: 1280, height: 720, frameRateMaximums: [60] },
+    ]
+    const plan = preferredFormatPlan({ formats, role: 'camera' })
+    check('cfg.preferredApplies', plan.kind, 'apply')
+    check('cfg.preferredWidest', plan.format.frameRateMaximums[0], 60)
+    check('cfg.preferredEmpty', preferredFormatPlan({ formats: [], role: 'camera' }).kind, 'skip')
+    check(
+      'cfg.preferredInvalidDims',
+      preferredFormatPlan({ formats: [{ width: 0, height: 0, frameRateMaximums: [30] }], role: 'camera' }).kind,
+      'skip'
+    )
+  }
+  {
+    const formats = [
+      { width: 1280, height: 720, frameRateMaximums: [24] },
+      { width: 1280, height: 720, frameRateMaximums: [30] },
+    ]
+    const plan = cameraFormatPlan(formats, { width: 1280, height: 720, label: '720p' }, '摄像头')
+    check('cfg.exactApplies', plan.kind, 'apply')
+    check('cfg.exactWidest', plan.format.frameRateMaximums[0], 30)
+    const unsupported = cameraFormatPlan(formats, { width: 640, height: 480, label: '480p' }, '摄像头')
+    check('cfg.exactUnsupported', unsupported.kind, 'unsupported')
+    check('cfg.exactMessage', unsupported.message, '摄像头：摄像头不再支持所选分辨率 480p')
+  }
+  check('cfg.sameFormatSkips', cameraFormatNeedsApply({ isSameFormat: true }), false)
+  check('cfg.differentFormatApplies', cameraFormatNeedsApply({ isSameFormat: false }), true)
+  check(
+    'cfg.failureWithLabel',
+    cameraFormatFailureMessage({ label: '1080p', reason: '被占用', roleDisplayName: '摄像头' }),
+    '摄像头：无法选择 1080p：被占用'
+  )
+  check(
+    'cfg.failureWithoutLabel',
+    cameraFormatFailureMessage({ reason: '被占用', roleDisplayName: '摄像头' }),
+    '摄像头：无法锁定设备采集格式：被占用'
+  )
+  check('cfg.autoCadence', `${CAMERA_AUTOMATIC_CADENCE_FRAME_DURATIONS.minimum}/${CAMERA_AUTOMATIC_CADENCE_FRAME_DURATIONS.maximum}`, 'null/null')
+  check('cfg.logLine', cameraConfiguredLogLine({ width: 1280, height: 720 }), 'camera configured size=1280x720 fps=automatic')
+
+  // ------------------------------------ SharedPreviewEffectPreparation.swift
+  check('pw.delay', EFFECT_PREWARM_DELAY, 0.12)
+  check('pw.signatureLimit', EFFECT_PREWARM_SIGNATURE_LIMIT, 16)
+  check('pw.minimumSide', EFFECT_PREWARM_MINIMUM_SIDE, 2)
+  check('pw.minimumScale', EFFECT_PREWARM_MINIMUM_SCALE, 0.0001)
+  check('pw.textureFormat', EFFECT_PREWARM_TEXTURE.pixelFormat, 'bgra8Unorm')
+  {
+    const scene = {
+      canvasSize: { width: 100, height: 50 },
+      screen: {
+        decoration: 'none', cornerRadius: 0, borderWidth: 0, shadowOpacity: 0,
+        opacity: 1, hasFocusEffect: false, isIdentityProjection: true, mosaics: [],
+      },
+      cursorPresent: false,
+      camera: null,
+      backgroundBlurRadius: 0,
+      stickerBackdrop: { screenBlur: 0, cameraBlur: 0, screenSuppression: 0, cameraSuppression: 0 },
+      stickers: [],
+    }
+    const resources = { hasCursor: false, hasCamera: false, stickerPaths: [] }
+    const key = previewEffectPrewarmKey({ scene, resources, destinationSize: { width: 99.6, height: 50.2 } })
+    check('pw.branchCount', key.branches.length, 17)
+    check('pw.widthRounded', key.width, 100)
+    check('pw.heightRounded', key.height, 50)
+    check('pw.allBranchesFalse', key.branches.every((flag) => flag === false), true)
+    const decorated = previewEffectPrewarmKey({
+      scene: {
+        ...scene,
+        cursorPresent: true,
+        screen: { ...scene.screen, decoration: 'chrome', cornerRadius: 8, borderWidth: 2, shadowOpacity: 0.2, opacity: 0.5, hasFocusEffect: true, isIdentityProjection: false, mosaics: [{ style: 'pixel' }] },
+      },
+      resources: { hasCursor: true, hasCamera: true, stickerPaths: ['s.png'] },
+      destinationSize: { width: 100, height: 50 },
+    })
+    check('pw.identity', decorated.branches[0], true)
+    check('pw.chrome', decorated.branches[1], true)
+    check('pw.corner', decorated.branches[2], true)
+    check('pw.translucent', decorated.branches[5], true)
+    check('pw.focus', decorated.branches[6], true)
+    check('pw.cursorNeedsResource', decorated.branches[7], true)
+    check('pw.mosaicStyle', decorated.mosaicStyles.join(','), 'pixel')
+    check('pw.noStickers', decorated.stickerBranches.length, 0)
+    check('pw.keyStable', previewEffectPrewarmKeyString(key), previewEffectPrewarmKeyString(
+      previewEffectPrewarmKey({ scene, resources, destinationSize: { width: 100, height: 50 } })
+    ))
+    check('pw.keyDiffersBySize', previewEffectPrewarmKeyString(key) !== previewEffectPrewarmKeyString(decorated), true)
+  }
+  {
+    const base = {
+      jobGeneration: 1, renderGeneration: 1, jobEpoch: 2, presentationEpoch: 2,
+      jobColorContract: 'sdr', queueColorContract: 'sdr',
+    }
+    check('pw.currentOk', effectPrewarmIsCurrent(base), true)
+    check('pw.staleGeneration', effectPrewarmIsCurrent({ ...base, renderGeneration: 2 }), false)
+    check('pw.staleEpoch', effectPrewarmIsCurrent({ ...base, presentationEpoch: 3 }), false)
+    check('pw.colorMismatch', effectPrewarmIsCurrent({ ...base, queueColorContract: 'hdr' }), false)
+  }
+  check('pw.signatureSkip', effectSignatureSetAction({ alreadyPrepared: true, size: 3 }), 'skip')
+  check('pw.signatureInsert', effectSignatureSetAction({ alreadyPrepared: false, size: 15 }), 'insert')
+  check('pw.signatureClear', effectSignatureSetAction({ alreadyPrepared: false, size: 16 }), 'clearAndInsert')
+  {
+    const shrink = previewDestinationScale({ canvasSize: { width: 100, height: 100 }, bounds: { width: 50, height: 25 } })
+    check('pw.scaleX', shrink.scaleX, 0.5)
+    check('pw.scaleY', shrink.scaleY, 0.25)
+    check('pw.usesLanczos', shrink.usesLanczos, true)
+    check('pw.aspectRatio', shrink.aspectRatio, 2)
+    const grow = previewDestinationScale({ canvasSize: { width: 100, height: 100 }, bounds: { width: 200, height: 200 } })
+    check('pw.growNoLanczos', grow.usesLanczos, false)
+    check('pw.growAspect', grow.aspectRatio, 1)
+    const tiny = previewDestinationScale({ canvasSize: { width: 0, height: 0 }, bounds: { width: 1, height: 1 } })
+    check('pw.canvasFloor', tiny.scaleX, 0.5)
+  }
+
+  // ------------------------------------------- EditorTimelineLaneLabel.swift
+  check('ll.icon', `${LANE_LABEL_ICON_SIZE}/${LANE_LABEL_TILE_SIZE}`, '12/22')
+  check('ll.tileRadius', LANE_LABEL_TILE_RADIUS, 8)
+  check('ll.tintOpacity', LANE_LABEL_TILE_TINT_OPACITY, 0.18)
+  check('ll.spacing', LANE_LABEL_SPACING, 9)
+  check('ll.hideSize', LANE_HIDE_BUTTON_SIZE, 24)
+  check('ll.dividerHeight', LANE_ROW_DIVIDER_HEIGHT, 0.5)
+  check('ll.swapDelay', TIMELINE_SWAP_IN_DELAY, 0.1)
+  check('ll.paddingRegular', laneLabelHorizontalPadding(false, LANE_LABEL_HORIZONTAL_INSET), 12)
+  check('ll.paddingCollapsed', laneLabelHorizontalPadding(true, 40), 15)
+  check('ll.collapsedInset', LANE_LABEL_COLLAPSED_INSET, 15)
+  check('ll.hideVisible', laneHideButtonVisible({ hasHideAction: true, collapsed: false, hovered: true }), true)
+  check('ll.hideHiddenNotHovered', laneHideButtonVisible({ hasHideAction: true, collapsed: false, hovered: false }), false)
+  check('ll.hideHiddenCollapsed', laneHideButtonVisible({ hasHideAction: true, collapsed: true, hovered: true }), false)
+  check('ll.hideHiddenNoAction', laneHideButtonVisible({ hasHideAction: false, collapsed: false, hovered: true }), false)
+  check('ll.titleHiddenWhenCollapsed', laneLabelShowsTitle(true), false)
+  check('ll.titleShown', laneLabelShowsTitle(false), true)
+  check('ll.hoverPrimary', laneLabelUsesPrimaryText(true), true)
+  check('ll.restSecondary', laneLabelUsesPrimaryText(false), false)
+  check('ll.dividerNormal', laneRowDividerOpacity(false), 0.055)
+  check('ll.dividerStrong', laneRowDividerOpacity(true), 0.085)
+  check('ll.hideHelp', LANE_LABEL_TEXT.hideHelpFormat('缩放'), '隐藏“缩放”轨道；效果仍然生效')
+  check('ll.hideA11y', LANE_LABEL_TEXT.hideAccessibilityFormat('缩放'), '隐藏“缩放”轨道')
+  {
+    const motion = laneTransitionSpec(false)
+    check('ll.insertDuration', motion.insertion.duration, 0.22)
+    check('ll.insertDelay', motion.insertion.delay, 0.12)
+    check('ll.insertOffset', motion.insertion.offsetY, -6)
+    check('ll.removeDuration', motion.removal.duration, 0.1)
+    const reduced = laneTransitionSpec(true)
+    check('ll.reducedInsertKind', reduced.insertion.kind, 'opacity')
+    check('ll.reducedOffset', reduced.insertion.offsetY, 0)
+    check('ll.reducedRemove', reduced.removal.duration, 0)
+  }
+  {
+    const heights = timelineRowHeights({
+      rulerHeight: 30, primaryVideoHeight: 64, cameraSyncTimelineHeight: 22,
+      zoomTimelineHeight: 26, motionTimelineHeight: 24, overlayTimelineHeight: 20,
+      showsCameraSync: true, showsZoom: false, showsScreenMotion: true,
+      showsCameraMotion: false, showsOverlay: false,
+    })
+    check('ll.rowCount', heights.length, 4)
+    check('ll.primaryPadded', heights[1], 76)
+    check('ll.rowOrder', heights.join(','), '30,76,22,24')
+  }
+
+}
+
+await runCapturePipelineBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
