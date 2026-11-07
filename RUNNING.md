@@ -351,3 +351,23 @@ PointerTrack 等转写后实现。
 - `EditorTimeline.ts`（938 行）：创建拟合/手动/移动/调整共用「相接或让足回落窗口」不变量，洞口一律**吸附**到最近合法位；命中测试含有序快路径（二分）与无序 z 序回退；运动轨（`TransitionTiming`）与缩放轨（`ZoomAnimationClip`）双套但同规则；`zoomSegments(from:keyframes)` 段起点取爬升前那一帧。
 - 依赖补齐：`ZoomAnimation.ts` 新增 `PointerClick` / `makePointerClick`（Swift L21-30）、`makeKeyframe`（Swift L356-368）；`MotionStyle.defaultScreenMotion` 从 `unknown` 收紧为 `ScreenMotionCreationStyle | null`。
 - verify-model 断言 416 → 606（+190）：码率三档与上下限、诊断夹取与滚动峰值、旧清单解码、样式回落取小、10 类校验错误、点击聚类/空间分组/活动延长/包络折叠、创建拟合洞口吸附、命中测试手柄、运动回落归一、关键帧段表。
+
+## 十五、时间线几何 / 磁吸 / 交互纯决策（7 文件 / 2,824 行）
+
+SwiftUI 视图层的可移植部分：这些文件虽在 App 目标里，但主体是纯计算与状态机，
+Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
+
+- `core/EditorTimelineGeometry.ts`（合并 3 个源文件）
+  - 片段几何：`interactionRange`（交互面裁到文档可见范围，避免放大后出现几万点宽的手势平面）、`waveformBand`（底部 26% 波形带）。
+  - 标尺：`majorStep` 取 1/2/5×10ⁿ、`scaleLayers` **在整个尺度区间交叉淡化相邻两级**（到边界整套换刻度会让连续缩放看起来跳）、`visibleTicks` 只生成缓冲视口内刻度、`label` 整百分秒省略（"0:18" / "0:18.50"）。
+  - 行高：compact / regular 双套，`overlayHeight = max(rows×34+16, motionHeight)`，`viewHeight` 至少 80pt，`documentHeight = max(canvasHeight, viewportHeight)`。
+  - 帧吸附：`snappedTimelineTime` 首/尾半帧直接归端点（保留非整数帧的媒体时长），`snappedEditableTime` 同一规则但边界由调用方给。
+- `core/EditorTimelineMagneticSnap.ts`（185 行）：**捕获 7pt / 脱开 14pt** 双阈值；候选点从已提交数据缓存并在首次按手势起点屏蔽「自吸」；`suppressed` 是「脱离」而非永久黑名单；`validate(edges:)` 保证不对外宣称合法时序没走到的磁吸。`magneticTargets` 收集可见轨端点 + 播放头（scrub 时排除）+ 排除拖动片段与联动伙伴。
+- `core/EditorTimelineAuthoredOrder.ts`（46 行）：单次线性逆序检查，真逆序才稳定排序；返回 `{items,didSort}` 而非原地改。
+- `core/EditorTimelineInteraction.ts`（合并 Interaction + ZoomTransport，约 840 行纯逻辑）
+  - 主轨呈现：`leadingGap`/`trailingGap` 要求源区间单调（乱序工程不显示还原缺口）、`segmentJunctions` 跳过倒回接缝、`displaySegments` 把修剪/变速草稿叠成「松手后的样子」（左修剪乘 playbackRate，Ripple 保持手授编辑点连续）、`trimDraftOrigin` 手势起点一次性算两侧可还原余量、`snappedCutX` 7pt 边界优先回落播放头。
+  - 修剪三入口：增量版 / 绝对位置版（片段自己改宽度时增量会漂移）/ 预览相位版（右边缘显示最后一帧 = proposed − frame）。
+  - 缩放：`EditorTimelineZoomAnchor`（保留指针下的**语义时刻**跨整串滚轮事件存活）、上限 480× → **4096×**、每单位 deltaY ×1.24、`ZoomInputCoalescer` 累计目标但每帧最多发布一次、目标文档宽 = 视口 × 缩放（不再从上一帧原生宽反推，避免第二个所有者）。
+  - 选择策略：片段身份来自持久化源序列而非异步媒体计划；被删片段的选择回退**中性画布**（时间选择不得隐含空间操作）；`SelectionReveal` 播放头已在片段内则不动。
+  - 手势：`GestureIntent` 一次 mouse-down 锁一个语义目标，`Ownership.begin` 跨意图抢占一律失败 —— 空白创建手势再也抢不走片段上的按下。
+- verify-model 断言 606 → 791（+185）。

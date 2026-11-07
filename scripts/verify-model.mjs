@@ -1891,5 +1891,593 @@ function runRecorderCoreBatch() {
 
 runRecorderCoreBatch()
 
+// ---- 批次 9（时间线几何 / 磁吸 / 手授顺序 / 交互纯决策）----
+function runTimelineGeometryBatch() {
+  const {
+    CLIP_CONTENT_INSET, CLIP_WAVEFORM_BAND_FRACTION, clipInteractionRange, clipWaveformBand,
+    rulerMajorStep, nextFinerRulerStep, rulerScaleLayers, rulerVisibleTicks, rulerLabel,
+    timelineGeometry, timelineViewportHeight, timelineDocumentHeight, timelineFrameDuration,
+    snappedToProjectFrame, snappedTimelineTime, snappedEditableTime, steppedTimelineTime,
+    EditorTimelineMagneticSnap, magneticTargets, magneticDelta,
+    normalizeZoomClipOrder, normalizeScreenMotionClipOrder, normalizeCameraMotionClipOrder,
+    PrimarySegmentReorderDraft, makePrimarySegmentTrimDraft,
+    primaryLeadingGap, primaryTrailingGap, primarySegmentJunctions, junctionID,
+  junctionHasRemovedSourceGap, primaryDisplaySegments,
+    primaryTrimDraftOrigin, primarySnappedCutX, trimOutputTimeFromTranslation, trimPreviewTime,
+    trimOutputTimeFromPointerX, EditorTimelineZoomAnchor,
+    EDITOR_TIMELINE_MINIMUM_ZOOM, EDITOR_TIMELINE_MAXIMUM_ZOOM, clampedTimelineZoom,
+    timelineZoomTargetFromWheel, EditorTimelineZoomInputCoalescer, timelineZoomTargetScrollOffset,
+    fallbackTimelineZoomViewportX, overlayMoveActionName, overlayResizeActionName,
+    primarySegmentIDFromSelection, primarySegmentIDs, reconcilingPrimarySelection,
+    timelineDeleteTarget, timelineSplitTarget, timelineSelectionRevealTime,
+    gestureSeeksDuringDrag, gestureIntentEquals, EditorTimelineGestureOwnership,
+    TimelineMap, makeClip, makeTransitionTiming, makeRecordingSegment, makeProjectTimeline,
+    makeRecorderProject, makeCanvasStyle, makeCameraStyle, makeAudioStyle, makeCursorStyle,
+    makeMotionStyle, makeOpeningSequence,
+  } = m
+
+  const tol = 1e-6
+  const mapWith = (segments) =>
+    new TimelineMap({ kind: 'edited', segments }, 10)
+
+  // ================================================ EditorTimelineClipGeometry
+  check('geo.inset', CLIP_CONTENT_INSET, 3)
+  check('geo.bandFraction', CLIP_WAVEFORM_BAND_FRACTION, 0.26)
+  const range = clipInteractionRange(100, 500, { start: 0, end: 200 })
+  check('geo.rangeStart', range.start, 0)
+  check('geo.rangeEnd', range.end, 100)
+  const rangeInside = clipInteractionRange(0, 500, { start: 120, end: 200 })
+  check('geo.rangeInsideStart', rangeInside.start, 120)
+  check('geo.rangeInsideEnd', rangeInside.end, 200)
+  // 文档范围完全在片段右侧 → 空区间（start == end）
+  const rangeBeyond = clipInteractionRange(0, 400, { start: 600, end: 800 })
+  check('geo.rangeBeyond', rangeBeyond.start, 400)
+  check('geo.rangeBeyondEnd', rangeBeyond.end, 400)
+  const band = clipWaveformBand({ x: 10, y: 20, width: 200, height: 100 })
+  // content 高 94，band 高 24.44，贴底
+  check('geo.bandX', band.x, 10)
+  check('geo.bandWidth', band.width, 200)
+  check('geo.bandHeight', band.height, 94 * 0.26, tol)
+  check('geo.bandY', band.y, 20 + 3 + 94 - 94 * 0.26, tol)
+
+  // ================================================ 标尺
+  // 60s 落在 600pt：每 128pt 一格 → raw 12.8s → 1/2/5 取 20
+  check('geo.majorStep', rulerMajorStep(60, 600), 20)
+  check('geo.majorStepInvalid', rulerMajorStep(0, 600), 1)
+  check('geo.nextFiner20', nextFinerRulerStep(20), 10)
+  check('geo.nextFiner10', nextFinerRulerStep(10), 5)
+  check('geo.nextFiner5', nextFinerRulerStep(5), 2)
+  check('geo.nextFiner2', nextFinerRulerStep(2), 1)
+  check('geo.nextFinerInvalid', nextFinerRulerStep(0), 0.5)
+
+  // 交叉淡化两端
+  // rawStep 正好等于 coarseStep（60s / 3 格）→ 进度 0 → 只用粗层
+  const layersCoarse = rulerScaleLayers(60, 384)
+  check('geo.layersCoarseCount', layersCoarse.length, 1)
+  check('geo.layersCoarseStep', layersCoarse[0].majorStep, 20)
+  // 进度落在中间 → 两层同时存在且不透明度互补
+  const layersMid = rulerScaleLayers(60, 750)
+  check('geo.layersMidCount', layersMid.length, 2)
+  check('geo.layersMidSum', layersMid[0].opacity + layersMid[1].opacity, 1, tol)
+  check('geo.layersMidFine', layersMid[1].majorStep, 10)
+  check('geo.layersInvalid', rulerScaleLayers(0, 600).length, 0)
+
+  // 视口内刻度：60s / 600pt，major 20s → minor 10s
+  const ticks = rulerVisibleTicks({
+    majorStep: 20, duration: 60, width: 600, visibleRange: { start: 0, end: 600 }, guardBand: 0,
+  })
+  check('geo.ticksFirst', ticks[0].time, 0)
+  check('geo.ticksFirstMajor', ticks[0].isMajor, true)
+  // 每 10s 一个次刻度，主刻度在偶数索引
+  check('geo.ticksStep', ticks[1].time, 10)
+  check('geo.ticksMinor', ticks[1].isMajor, false)
+  check('geo.ticksLastAtMostDuration', ticks[ticks.length - 1].time <= 60, true)
+  // 视口收窄后刻度数显著减少
+  const narrowTicks = rulerVisibleTicks({
+    majorStep: 20, duration: 60, width: 600, visibleRange: { start: 200, end: 300 }, guardBand: 0,
+  })
+  check('geo.ticksNarrowFewer', narrowTicks.length < ticks.length, true)
+  check('geo.ticksGuarded', rulerVisibleTicks({
+    majorStep: 20, duration: 60, width: 600, visibleRange: { start: 200, end: 300 }, guardBand: 80,
+  }).length, narrowTicks.length + 2)
+
+  // 标签：整秒省略百分秒
+  check('geo.label18', rulerLabel(18), '0:18')
+  check('geo.label18_5', rulerLabel(18.5), '0:18.50')
+  check('geo.labelZero', rulerLabel(0), '0:00')
+  check('geo.labelNegative', rulerLabel(-5), '0:00')
+  check('geo.labelOverMinute', rulerLabel(125.25), '2:05.25')
+
+  // ================================================ 行高几何
+  const fullVisibility = {
+    showsZoomTimeline: true,
+    showsCameraSyncTimeline: true,
+    showsScreenMotionTimeline: true,
+    showsCameraMotionTimeline: true,
+    showsOverlayTimeline: true,
+    overlayTimelineRowCount: 2,
+  }
+  const geoRegular = timelineGeometry({ compact: false }, fullVisibility, false)
+  check('geo.rulerHeight', geoRegular.timelineRulerHeight, 32)
+  check('geo.primaryVideo', geoRegular.primaryVideoHeight, 64)
+  check('geo.primaryLine', geoRegular.primaryTimelineHeight, 76)
+  check('geo.cameraSync', geoRegular.cameraSyncTimelineHeight, 62)
+  check('geo.motion', geoRegular.motionTimelineHeight, 44)
+  check('geo.overlayRows', geoRegular.overlayTimelineHeight, 2 * 34 + 16)
+  // 32 + 76 + 44 + 62 + 44 + 44 + 84
+  check('geo.canvasHeight', geoRegular.timelineCanvasHeight, 32 + 76 + 44 + 62 + 44 + 44 + 84)
+  check('geo.labelWidth', geoRegular.timelineLabelWidth, 156)
+  check('geo.labelWidthCollapsed', timelineGeometry({ compact: false }, fullVisibility, true).timelineLabelWidth, 52)
+
+  const geoCompact = timelineGeometry({ compact: true }, fullVisibility, false)
+  check('geo.compactRuler', geoCompact.timelineRulerHeight, 28)
+  check('geo.compactVideo', geoCompact.primaryVideoHeight, 52)
+  check('geo.compactMotion', geoCompact.motionTimelineHeight, 40)
+  check('geo.compactLabel', geoCompact.timelineLabelWidth, 128)
+  // 轨道全部隐藏时只剩标尺 + 主轨
+  const geoBare = timelineGeometry({ compact: false }, {
+    showsZoomTimeline: false,
+    showsCameraSyncTimeline: false,
+    showsScreenMotionTimeline: false,
+    showsCameraMotionTimeline: false,
+    showsOverlayTimeline: false,
+    overlayTimelineRowCount: 0,
+  }, false)
+  check('geo.bareCanvas', geoBare.timelineCanvasHeight, 32 + 76)
+  // 叠加轨至少 1 行高
+  check('geo.overlayMinimum', geoBare.overlayTimelineHeight, Math.max(34 + 16, 44))
+
+  check('geo.viewportMin', timelineViewportHeight(10, geoRegular), 80)
+  // 面板 400：400 - 44 - 20 - 1 = 335 > 80
+  check('geo.viewportNormal', timelineViewportHeight(400, geoRegular), 400 - 44 - 20 - 1)
+  check('geo.documentHeight', timelineDocumentHeight(400, geoRegular),
+    Math.max(geoRegular.timelineCanvasHeight, 400 - 65))
+
+  // ================================================ 帧吸附
+  check('geo.frameDuration', timelineFrameDuration(60), 1 / 60, tol)
+  check('geo.frameDurationGuard', timelineFrameDuration(0), 1)
+  check('geo.snappedFrame', snappedToProjectFrame(1.01, 1 / 60), Math.round(1.01 * 60) / 60, tol)
+  check('geo.snappedFrameNaN', snappedToProjectFrame(NaN, 1 / 60), 0)
+
+  // 首/尾半帧归到精确端点（保留非整数帧的媒体时长）
+  check('geo.snappedTimelineHead', snappedTimelineTime(0.005, 10.008, 1 / 60), 0)
+  check('geo.snappedTimelineTail', snappedTimelineTime(10.006, 10.008, 1 / 60), 10.008)
+  check('geo.snappedTimelineMid', snappedTimelineTime(5.008, 10, 1 / 60), Math.round(5.008 * 60) / 60, tol)
+  check('geo.snappedTimelineClamp', snappedTimelineTime(99, 10, 1 / 60), 10)
+
+  check('geo.snappedEditableLower', snappedEditableTime(2.004, 2, 8, 1 / 60), 2)
+  check('geo.snappedEditableUpper', snappedEditableTime(7.999, 2, 8, 1 / 60), 8)
+  check('geo.stepped', steppedTimelineTime(1, 3, 1 / 30), 1 + 3 / 30, tol)
+
+  // ================================================ 手授顺序归一
+  const orderedClips = [
+    makeClip({ id: 'a', startTime: 1, endTime: 2, scale: 1.6 }),
+    makeClip({ id: 'b', startTime: 3, endTime: 4, scale: 1.6 }),
+  ]
+  const orderedResult = normalizeZoomClipOrder(orderedClips)
+  check('order.identity', orderedResult.items === orderedClips, true)
+  check('order.noSort', orderedResult.didSort, false)
+  const inverted = [
+    makeClip({ id: 'c', startTime: 5, endTime: 6, scale: 1.6 }),
+    makeClip({ id: 'd', startTime: 2, endTime: 3, scale: 1.6 }),
+  ]
+  const invertedResult = normalizeZoomClipOrder(inverted)
+  check('order.sorted', invertedResult.didSort, true)
+  check('order.sortedFirst', invertedResult.items[0].id, 'd')
+  // 起点相同按 id 字典序，保证确定性
+  const tie = normalizeZoomClipOrder([
+    makeClip({ id: 'z9', startTime: 1, endTime: 2, scale: 1.6 }),
+    makeClip({ id: 'a1', startTime: 1, endTime: 2, scale: 1.6 }),
+  ])
+  check('order.tieByID', tie.items[0].id, 'a1')
+  check('order.empty', normalizeZoomClipOrder([]).didSort, false)
+  check('order.single', normalizeZoomClipOrder([orderedClips[0]]).didSort, false)
+  // 运动轨同规则
+  const motionTie = normalizeScreenMotionClipOrder([
+    { id: 'mb', timing: makeTransitionTiming({ startTime: 2, duration: 1 }), target: { position: { x: 0.5, y: 0.5 }, scale: 1, rotationX: 0, rotationY: 0, rotationZ: 0, perspective: 0.65 } },
+    { id: 'ma', timing: makeTransitionTiming({ startTime: 1, duration: 1 }), target: { position: { x: 0.5, y: 0.5 }, scale: 1, rotationX: 0, rotationY: 0, rotationZ: 0, perspective: 0.65 } },
+  ])
+  check('order.motionSorted', motionTie.items[0].id, 'ma')
+  check('order.cameraEmpty', normalizeCameraMotionClipOrder([]).didSort, false)
+
+  // ================================================ 磁吸
+  const snap = new EditorTimelineMagneticSnap()
+  const targets = () => [0, 5, 10]
+  // 指针 4.95 落在 5 的 7pt 捕获内（10pt/s → capture 0.7s）
+  check('snap.capture', snap.resolve(4.95, [0], 10, { targets }), 5, tol)
+  check('snap.targetTime', snap.targetTime, 5)
+  // 已吸住：指针微抖仍输出同一个吸附目标
+  check('snap.held', snap.resolve(5.05, [0], 10, { targets }), 5, tol)
+  // 超出 14pt 脱开半径（1.4s）→ 松开
+  check('snap.escape', snap.resolve(6.6, [0], 10, { targets }), 6.6, tol)
+  check('snap.released', snap.targetTime, null)
+  // 初始边缘被屏蔽：起点就在 5 上时不吸自己
+  const selfSnap = new EditorTimelineMagneticSnap()
+  check('snap.selfSuppressed', selfSnap.resolve(5.0, [0], 10, { targets, initial: [5] }), 5, tol)
+  check('snap.selfNoTarget', selfSnap.targetTime, null)
+  // Shift 临时跳过
+  check('snap.skip', snap.resolve(4.95, [0], 10, { targets, skipRequested: true }), 4.95, tol)
+  // validate：合法落点没走到目标 → 释放
+  const validated = new EditorTimelineMagneticSnap()
+  validated.resolve(4.95, [0], 10, { targets })
+  validated.validate([4.0])
+  check('snap.validateReleased', validated.targetTime, null)
+  const kept = new EditorTimelineMagneticSnap()
+  kept.resolve(4.95, [0], 10, { targets })
+  kept.validate([5.0])
+  check('snap.validateKept', kept.targetTime, 5)
+  // reset 清空候选缓存
+  kept.reset()
+  check('snap.reset', kept.targetTime, null)
+  // 非法比例尺直接返回原值
+  check('snap.invalidScale', new EditorTimelineMagneticSnap().resolve(1, [0], 0, { targets }), 1)
+  // 移动模式两端参与：终点被吸到 10
+  const moveSnap = new EditorTimelineMagneticSnap()
+  const moved = moveSnap.resolve(8.95, [0, 1], 10, { targets })
+  check('snap.offsetEdge', moved, 9, tol)
+  check('snap.offsetTarget', moveSnap.targetTime, 10)
+
+  // magneticTargets：端点收集 + 排除 + scrub
+  const targetList = magneticTargets({
+    duration: 20,
+    primarySegments: [{ id: 'p1', outputStart: 0, outputDuration: 5 }],
+    zoomClips: [{ id: 'z1', startTime: 2, endTime: 4 }],
+    screenMotionClips: [{ id: 's1', startTime: 6, endTime: 8 }],
+    cameraMotionClips: [{ id: 'c1', startTime: 9, endTime: 11 }],
+    mosaicClips: [{ id: 'm1', startTime: 12, endTime: 13 }],
+    stickerClips: [{ id: 'k1', startTime: 14, endTime: 15 }],
+    playbackTime: 7,
+    showsZoomTimeline: true,
+    showsScreenMotionTimeline: true,
+    showsCameraMotionTimeline: true,
+    showsOverlayTimeline: true,
+    excludedIDs: new Set(['m1']),
+    isScrubbing: false,
+  })
+  check('snap.targetsHasZero', targetList.includes(0), true)
+  check('snap.targetsHasDuration', targetList.includes(20), true)
+  check('snap.targetsHasPrimaryEnd', targetList.includes(5), true)
+  check('snap.targetsHasZoom', targetList.includes(2), true)
+  check('snap.targetsHasPlayback', targetList.includes(7), true)
+  check('snap.targetsExcluded', targetList.includes(12), false)
+  check('snap.targetsHasSticker', targetList.includes(14), true)
+  // scrub 时播放头不作为目标
+  check('snap.targetsNoPlaybackWhileScrub', magneticTargets({
+    ...{
+      duration: 20,
+      primarySegments: [],
+      zoomClips: [],
+      screenMotionClips: [],
+      cameraMotionClips: [],
+      mosaicClips: [],
+      stickerClips: [],
+      showsZoomTimeline: false,
+      showsScreenMotionTimeline: false,
+      showsCameraMotionTimeline: false,
+      showsOverlayTimeline: false,
+      excludedIDs: new Set(),
+    },
+    playbackTime: 7,
+    isScrubbing: true,
+  }).includes(7), false)
+  // 隐藏轨道不贡献目标
+  check('snap.targetsHiddenTrack', magneticTargets({
+    duration: 20,
+    primarySegments: [],
+    zoomClips: [{ id: 'z1', startTime: 2, endTime: 4 }],
+    screenMotionClips: [],
+    cameraMotionClips: [],
+    mosaicClips: [],
+    stickerClips: [],
+    playbackTime: 7,
+    showsZoomTimeline: false,
+    showsScreenMotionTimeline: false,
+    showsCameraMotionTimeline: false,
+    showsOverlayTimeline: false,
+    excludedIDs: new Set(),
+    isScrubbing: true,
+  }).includes(2), false)
+
+  // ================================================ 主轨呈现
+  // 开头缺口：首段 sourceStart = 2
+  const gapMap = mapWith([
+    makeRecordingSegment({ id: 'g1', sourceStart: 2, sourceDuration: 3 }),
+    makeRecordingSegment({ id: 'g2', sourceStart: 5, sourceDuration: 2 }),
+  ])
+  check('main.leadingGap', primaryLeadingGap(gapMap).removedDuration, 2, tol)
+  check('main.leadingGapID', primaryLeadingGap(gapMap).nextSegmentID, 'g1')
+  // 无缺口
+  const noGapMap = mapWith([makeRecordingSegment({ id: 'n1', sourceStart: 0, sourceDuration: 5 })])
+  check('main.noLeadingGap', primaryLeadingGap(noGapMap), null)
+  // 结尾缺口：整段 10s，末段到 8
+  check('main.trailingGap', primaryTrailingGap(noGapMap).removedDuration, 5, tol)
+  check('main.trailingGapOutput', primaryTrailingGap(noGapMap).outputTime, 5, tol)
+  const fullMap = mapWith([makeRecordingSegment({ id: 'f1', sourceStart: 0, sourceDuration: 10 })])
+  check('main.noTrailingGap', primaryTrailingGap(fullMap), null)
+
+  // 接缝：两段相邻但有源缺口
+  const junctionMap = mapWith([
+    makeRecordingSegment({ id: 'j1', sourceStart: 0, sourceDuration: 2 }),
+    makeRecordingSegment({ id: 'j2', sourceStart: 3, sourceDuration: 2 }),
+  ])
+  const junctions = primarySegmentJunctions(junctionMap)
+  check('main.junctionCount', junctions.length, 1)
+  check('main.junctionRemoved', junctions[0].removedDuration, 1, tol)
+  check('main.junctionOutput', junctions[0].outputTime, 2, tol)
+  check('main.junctionHasGap', junctionHasRemovedSourceGap(junctions[0]), true)
+  check('main.junctionID', junctionID(junctions[0]), 'j2')
+  // 倒回剪切的接缝被跳过
+  const reversedMap = mapWith([
+    makeRecordingSegment({ id: 'r1', sourceStart: 5, sourceDuration: 2 }),
+    makeRecordingSegment({ id: 'r2', sourceStart: 1, sourceDuration: 2 }),
+  ])
+  check('main.reversedSkipped', primarySegmentJunctions(reversedMap).length, 0)
+
+  // 修剪草稿叠加：右侧修剪把输出时长缩短，后续片段左移
+  const trimMap = mapWith([
+    makeRecordingSegment({ id: 't1', sourceStart: 0, sourceDuration: 4, playbackRate: 1 }),
+    makeRecordingSegment({ id: 't2', sourceStart: 4, sourceDuration: 2, playbackRate: 1 }),
+  ])
+  const trimDraft = makePrimarySegmentTrimDraft({
+    segmentID: 't1',
+    edge: 'right',
+    original: trimMap.segments[0],
+    proposedOutputTime: 2,
+  })
+  const trimmed = primaryDisplaySegments(trimMap, trimDraft, null)
+  check('main.trimOutput', trimmed[0].outputStart + trimmed[0].sourceDuration, 2, tol)
+  check('main.trimRipple', trimmed[1].outputStart, 2, tol)
+  // 左侧修剪：源起点右移，源时长减少（乘 playbackRate）
+  const leftDraft = makePrimarySegmentTrimDraft({
+    segmentID: 't1', edge: 'left', original: trimMap.segments[0], proposedOutputTime: 1,
+  })
+  const leftTrimmed = primaryDisplaySegments(trimMap, leftDraft, null)
+  check('main.trimLeftSource', leftTrimmed[0].sourceStart, 1, tol)
+  check('main.trimLeftDuration', leftTrimmed[0].sourceDuration, 3, tol)
+  // 变速草稿夹取
+  const retimed = primaryDisplaySegments(trimMap, null, {
+    segmentID: 't2', original: trimMap.segments[1], proposedRate: 1000,
+  })
+  check('main.retimeClamp', retimed[1].playbackRate, 100)
+  // 草稿指向不存在的片段 → 原样返回
+  const missingDraft = makePrimarySegmentTrimDraft({
+    segmentID: 'nope', edge: 'right', original: trimMap.segments[0], proposedOutputTime: 1,
+  })
+  check('main.draftMissing', primaryDisplaySegments(trimMap, missingDraft, null), trimMap.segments)
+
+  // trimDraftOrigin：两侧可还原余量
+  const originDraft = primaryTrimDraftOrigin({
+    segmentID: 't2', edge: 'left', map: trimMap, fullSourceDuration: 10,
+  })
+  check('main.originMinimum', originDraft.minimumOutputTime, 4, tol)
+  // 整段源素材 0~10s，t2 只用到 4~6 → 右侧还能还原 4s
+  check('main.originMaximum', originDraft.maximumOutputTime, 10, tol)
+
+  // snappedCutX：切点命中片段边界
+  const cutMap = mapWith([
+    makeRecordingSegment({ id: 'c1', sourceStart: 0, sourceDuration: 5 }),
+    makeRecordingSegment({ id: 'c2', sourceStart: 5, sourceDuration: 5 }),
+  ])
+  const cutX = primarySnappedCutX({
+    pointerX: 253, width: 500, duration: 10, segments: cutMap.segments, playbackTime: 8,
+  })
+  check('main.cutSnapToBoundary', cutX, 250, tol)
+  // 无片段边界可吸 → 回落播放头
+  const cutPlayback = primarySnappedCutX({
+    pointerX: 402, width: 500, duration: 10,
+    segments: [makeRecordingSegment({ id: 'c3', sourceStart: 0, sourceDuration: 10 })],
+    playbackTime: 8,
+  })
+  check('main.cutSnapToPlayback', cutPlayback, 400, tol)
+  // 都不命中 → 原值
+  check('main.cutRaw', primarySnappedCutX({
+    pointerX: 300, width: 500, duration: 10,
+    segments: [makeRecordingSegment({ id: 'c4', sourceStart: 0, sourceDuration: 10 })],
+    playbackTime: 1,
+  }), 300)
+
+  // 增量修剪：保留最短时长
+  const trimSegment = cutMap.segments[0]
+  // 未给 maximumOutputTime 时不能扩张到自身之外
+  check('main.trimNoExpand', trimOutputTimeFromTranslation({
+    segment: trimSegment, edge: 'right', translation: 50, laneWidth: 500,
+    outputDuration: 10, minimumSegmentDuration: 0.16,
+  }), 5, tol)
+  check('main.trimTranslation', trimOutputTimeFromTranslation({
+    segment: trimSegment, edge: 'right', translation: 50, laneWidth: 500,
+    outputDuration: 10, minimumSegmentDuration: 0.16, maximumOutputTime: 8,
+  }), 6, tol)
+  // 缩到负 → 保留 0.16
+  check('main.trimRetained', trimOutputTimeFromTranslation({
+    segment: trimSegment, edge: 'right', translation: -500, laneWidth: 500,
+    outputDuration: 10, minimumSegmentDuration: 0.16,
+  }), 0.16, tol)
+  // 左边缘向右拖 → 起点右移
+  check('main.trimLeft', trimOutputTimeFromTranslation({
+    segment: trimSegment, edge: 'left', translation: 100, laneWidth: 500,
+    outputDuration: 10, minimumSegmentDuration: 0.16,
+  }), 2, tol)
+
+  // 预览相位：右边缘显示最后一帧（proposed − frame）
+  const previewDraft = makePrimarySegmentTrimDraft({
+    segmentID: 'c1', edge: 'right', original: trimSegment, proposedOutputTime: 3,
+  })
+  check('main.previewRight', trimPreviewTime(previewDraft, 0.1), 2.9, tol)
+  const leftPreviewDraft = makePrimarySegmentTrimDraft({
+    segmentID: 'c1', edge: 'left', original: trimSegment, proposedOutputTime: 3,
+  })
+  check('main.previewLeft', trimPreviewTime(leftPreviewDraft, 0.1), 3, tol)
+
+  // 绝对位置修剪
+  check('main.trimPointer', trimOutputTimeFromPointerX({
+    segment: trimSegment, edge: 'right', pointerX: 300, laneWidth: 500,
+    outputDuration: 10, minimumSegmentDuration: 0.16, maximumOutputTime: 8,
+  }), 6, tol)
+
+  // ================================================ 缩放锚点
+  const anchor = new EditorTimelineZoomAnchor({
+    pointerViewportX: 100, contentOffsetX: 0, contentWidth: 500, targetContentWidth: 1000,
+  })
+  // 语义时刻 = 100/500 = 20% → 新偏移 200 − 100 = 100
+  check('zoom.anchorFraction', anchor.contentFraction, 0.2, tol)
+  check('zoom.anchorOffset', anchor.scrollOffset(500), 100, tol)
+  // 上限夹取
+  check('zoom.anchorClamp', new EditorTimelineZoomAnchor({
+    pointerViewportX: 0, contentOffsetX: 0, contentWidth: 500, targetContentWidth: 500,
+  }).scrollOffset(500), 0)
+  check('zoom.min', EDITOR_TIMELINE_MINIMUM_ZOOM, 1)
+  check('zoom.max', EDITOR_TIMELINE_MAXIMUM_ZOOM, 4096)
+  check('zoom.clampLow', clampedTimelineZoom(0.1), 1)
+  check('zoom.clampHigh', clampedTimelineZoom(99999), 4096)
+  check('zoom.clampNaN', clampedTimelineZoom(NaN), 1)
+  // 每单位 deltaY 缩放 1.24 倍
+  check('zoom.wheel', timelineZoomTargetFromWheel(1, 1), 1.24, tol)
+  check('zoom.wheelClamp', timelineZoomTargetFromWheel(4000, 10), 4096)
+
+  // 输入合并器：累计而非替换
+  const coalescer = new EditorTimelineZoomInputCoalescer()
+  let scheduled = 0
+  coalescer.enqueueWheel(1, 1, 100, () => { scheduled += 1 })
+  coalescer.enqueueWheel(1, 1, 200, () => { scheduled += 1 })
+  check('zoom.coalesceScheduleOnce', scheduled, 1)
+  const flushed = coalescer.flush()
+  // 1 × 1.24 × 1.24
+  check('zoom.coalesceAccumulated', flushed.targetZoom, 1.24 * 1.24, tol)
+  check('zoom.coalescePointer', flushed.pointerViewportX, 200)
+  check('zoom.coalesceEmpty', coalescer.flush(), null)
+  // 绝对目标也夹取
+  const absolute = new EditorTimelineZoomInputCoalescer()
+  absolute.enqueueTarget(99999, null, () => {})
+  check('zoom.coalesceAbsolute', absolute.flush().targetZoom, 4096)
+  // cancel 丢弃
+  const cancelled = new EditorTimelineZoomInputCoalescer()
+  cancelled.enqueueTarget(2, null, () => {})
+  cancelled.cancel()
+  check('zoom.coalesceCancel', cancelled.flush(), null)
+
+  // 目标偏移：视口宽 × 缩放
+  const zoomTarget = timelineZoomTargetScrollOffset({
+    requestedZoom: 2, viewportWidth: 500, currentContentWidth: 500,
+    currentContentOffsetX: 0, pointerViewportX: 250,
+  })
+  check('zoom.targetWidth', zoomTarget.targetContentWidth, 1000, tol)
+  // 锚点在视口中心 → 新偏移 = 500 − 250 = 250
+  check('zoom.targetOffset', zoomTarget.scrollOffsetX, 250, tol)
+  check('zoom.fallbackViewportX', fallbackTimelineZoomViewportX({
+    contentWidth: 500, viewportWidth: 500, contentOffset: 0,
+  }), 250, tol)
+
+  // ================================================ 叠加轨命名
+  check('ov.mosaicMove', overlayMoveActionName('mosaic'), '移动打码')
+  check('ov.stickerMove', overlayMoveActionName('sticker'), '移动贴图')
+  check('ov.mosaicResize', overlayResizeActionName('mosaic'), '调整打码时长')
+  check('ov.stickerResize', overlayResizeActionName('sticker'), '调整贴图时长')
+
+  // ================================================ 选择策略
+  check('sel.primaryID', primarySegmentIDFromSelection({ kind: 'primarySegment', id: 'x' }), 'x')
+  check('sel.primaryIDNone', primarySegmentIDFromSelection({ kind: 'canvas' }), null)
+  check('sel.primaryIDsFull', primarySegmentIDs(makeProjectTimeline())[0].length > 0, true)
+  const editedTimeline = makeProjectTimeline({
+    sourceSequence: {
+      kind: 'edited',
+      segments: [makeRecordingSegment({ id: 'e1', sourceStart: 0, sourceDuration: 3 })],
+    },
+  })
+  check('sel.primaryIDsEdited', primarySegmentIDs(editedTimeline).join(','), 'e1')
+  // 已删除的片段 id → 回退画布
+  check('sel.reconcileRemoved', reconcilingPrimarySelection(
+    { kind: 'primarySegment', id: 'gone' }, editedTimeline
+  ).kind, 'canvas')
+  check('sel.reconcileKept', reconcilingPrimarySelection(
+    { kind: 'primarySegment', id: 'e1' }, editedTimeline
+  ).kind, 'primarySegment')
+  // 非主片段选择原样返回
+  check('sel.reconcileOther', reconcilingPrimarySelection({ kind: 'canvas' }, editedTimeline).kind, 'canvas')
+
+  check('sel.deleteTarget', timelineDeleteTarget({ kind: 'zoom', id: 'q' }).kind, 'zoom')
+  check('sel.deleteTargetNone', timelineDeleteTarget({ kind: 'zoomTrack' }), null)
+  check('sel.splitTarget', timelineSplitTarget({ kind: 'sticker', id: 'k' }).kind, 'sticker')
+  // 主片段不能拆（S 键回落到主轨拆分）
+  check('sel.splitTargetPrimary', timelineSplitTarget({ kind: 'primarySegment', id: 'p' }), null)
+
+  // 选中揭示：播放头已在片段内 → 不移动
+  const revealProject = {
+    ...makeRecorderProject(),
+    canvas: makeCanvasStyle(),
+    camera: makeCameraStyle(),
+    audio: makeAudioStyle(),
+    cursorStyle: makeCursorStyle(),
+    motion: makeMotionStyle(),
+    openingSequence: makeOpeningSequence(),
+    timeline: makeProjectTimeline({
+      zoomClips: [makeClip({ id: 'rv', startTime: 2, endTime: 5, scale: 1.6, enterDuration: 0.7 })],
+    }),
+  }
+  check('sel.revealInside', timelineSelectionRevealTime({
+    selection: { kind: 'zoom', id: 'rv' }, project: revealProject, currentTime: 3,
+  }), null)
+  // 播放头在片段外 → 跳到进入完成点
+  check('sel.revealOutside', timelineSelectionRevealTime({
+    selection: { kind: 'zoom', id: 'rv' }, project: revealProject, currentTime: 9,
+  }), 2.7, tol)
+  // 未命中选择 → null
+  check('sel.revealMissing', timelineSelectionRevealTime({
+    selection: { kind: 'zoom', id: 'none' }, project: revealProject, currentTime: 0,
+  }), null)
+
+  // ================================================ 手势意图
+  check('gesture.scrubSeeks', gestureSeeksDuringDrag({ kind: 'scrub' }), true)
+  check('gesture.zoomMoveNoSeek', gestureSeeksDuringDrag({ kind: 'zoomMove', id: 'z' }), false)
+  check('gesture.trimSeeks', gestureSeeksDuringDrag({ kind: 'primaryTrim', id: 'p', edge: 'left' }), true)
+  check('gesture.equalsTrim', gestureIntentEquals(
+    { kind: 'primaryTrim', id: 'p', edge: 'left' },
+    { kind: 'primaryTrim', id: 'p', edge: 'left' }
+  ), true)
+  check('gesture.differsTrimEdge', gestureIntentEquals(
+    { kind: 'primaryTrim', id: 'p', edge: 'left' },
+    { kind: 'primaryTrim', id: 'p', edge: 'right' }
+  ), false)
+  check('gesture.equalsResize', gestureIntentEquals(
+    { kind: 'zoomResize', id: 'z', leading: true },
+    { kind: 'zoomResize', id: 'z', leading: false }
+  ), false)
+
+  // 所有权：先到先得，跨意图抢占失败，同意图重入成功
+  const ownership = new EditorTimelineGestureOwnership()
+  check('gesture.beginFirst', ownership.begin({ kind: 'zoomCreate' }), true)
+  check('gesture.blockOther', ownership.begin({ kind: 'zoomMove', id: 'z' }), false)
+  check('gesture.reenterSame', ownership.begin({ kind: 'zoomCreate' }), true)
+  check('gesture.activeKind', ownership.activeIntent.kind, 'zoomCreate')
+  ownership.end({ kind: 'zoomMove', id: 'z' })
+  check('gesture.endMismatchKeeps', ownership.activeIntent.kind, 'zoomCreate')
+  ownership.end({ kind: 'zoomCreate' })
+  check('gesture.ended', ownership.activeIntent, null)
+  ownership.begin({ kind: 'overlayCreate' })
+  ownership.cancel()
+  check('gesture.cancelled', ownership.activeIntent, null)
+
+  // 重排草稿
+  const reorderMap = mapWith([
+    makeRecordingSegment({ id: 'a', sourceStart: 0, sourceDuration: 2 }),
+    makeRecordingSegment({ id: 'b', sourceStart: 2, sourceDuration: 2 }),
+    makeRecordingSegment({ id: 'c', sourceStart: 4, sourceDuration: 2 }),
+  ])
+  const draft = PrimarySegmentReorderDraft.make('a', reorderMap.segments)
+  check('reorder.initialIndex', draft.destination, 0)
+  check('reorder.initialInsertion', draft.insertionTime, 0)
+  // 向右拖过 b 的中心（位移 3s > 1+1）
+  draft.update(3)
+  check('reorder.movedIndex', draft.destination, 1)
+  check('reorder.newOrder', draft.segments.map((s) => s.id).join(','), 'b,a,c')
+  check('reorder.newStarts', draft.segments.map((s) => s.outputStart).join(','), '0,2,4')
+  // 拖到最右
+  draft.update(99)
+  check('reorder.lastIndex', draft.destination, 2)
+  check('reorder.missing', PrimarySegmentReorderDraft.make('nope', reorderMap.segments), null)
+
+}
+
+runTimelineGeometryBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

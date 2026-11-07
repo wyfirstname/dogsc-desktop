@@ -274,3 +274,68 @@ export {
 } from '../src/renderer/src/core/EditorTimeline'
 export { makeKeyframe, makePointerClick } from '../src/renderer/src/core/ZoomAnimation'
 export { makeTimelineZoomSegment, EMPTY_HIT_ZONE } from '../src/renderer/src/core/EditorTimeline'
+
+// ---- 批次 9（时间线几何 / 磁吸 / 手授顺序 / 交互纯决策）----
+export {
+  CLIP_CONTENT_INSET,
+  CLIP_WAVEFORM_BAND_FRACTION,
+  clipInteractionRange,
+  clipWaveformBand,
+  rulerMajorStep,
+  nextFinerRulerStep,
+  rulerScaleLayers,
+  rulerVisibleTicks,
+  rulerLabel,
+  timelineGeometry,
+  timelineViewportHeight,
+  timelineDocumentHeight,
+  timelineFrameDuration,
+  snappedToProjectFrame,
+  snappedTimelineTime,
+  snappedEditableTime,
+  steppedTimelineTime,
+} from '../src/renderer/src/core/EditorTimelineGeometry'
+export {
+  EditorTimelineMagneticSnap,
+  magneticTargets,
+  magneticDelta,
+} from '../src/renderer/src/core/EditorTimelineMagneticSnap'
+export {
+  normalizeZoomClipOrder,
+  normalizeScreenMotionClipOrder,
+  normalizeCameraMotionClipOrder,
+} from '../src/renderer/src/core/EditorTimelineAuthoredOrder'
+export {
+  PrimarySegmentReorderDraft,
+  makePrimarySegmentTrimDraft,
+  primaryLeadingGap,
+  primaryTrailingGap,
+  primarySegmentJunctions,
+  junctionID,
+  junctionHasRemovedSourceGap,
+  primaryDisplaySegments,
+  primaryTrimDraftOrigin,
+  primarySnappedCutX,
+  trimOutputTimeFromTranslation,
+  trimPreviewTime,
+  trimOutputTimeFromPointerX,
+  EditorTimelineZoomAnchor,
+  EDITOR_TIMELINE_MINIMUM_ZOOM,
+  EDITOR_TIMELINE_MAXIMUM_ZOOM,
+  clampedTimelineZoom,
+  timelineZoomTargetFromWheel,
+  EditorTimelineZoomInputCoalescer,
+  timelineZoomTargetScrollOffset,
+  fallbackTimelineZoomViewportX,
+  overlayMoveActionName,
+  overlayResizeActionName,
+  primarySegmentIDFromSelection,
+  primarySegmentIDs,
+  reconcilingPrimarySelection,
+  timelineDeleteTarget,
+  timelineSplitTarget,
+  timelineSelectionRevealTime,
+  gestureSeeksDuringDrag,
+  gestureIntentEquals,
+  EditorTimelineGestureOwnership,
+} from '../src/renderer/src/core/EditorTimelineInteraction'
