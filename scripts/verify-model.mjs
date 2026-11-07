@@ -16596,5 +16596,1384 @@ async function runTimelineCacheBatch() {
 
 await runTimelineCacheBatch()
 
+
+
+
+
+async function runDesignSystemBatch() {
+  // ========== 6 文件 / 2,105 行：设计令牌 / 录制器面层 / 配置弹层 /
+  //            检查器动效 / 菜单桥 / 线条图标
+  const {
+    // ---- EditorDesignTokens.swift
+    tokenRGBA, tokenGray, tokenBlack, tokenWhite, adaptiveColor, resolveAdaptive,
+    colorWithOpacity, colorToCSS, EDITOR_BACKGROUND_DEEP, EDITOR_PANEL_SURFACE,
+    EDITOR_SLEEPING_MONITOR, EDITOR_PANEL_RAISED, EDITOR_CARD_ELEVATED, EDITOR_CARD_TOP,
+    EDITOR_CARD_BOTTOM, EDITOR_CHROME_BAR, EDITOR_STAGE, EDITOR_CARD_GRADIENT,
+    EDITOR_STAGE_LIGHT, EDITOR_STAGE_VIGNETTE, EDITOR_ACCENT_GLOW, EDITOR_PLATINUM_ACCENT,
+    EDITOR_PLATINUM_ACCENT_DEEP, EDITOR_PLATINUM_GRADIENT, EDITOR_TIMELINE_CLIP_TOP,
+    EDITOR_TIMELINE_CLIP_BOTTOM, EDITOR_TIMELINE_ZOOM_SURFACE, EDITOR_TIMELINE_ZOOM_ACCENT,
+    EDITOR_TIMELINE_ZOOM_INK, EDITOR_RECORDER_SURFACE, EDITOR_MEDIA_ACCENT, EDITOR_PLATINUM_MUTED,
+    EDITOR_ON_ACCENT, EDITOR_CONTROL_WELL, EDITOR_AMBER_ACCENT, EDITOR_SUCCESS, EDITOR_RECORDING,
+    EDITOR_SELECTION_TINT, EDITOR_RAIL_SELECTION_WASH, EDITOR_SELECTION_WASH, editorChrome,
+    EDITOR_HAIRLINE, EDITOR_CONTROL_BORDER, EDITOR_GROUP_SURFACE, EDITOR_CARD_FILL,
+    EDITOR_POPOVER_SELECTION_SURFACE, EDITOR_POPOVER_SECONDARY_TEXT, EDITOR_TOP_HIGHLIGHT,
+    EDITOR_SLIDER_RAIL, EDITOR_SLIDER_INK, EDITOR_SLIDER_THUMB, EDITOR_ISLAND_OUTLINE,
+    EDITOR_CONTACT_SHADOW, EDITOR_SOFT_SHADOW, EDITOR_AMBIENT_SHADOW, EDITOR_PRIMARY_TEXT,
+    EDITOR_SECONDARY_TEXT, EDITOR_TERTIARY_TEXT, EDITOR_THEME_TOKENS, editorThemeColor,
+    EDITOR_STATE_WASH_HOVER, EDITOR_STATE_WASH_OPEN, EDITOR_STATE_WASH_PRESSED,
+    editorStateWashOpacity, EDITOR_FONT_PANEL_TITLE, EDITOR_FONT_SECTION_TITLE,
+    EDITOR_FONT_CONTROL_LABEL, EDITOR_FONT_CONTROL_VALUE, EDITOR_FONT_HELPER,
+    EDITOR_FONT_CAPTION, EDITOR_FONT_EYEBROW, EDITOR_TYPOGRAPHY, editorFont, editorFontCSS,
+    EDITOR_SPACING_INSPECTOR_INSET, EDITOR_SPACING_SECTION_GAP, EDITOR_SPACING_CONTROL_GAP,
+    EDITOR_SPACING_HEADING_GAP, EDITOR_SPACING_TILE_INSET, EDITOR_INTERFACE_SPACING,
+    EDITOR_RADIUS_COMPACT, EDITOR_RADIUS_CONTROL, EDITOR_RADIUS_GROUP, EDITOR_RADIUS_CARD,
+    EDITOR_RADIUS_FLOATING, EDITOR_RADIUS_TILE, editorRadiusOrderIsValid, EDITOR_HEIGHT_COMPACT,
+    EDITOR_HEIGHT_SELECTION, EDITOR_HEIGHT_ACTION, EDITOR_INTERFACE_HEIGHT, editorClampedRadius,
+    SPRING_INTERACTIVE, SPRING_FLUID, SPRING_SNAPPY, SPRING_GENTLE, SPRING_SETTLE, SPRING_LIFT,
+    SPRING_CROSSFADE_DURATION, SPRING_HOVER_DURATION, SPRING_HOVER_REDUCED_DURATION,
+    springAnimation, springMotion, editorRaisedThumbStyle, editorRaisedThumbShadowOpacity,
+    EDITOR_FADING_HAIRLINE_STOPS, EDITOR_FADING_HAIRLINE_OPACITY, editorHairlineSize,
+    editorFadingHairlineStops,
+    // ---- RecorderSurfaceStyle.swift
+    RECORDER_CHROME, RECORDER_INK, RECORDER_BASE, RECORDER_CANVAS, RECORDER_MUTED,
+    RECORDER_FAINT, RECORDER_MINT, RECORDER_POSITIVE_INK, RECORDER_SELECTION, RECORDER_LIFT,
+    RECORDER_RECORDING, RECORDER_DESTRUCTIVE_INK, RECORDER_AMBER_INK, RECORDER_MEDIA_OVERLAY,
+    RECORDER_MEDIA_INK, RECORDER_PRIMARY_FILL, RECORDER_ON_PRIMARY, RECORDER_EDGE_TOP,
+    RECORDER_EDGE_BOTTOM, RECORDER_MINT_WASH_ALPHA, RECORDER_SILVER_ALPHA, RECORDER_WELL_ALPHA,
+    RECORDER_LINE_ALPHA, RECORDER_STYLE_TOKENS, recorderStyleColor, recorderStyleCSS,
+    recorderDerived, RECORDER_MORPH_SPRING, RECORDER_SETTLE_SPRING, RECORDER_QUICK_SPRING,
+    RECORDER_FADE_DURATION, recorderMotion, RECORDER_SURFACE_EDGE_WIDTH,
+    RECORDER_SURFACE_SHADOW_RADIUS, RECORDER_SURFACE_SHADOW_Y, RECORDER_SURFACE_SHADOW_ALPHA,
+    recorderSurfaceSpec, recorderSurfaceStyle, RECORDER_PILL_KINDS, RECORDER_PILL_HEIGHT,
+    RECORDER_PILL_FONT_SIZE, RECORDER_PILL_FONT_WEIGHT, recorderPillHorizontalPadding,
+    RECORDER_PILL_PRESS_SCALE, RECORDER_PILL_DISABLED_OPACITY, recorderPillForeground,
+    recorderPillFillAlpha, recorderPillFillBase, recorderPillFill, recorderPillFocusColor,
+    recorderPillRender, RECORDER_KEY_HINT_SIZE, RECORDER_KEY_HINT_OPACITY,
+    CAPTURE_VIEWFINDER_CORNER_RADIUS, captureViewfinderCorners, captureViewfinderCommands,
+    captureViewfinderArmFits, RECORDER_RAISED_RADIUS, recorderRaisedFill,
+    RECORDER_BUTTON_PRESS_ALPHA, RECORDER_BUTTON_PRIMARY_ALPHA, recorderButtonForeground,
+    recorderButtonFill, RECORDER_BUTTON_FOCUS_ALPHA, RECORDER_PLAIN_PRESS_CORNER_RADIUS,
+    RECORDER_PRESS_SCALE, RECORDER_PRESS_OPACITY, RECORDER_PRESS_SPRING_DOWN,
+    RECORDER_PRESS_SPRING_UP, RECORDER_PRESS_SPRING_DAMPING, recorderPressFeedback,
+    RECORDER_NATIVE_ACTION_HIGHLIGHT_OPACITY, RECORDER_NATIVE_ACTION_DISABLED_OPACITY,
+    RECORDER_SELECTION_ENTRANCE_OFFSET, RECORDER_SELECTION_ENTRANCE_SCALE,
+    RECORDER_SELECTION_ENTRANCE_DURATION, RECORDER_SELECTION_ENTRANCE_REDUCED_DURATION,
+    recorderSelectionEntrance, RECORDER_OVERLAY_FADE_IN_DURATION, recorderOverlayShouldAnimate,
+    RECORDER_CIRCLE_PRESS_RADIUS, RECORDER_CIRCLE_PRESS_HOVER_ALPHA, recorderCircleHoverAlpha,
+    // ---- RecorderConfigurationViews.swift
+    RECORDER_INPUT_KINDS, recorderInputTitle, recorderInputIsOn, recorderInputToggleIntent,
+    recorderInputRefreshesDevicesOnAppear, RECORDER_INPUT_POPOVER_SPACING,
+    RECORDER_INPUT_TOGGLE_ROW_HEIGHT, RECORDER_INPUT_TOGGLE_ROW_PADDING,
+    RECORDER_INPUT_TOGGLE_FONT_SIZE, RECORDER_INPUT_TOGGLE_FONT_WEIGHT,
+    RECORDER_LEVEL_WAVE_HEIGHT, RECORDER_LEVEL_WAVE_PADDING_HORIZONTAL,
+    RECORDER_LEVEL_WAVE_PADDING_TOP, RECORDER_LEVEL_WAVE_PADDING_BOTTOM,
+    RECORDER_CAMERA_PREVIEW_HEIGHT, RECORDER_CAMERA_PREVIEW_RADIUS,
+    RECORDER_CAMERA_PREVIEW_PADDING_HORIZONTAL, RECORDER_CAMERA_PREVIEW_PADDING_TOP,
+    RECORDER_CAMERA_PREVIEW_BUTTON_SPACING, RECORDER_CAMERA_PREVIEW_BUTTON_PADDING,
+    RECORDER_CAMERA_PREVIEW_BUTTON_SIZE, RECORDER_CAMERA_PREVIEW_BUTTON_FONT_SIZE,
+    RECORDER_CAMERA_PREVIEW_BUTTON_FONT_WEIGHT, RECORDER_CAMERA_PREVIEW_BUTTON_PRESS_RADIUS,
+    RECORDER_CAMERA_PREVIEW_INSERT_SCALE, RECORDER_RESOLUTION_ROW_HEIGHT,
+    RECORDER_RESOLUTION_ROW_PADDING, RECORDER_RESOLUTION_ROW_RADIUS,
+    RECORDER_RESOLUTION_ROW_FONT_SIZE, RECORDER_RESOLUTION_CHEVRON_SIZE,
+    RECORDER_RESOLUTION_CHEVRON_ROTATION, recorderChevronRotation,
+    RECORDER_RESOLUTION_PLACEHOLDER, RECORDER_RESOLUTION_AUTO_TITLE,
+    RECORDER_DEVICE_LIST_EMPTY_TITLE, RECORDER_DEVICE_LIST_EMPTY_PADDING_HORIZONTAL,
+    RECORDER_DEVICE_LIST_EMPTY_PADDING_VERTICAL, RECORDER_SYSTEM_AUDIO_DISABLED_OPACITY,
+    RECORDER_DEVICE_AUDIO_NOTE, RECORDER_DEVICE_AUDIO_NOTE_PADDING_HORIZONTAL,
+    RECORDER_DEVICE_AUDIO_NOTE_PADDING_VERTICAL, RECORDER_LEVEL_WAVE_SAMPLE_COUNT,
+    RECORDER_LEVEL_WAVE_BAR_SPACING, RECORDER_LEVEL_WAVE_TICK_SECONDS,
+    RECORDER_LEVEL_WAVE_ACTIVE_THRESHOLD, RECORDER_LEVEL_WAVE_HEIGHT_GAIN,
+    RECORDER_LEVEL_WAVE_MIN_HEIGHT, RECORDER_LEVEL_WAVE_MIN_OPACITY,
+    RECORDER_LEVEL_WAVE_OPACITY_RANGE, recorderLevelWaveBarWidth, recorderLevelWaveBarHeight,
+    recorderLevelWaveBarOpacity, recorderLevelWaveBarColor, recorderLevelWavePush,
+    recorderLevelWaveInitialSamples, recorderLevelWaveAnimates,
+    RECORDER_LEVEL_WAVE_TICK_ANIMATION_DURATION, RECORDER_SAVE_POPOVER_WIDTH,
+    RECORDER_SAVE_POPOVER_SPACING, RECORDER_SAVE_TEXTFIELD_HEIGHT,
+    RECORDER_SAVE_TEXTFIELD_PADDING, RECORDER_SAVE_TEXTFIELD_OUTER_HORIZONTAL,
+    RECORDER_SAVE_TEXTFIELD_OUTER_VERTICAL, RECORDER_SAVE_TEXTFIELD_PLACEHOLDER,
+    RECORDER_CODEC_SEGMENT_HEIGHT, RECORDER_CODEC_SEGMENT_RADIUS,
+    RECORDER_CODEC_SEGMENT_OUTER_PADDING, RECORDER_CODEC_SEGMENT_FONT_SIZE,
+    recorderCodecSegmentLabel, RECORDER_CODEC_SELECTED_AX_VALUE, RECORDER_QUALITY_ROW_HEIGHT,
+    RECORDER_QUALITY_ROW_PADDING, RECORDER_QUALITY_ROW_ICON_SLOT, RECORDER_QUALITY_ROW_SPACING,
+    RECORDER_QUALITY_ROW_FONT_SIZE, RECORDER_QUALITY_GROUP_INDENT, RECORDER_QUALITY_LABEL,
+    RECORDER_SAVE_RULE_HEIGHT, RECORDER_SAVE_RULE_PADDING_HORIZONTAL,
+    RECORDER_SAVE_RULE_PADDING_VERTICAL, RECORDER_SAVE_WARNING_FONT_SIZE,
+    RECORDER_SAVE_WARNING_PADDING_HORIZONTAL, RECORDER_SAVE_WARNING_PADDING_TOP,
+    RECORDER_SAVE_ACTION_SPECS, recorderSaveActionRows, recorderShowsCodecSegments,
+    recorderShowsDesktopToggles, RECORDER_HIDE_DESKTOP_FILES_ROW, RECORDER_HIDE_DOCK_ROW,
+    recorderShowsFrameRateWarning, RECORDER_SYSTEM_AUDIO_ALL_TITLE, RECORDER_SYSTEM_AUDIO_APP_TITLE,
+    recorderSelectedAppRowEnabled, recorderSelectedAppSubtitle,
+    RECORDER_CAMERA_PREVIEW_VIDEO_GRAVITY, RECORDER_CAMERA_PREVIEW_BACKGROUND_ALPHA,
+    RECORDER_CAMERA_PREVIEW_DEFAULT_MIRRORED, recorderCameraPreviewTransform,
+    RECORDER_CAMERA_PREVIEW_DISABLES_LAYOUT_ACTIONS, recorderCameraPreviewLayerFrame,
+    recorderCameraPreviewLayerPosition, RECORDER_CAMERA_PREVIEW_RELEASE_ORDER,
+    RECORDER_CAMERA_PREVIEW_REDRAWS_ON_APPEARANCE_CHANGE, recorderCameraPreviewBackground,
+    recorderPreviewButtonStyle, RECORDER_CAMERA_PREVIEW_ACTIONS, RECORDER_CAMERA_EFFECTS_ORDER,
+    recorderConfigurationColors,
+    // ---- EditorInspectorMotion.swift
+    EDITOR_PAGE_OUTGOING, EDITOR_PAGE_INCOMING_DELAY, CONSOLE_REVEAL_SPRING,
+    CONSOLE_REVEAL_OFFSET_Y, CONSOLE_REVEAL_SCALE, CONSOLE_REVEAL_ANCHOR,
+    CONSOLE_REVEAL_DISTANCE_CAP, CONSOLE_REVEAL_MAX_EXTRA_DELAY, consoleRevealDelay,
+    consoleRevealHidden, consoleRevealStyle, consoleRevealAnimation, CONSOLE_DROP_OFFSET_Y,
+    CONSOLE_DROP_SCALE, CONSOLE_DROP_TIMING_CURVE, consoleDropStyle, consolePageTransition,
+    editorSubpageIncomingOffset, EDITOR_SUBPAGE_OUTGOING_RATIO, editorSubpageOutgoingOffset,
+    EDITOR_SUBPAGE_SPRING, EDITOR_SUBPAGE_OPACITY, EDITOR_SUBPAGE_SCALE,
+    editorSubpageTransition, CONSOLE_PAGE_ARRIVAL_OFFSET_Y, CONSOLE_PAGE_ARRIVAL_SPRING,
+    consolePageArrivalHidden, consolePageArrivalStyle, EDITOR_ROLLING_TITLE_SIZE,
+    EDITOR_ROLLING_TITLE_HEIGHT_RATIO, EDITOR_ROLLING_TITLE_TRACKING_RATIO,
+    editorRollingTitleHeight, EDITOR_ROLLING_GLYPH_TRAVEL_RATIO, editorRollingGlyphTravel,
+    editorRollingGlyphPhases, EDITOR_ROLLING_SPRING, EDITOR_ROLLING_GLYPH_DELAY_BASE,
+    EDITOR_ROLLING_GLYPH_DELAY_STEP, editorRollingGlyphDelay, editorRollingGlyphChange,
+    EDITOR_CONSOLE_HUD_HOLD_SECONDS, EDITOR_CONSOLE_HUD_RELEASE_SECONDS, EDITOR_CONSOLE_HUD_IDLE,
+    editorConsoleHUDShow, editorConsoleHUDRelease, editorConsoleHUDHide,
+    EDITOR_CONSOLE_HUD_INSET_ACTIVE, EDITOR_CONSOLE_HUD_INSET_IDLE, editorConsoleHUDInset,
+    EDITOR_CONSOLE_HUD_BRACKET_SIZE, EDITOR_CONSOLE_HUD_BRACKET_LINE_WIDTH,
+    EDITOR_CONSOLE_HUD_BRACKET_RADIUS, EDITOR_CONSOLE_HUD_BRACKET_SHADOW_ALPHA,
+    EDITOR_CONSOLE_HUD_BRACKET_SHADOW_RADIUS, editorConsoleHUDCornerPosition,
+    EDITOR_CONSOLE_HUD_CAPSULE_HEIGHT, EDITOR_CONSOLE_HUD_CAPSULE_PADDING,
+    EDITOR_CONSOLE_HUD_LABEL_SPACING, EDITOR_CONSOLE_HUD_BACKGROUND_ALPHA,
+    EDITOR_CONSOLE_HUD_LABEL_OPACITY, EDITOR_CONSOLE_HUD_FONT_SIZE,
+    editorConsoleHUDCapsuleOffset, EDITOR_CONSOLE_HUD_HIDDEN_OFFSET_Y, editorConsoleHUDStyle,
+    EDITOR_CONSOLE_HUD_SPRING, editorConsoleHUDAnimation, editorConsoleHUDBracketPath,
+    // ---- EditorMenuBridge.swift
+    EDITOR_MENU_FILE_IDENTIFIER, EDITOR_MENU_EDIT_IDENTIFIER,
+    EDITOR_MENU_PROJECT_MEDIA_SEPARATOR_IDENTIFIER, EDITOR_MENU_EXPORT_PROJECT_MEDIA_IDENTIFIER,
+    EDITOR_MENU_REPLACE_CAMERA_MEDIA_IDENTIFIER, EDITOR_MENU_PROJECT_MEDIA_IDENTIFIERS,
+    editorMenuItem, EDITOR_MENU_ACTION_OPEN_PROJECT, EDITOR_MENU_ACTION_EXPORT,
+    EDITOR_MENU_ACTION_UNDO, EDITOR_MENU_ACTION_REDO, EDITOR_MENU_ACTION_SHOW_HELP,
+    EDITOR_MENU_ACTION_TOGGLE_FULL_SCREEN, EDITOR_MENU_SELECTOR_UNDO_NATIVE,
+    EDITOR_MENU_SELECTOR_REDO_NATIVE, EDITOR_MENU_FILE_ITEMS, EDITOR_MENU_UNDO_ITEM,
+    EDITOR_MENU_REDO_ITEM, EDITOR_MENU_FILE_INSERTION_INDEX, editorMenuEditInsertionIndex,
+    editorMenuFindRoot, editorMenuFindByAction, editorMenuInstallPlan,
+    editorMenuFindExistingEditRoot, editorMenuEditInstallPlan, editorMenuIsViewRoot,
+    editorMenuVisibilityTargets, editorMenuVisibilityPlan, editorMenuIsGeneratedHelpRoot,
+    editorMenuHelpRootsToRemove, EDITOR_MENU_CLEARS_HELP_MENU_ROLE,
+    EDITOR_MENU_STANDARD_TITLES, EDITOR_MENU_HIDE_FORMAT, EDITOR_MENU_FULL_SCREEN_ENTER_TITLE,
+    EDITOR_MENU_FULL_SCREEN_EXIT_TITLE, EDITOR_MENU_SERVICES_TITLE, EDITOR_MENU_WINDOWS_TITLE,
+    EDITOR_MENU_VIEW_TITLE, editorMenuHideTitle, editorMenuFullScreenTitle,
+    editorMenuLocalizedTitle, editorMenuLocalizePlan, editorMenuUndoTarget, editorMenuRedoTarget,
+    editorMenuUndoTitle, editorMenuRedoTitle, editorMenuValidate, editorMenuAttach,
+    editorMenuDetach, EDITOR_MENU_REQUEST_CHANNELS,
+    // ---- AppLineIcon.swift
+    APP_LINE_ICON_GRID, APP_LINE_ICON_DEFAULT_SIZE, APP_LINE_ICON_KINDS,
+    appLineIconStrokeWidth, appLineIconOps, appLineIconOpCount, appLineIconScale,
+    appLineIconCommands, appLineIconBounds, appLineIconFitsGrid, appLineIconCenter,
+    appLineIconRender, appLineIconCommandSummary, APP_LINE_ICON_MIRROR_PAIRS,
+    APP_LINE_ICON_ADDITIVE_PAIRS,
+  } = m
+
+  // ================= EditorDesignTokens：颜色模型 =================
+  const dtRGBA = tokenRGBA(0.1, 0.2, 0.3)
+  check('dt.rgbaR', dtRGBA.r, 0.1)
+  check('dt.rgbaAlphaDefault', dtRGBA.a, 1)
+  check('dt.grayAll', tokenGray(0.42).b, 0.42)
+  check('dt.blackZero', tokenBlack(0.5).r, 0)
+  check('dt.whiteOne', tokenWhite().g, 1)
+  const dtFaded = colorWithOpacity(tokenWhite(1), 0.06)
+  check('dt.fadeAlpha', dtFaded.a, 0.06)
+  check('dt.fadeKeepsRGB', dtFaded.r, 1)
+  check('dt.cssHalf', colorToCSS(tokenRGBA(0.5, 0.25, 0, 1)), 'rgba(128, 64, 0, 1)')
+  check('dt.cssClamp', colorToCSS(tokenRGBA(2, -1, 0.5, 2)), 'rgba(255, 0, 128, 1)')
+  check('dt.cssBase', colorToCSS(RECORDER_BASE('light')), 'rgba(253, 253, 254, 1)')
+  const dtAdaptive = adaptiveColor(tokenWhite(1), tokenBlack(1))
+  check('dt.adaptiveLight', resolveAdaptive(dtAdaptive, 'light').r, 1)
+  check('dt.adaptiveDark', resolveAdaptive(dtAdaptive, 'dark').r, 0)
+
+  // ================= EditorDesignTokens：色板 =================
+  check('dt.deepLight', EDITOR_BACKGROUND_DEEP.light.r, 0.925)
+  check('dt.deepDark', EDITOR_BACKGROUND_DEEP.dark.b, 0.033)
+  check('dt.panelLight', EDITOR_PANEL_SURFACE.light.b, 0.996)
+  check('dt.panelDark', EDITOR_PANEL_SURFACE.dark.r, 0.063)
+  check('dt.sleepLight', EDITOR_SLEEPING_MONITOR.light.r, 0.79)
+  check('dt.sleepDark', EDITOR_SLEEPING_MONITOR.dark.r, 0.24)
+  check('dt.raisedDark', EDITOR_PANEL_RAISED.dark.b, 0.11)
+  check('dt.cardElevatedEqualsPanel', EDITOR_CARD_ELEVATED.light.r, EDITOR_PANEL_SURFACE.light.r)
+  check('dt.cardTopEqualsCardBottom', EDITOR_CARD_TOP.dark.r, EDITOR_CARD_BOTTOM.dark.r)
+  check('dt.chromeBarDark', EDITOR_CHROME_BAR.dark.g, 0.065)
+  check('dt.stageLight', EDITOR_STAGE.light.g, 0.929)
+  check('dt.cardGradientFrom', EDITOR_CARD_GRADIENT.from, EDITOR_CARD_TOP)
+  check('dt.cardGradientTo', EDITOR_CARD_GRADIENT.to, EDITOR_CARD_BOTTOM)
+  check('dt.cardGradientStart', EDITOR_CARD_GRADIENT.startPoint, 'top')
+  check('dt.stageLightAlphaDark', EDITOR_STAGE_LIGHT.dark.a, 0.075)
+  check('dt.stageLightBlueDark', EDITOR_STAGE_LIGHT.dark.r, 0.55)
+  check('dt.vignetteDark', EDITOR_STAGE_VIGNETTE.dark.a, 0.42)
+  check('dt.accentGlowLight', EDITOR_ACCENT_GLOW.light.a, 0.22)
+  check('dt.platinumLight', EDITOR_PLATINUM_ACCENT.light.r, 0.12)
+  check('dt.platinumDark', EDITOR_PLATINUM_ACCENT.dark.r, 0.97)
+  check('dt.platinumDeepSameLight', EDITOR_PLATINUM_ACCENT_DEEP.light.r, EDITOR_PLATINUM_ACCENT.light.r)
+  check('dt.platinumGradientEnd', EDITOR_PLATINUM_GRADIENT.to, EDITOR_PLATINUM_ACCENT_DEEP)
+  check('dt.clipTopDark', EDITOR_TIMELINE_CLIP_TOP.dark.r, 0.22)
+  check('dt.clipBottomDark', EDITOR_TIMELINE_CLIP_BOTTOM.dark.r, 0.17)
+  check('dt.zoomSurfaceDarkLight', EDITOR_TIMELINE_ZOOM_SURFACE.light.a, 0.06)
+  check('dt.zoomAccentLight', EDITOR_TIMELINE_ZOOM_ACCENT.light.a, 0.24)
+  check('dt.zoomInkDark', EDITOR_TIMELINE_ZOOM_INK.dark.r, 0.72)
+  check('dt.recorderSurfaceIsPanel', EDITOR_RECORDER_SURFACE.light.r, EDITOR_PANEL_SURFACE.light.r)
+  check('dt.mediaAccent', EDITOR_MEDIA_ACCENT.g, 0.941)
+  check('dt.platinumMutedLight', EDITOR_PLATINUM_MUTED.light.r, 0.4)
+  check('dt.onAccentLight', EDITOR_ON_ACCENT.light.r, 1)
+  check('dt.onAccentDark', EDITOR_ON_ACCENT.dark.r, 0.08)
+  check('dt.controlWellLight', EDITOR_CONTROL_WELL.light.a, 0.05)
+  check('dt.controlWellDark', EDITOR_CONTROL_WELL.dark.a, 0.06)
+  check('dt.amber', EDITOR_AMBER_ACCENT.g, 0.68)
+  check('dt.success', EDITOR_SUCCESS.g, 0.82)
+  check('dt.recordingRed', EDITOR_RECORDING.r, 1)
+  check('dt.selectionTintIsPlatinum', EDITOR_SELECTION_TINT, EDITOR_PLATINUM_ACCENT)
+  check('dt.railWashLight', EDITOR_RAIL_SELECTION_WASH.light.a, 0.075)
+  check('dt.railWashDark', EDITOR_RAIL_SELECTION_WASH.dark.a, 0.14)
+  check('dt.selectionWashDark', EDITOR_SELECTION_WASH.dark.a, 0.14)
+
+  // ================= EditorDesignTokens：chrome 派生 =================
+  check('dt.chromeLightInk', editorChrome(0.06).light.r, 0)
+  check('dt.chromeDarkInk', editorChrome(0.06).dark.r, 1)
+  check('dt.chromeAlpha', editorChrome(0.06).dark.a, 0.06)
+  check('dt.chromeDefault', editorChrome().light.a, 1)
+  check('dt.hairline', EDITOR_HAIRLINE.dark.a, 0.06)
+  check('dt.controlBorder', EDITOR_CONTROL_BORDER.light.a, 0.085)
+  check('dt.groupSurface', EDITOR_GROUP_SURFACE.dark.a, 0.035)
+  check('dt.cardFill', EDITOR_CARD_FILL.light.a, 0.045)
+  check('dt.popoverSelection', EDITOR_POPOVER_SELECTION_SURFACE.light.a, 0.045)
+  check('dt.popoverSecondaryLight', EDITOR_POPOVER_SECONDARY_TEXT.light.r, 0.32)
+  check('dt.popoverSecondaryDark', EDITOR_POPOVER_SECONDARY_TEXT.dark.r, 0.86)
+  check('dt.topHighlightLight', EDITOR_TOP_HIGHLIGHT.light.a, 1)
+  check('dt.topHighlightDark', EDITOR_TOP_HIGHLIGHT.dark.a, 0.17)
+  check('dt.sliderRail', EDITOR_SLIDER_RAIL.light.a, 0.075)
+  check('dt.sliderInkLight', EDITOR_SLIDER_INK.light.r, 0.12)
+  check('dt.sliderThumbDark', EDITOR_SLIDER_THUMB.dark.r, 0.97)
+  check('dt.islandOutlineLight', EDITOR_ISLAND_OUTLINE.light.a, 0.075)
+  check('dt.islandOutlineDark', EDITOR_ISLAND_OUTLINE.dark.a, 0.07)
+  check('dt.contactShadowDark', EDITOR_CONTACT_SHADOW.dark.a, 0.5)
+  check('dt.softShadowLight', EDITOR_SOFT_SHADOW.light.a, 0.11)
+  check('dt.ambientShadowDark', EDITOR_AMBIENT_SHADOW.dark.a, 0.3)
+  check('dt.primaryTextLight', EDITOR_PRIMARY_TEXT.light.r, 0.1)
+  check('dt.primaryTextDark', EDITOR_PRIMARY_TEXT.dark.r, 0.96)
+  check('dt.secondaryTextDark', EDITOR_SECONDARY_TEXT.dark.r, 0.66)
+  check('dt.tertiaryTextDark', EDITOR_TERTIARY_TEXT.dark.r, 0.46)
+  // 深色下 tertiary 比 secondary 暗 —— 与浅色方向一致（0.52 > 0.46 反了）
+  check('dt.tertiaryDarkerThanSecondaryDark',
+    EDITOR_TERTIARY_TEXT.dark.r < EDITOR_SECONDARY_TEXT.dark.r, true)
+  check('dt.themeTokenCount', Object.keys(EDITOR_THEME_TOKENS).length, 31)
+  const dtTokenNames = Object.keys(EDITOR_THEME_TOKENS)
+  for (const name of dtTokenNames) {
+    check(`dt.token.${name}.light`, editorThemeColor(name, 'light') !== null, true)
+    check(`dt.token.${name}.dark`, editorThemeColor(name, 'dark') !== null, true)
+  }
+  check('dt.tokenUnknown', editorThemeColor('nope', 'dark'), null)
+  check('dt.tokenPrimaryDark', editorThemeColor('primaryText', 'dark').r, 0.96)
+
+  // ================= EditorDesignTokens：状态洗色 =================
+  check('dt.washHover', EDITOR_STATE_WASH_HOVER, 0.07)
+  check('dt.washOpen', EDITOR_STATE_WASH_OPEN, 0.1)
+  check('dt.washPressed', EDITOR_STATE_WASH_PRESSED, 0.12)
+  check('dt.washIdle', editorStateWashOpacity('idle'), 0)
+  check('dt.washOrderOpen', editorStateWashOpacity('open') > editorStateWashOpacity('hover'), true)
+  check('dt.washOrderPressed',
+    editorStateWashOpacity('pressed') > editorStateWashOpacity('open'), true)
+
+  // ================= EditorDesignTokens：字号 / 间距 / 圆角 / 高度 =================
+  check('dt.fontPanelTitleSize', EDITOR_FONT_PANEL_TITLE.size, 15)
+  check('dt.fontPanelTitleWeight', EDITOR_FONT_PANEL_TITLE.weight, 600)
+  check('dt.fontSectionTitle', EDITOR_FONT_SECTION_TITLE.size, 12)
+  check('dt.fontControlValueWeight', EDITOR_FONT_CONTROL_VALUE.weight, 500)
+  check('dt.fontHelperWeight', EDITOR_FONT_HELPER.weight, 400)
+  check('dt.fontCaption', EDITOR_FONT_CAPTION.size, 11)
+  check('dt.fontEyebrowWeight', EDITOR_FONT_EYEBROW.weight, 600)
+  check('dt.typographyRoles', Object.keys(EDITOR_TYPOGRAPHY).length, 7)
+  for (const role of Object.keys(EDITOR_TYPOGRAPHY)) {
+    check(`dt.font.${role}.inRange`,
+      EDITOR_TYPOGRAPHY[role].size >= 10 && EDITOR_TYPOGRAPHY[role].size <= 15, true)
+    check(`dt.font.${role}.notMono`, EDITOR_TYPOGRAPHY[role].monospacedDigit, false)
+  }
+  check('dt.fontMonoOptIn', editorFont('helper', true).monospacedDigit, true)
+  check('dt.fontMonoDefault', editorFont('helper').monospacedDigit, false)
+  check('dt.fontMonoKeepsSize', editorFont('caption', true).size, 11)
+  check('dt.fontCSS', editorFontCSS('caption'), '500 11px PuHui')
+  check('dt.spacingInset', EDITOR_SPACING_INSPECTOR_INSET, 14)
+  check('dt.spacingSection', EDITOR_SPACING_SECTION_GAP, 16)
+  check('dt.spacingControl', EDITOR_SPACING_CONTROL_GAP, 8)
+  check('dt.spacingHeading', EDITOR_SPACING_HEADING_GAP, 6)
+  check('dt.spacingTile', EDITOR_SPACING_TILE_INSET, 14)
+  check('dt.spacingCount', Object.keys(EDITOR_INTERFACE_SPACING).length, 5)
+  check('dt.spacingSectionLargest',
+    EDITOR_INTERFACE_SPACING.sectionGap > EDITOR_INTERFACE_SPACING.controlGap, true)
+  check('dt.radiusCompact', EDITOR_RADIUS_COMPACT, 8)
+  check('dt.radiusControl', EDITOR_RADIUS_CONTROL, 10)
+  check('dt.radiusGroup', EDITOR_RADIUS_GROUP, 12)
+  check('dt.radiusCard', EDITOR_RADIUS_CARD, 14)
+  check('dt.radiusTile', EDITOR_RADIUS_TILE, 18)
+  check('dt.radiusFloating', EDITOR_RADIUS_FLOATING, 20)
+  check('dt.radiusOrder', editorRadiusOrderIsValid(), true)
+  check('dt.heightCompact', EDITOR_HEIGHT_COMPACT, 30)
+  check('dt.heightSelection', EDITOR_HEIGHT_SELECTION, 32)
+  check('dt.heightAction', EDITOR_HEIGHT_ACTION, 32)
+  check('dt.heightCount', Object.keys(EDITOR_INTERFACE_HEIGHT).length, 3)
+  check('dt.clampRadiusBelowHalf', editorClampedRadius(20, 30), 15)
+  check('dt.clampRadiusKeepsSmall', editorClampedRadius(4, 30), 4)
+  check('dt.clampRadiusNegative', editorClampedRadius(-3, 30), 0)
+  check('dt.clampRadiusZeroHeight', editorClampedRadius(8, 0), 0)
+
+  // ================= EditorDesignTokens：弹簧 =================
+  check('dt.springInteractive', SPRING_INTERACTIVE.response, 0.3)
+  check('dt.springInteractiveDamping', SPRING_INTERACTIVE.dampingFraction, 1)
+  check('dt.springFluid', SPRING_FLUID.response, 0.45)
+  check('dt.springSnappy', SPRING_SNAPPY.response, 0.24)
+  check('dt.springGentle', SPRING_GENTLE.response, 0.55)
+  check('dt.springSettle', SPRING_SETTLE.response, 0.38)
+  check('dt.springLift', SPRING_LIFT.response, 0.28)
+  check('dt.crossfadeDuration', SPRING_CROSSFADE_DURATION, 0.16)
+  check('dt.hoverDuration', SPRING_HOVER_DURATION, 0.15)
+  check('dt.hoverReducedDuration', SPRING_HOVER_REDUCED_DURATION, 0.01)
+  check('dt.springAnimationKind', springAnimation(SPRING_SETTLE).kind, 'spring')
+  check('dt.springMotionInteractive', springMotion('interactive', false).kind, 'spring')
+  check('dt.springMotionCrossfade', springMotion('crossfade', false).kind, 'easeOut')
+  check('dt.springMotionCrossfadeDuration', springMotion('crossfade', false).duration, 0.16)
+  check('dt.springMotionSettleReduced', springMotion('settle', true), null)
+  check('dt.springMotionHoverReducedKind', springMotion('hover', true).kind, 'linear')
+  check('dt.springMotionHoverReducedDuration', springMotion('hover', true).duration, 0.01)
+  check('dt.springMotionHoverKind', springMotion('hover', false).kind, 'easeOut')
+  check('dt.springMotionLift', springMotion('lift', false).response, 0.28)
+  check('dt.raisedThumbAccent', editorRaisedThumbStyle(true, true, true).fill, 'palette')
+  check('dt.raisedThumbAccentNoStroke', editorRaisedThumbStyle(true, true, true).strokeWidth, 0)
+  check('dt.raisedThumbNoPalette', editorRaisedThumbStyle(false, true, true).fill, 'color')
+  check('dt.raisedThumbStroke', editorRaisedThumbStyle(false, true, true).strokeWidth, 0.5)
+  check('dt.raisedThumbShadowRadius', editorRaisedThumbStyle(true, true, true).shadowRadius, 2)
+  check('dt.raisedThumbShadowY', editorRaisedThumbStyle(true, true, true).shadowY, 1)
+  check('dt.raisedThumbShadowOn', editorRaisedThumbShadowOpacity(true), 1)
+  check('dt.raisedThumbShadowOff', editorRaisedThumbShadowOpacity(false), 0)
+
+  // ================= EditorDesignTokens：渐隐细线 =================
+  check('dt.hairlineStopCount', EDITOR_FADING_HAIRLINE_STOPS.length, 4)
+  check('dt.hairlineStopMiddle', EDITOR_FADING_HAIRLINE_STOPS[1].location, 0.18)
+  check('dt.hairlineOpacity', EDITOR_FADING_HAIRLINE_OPACITY, 0.08)
+  const dtStops = editorFadingHairlineStops(0.08)
+  check('dt.stopsFirstTransparent', dtStops[0].alpha, 0)
+  check('dt.stopsSecondAlpha', dtStops[1].alpha, 0.08)
+  check('dt.stopsThirdAlpha', dtStops[2].alpha, 0.08)
+  check('dt.stopsLastTransparent', dtStops[3].alpha, 0)
+  check('dt.hairlineHorizontal', editorHairlineSize('horizontal').height, 1)
+  check('dt.hairlineHorizontalWidth', editorHairlineSize('horizontal').width, null)
+  check('dt.hairlineVerticalWidth', editorHairlineSize('vertical').width, 1)
+  check('dt.hairlineVerticalHeight', editorHairlineSize('vertical').height, null)
+
+  // ================= RecorderSurfaceStyle：色板 =================
+  check('rs.chromeLight', RECORDER_CHROME('light').r, 0)
+  check('rs.chromeDark', RECORDER_CHROME('dark').r, 1)
+  check('rs.inkLight', RECORDER_INK('light').r, 0.1)
+  check('rs.inkDark', RECORDER_INK('dark').a, 0.96)
+  check('rs.baseLight', RECORDER_BASE('light').g, 0.992)
+  check('rs.canvasDark', RECORDER_CANVAS('dark').g, 0.029)
+  check('rs.mutedLight', RECORDER_MUTED('light').r, 0.36)
+  check('rs.mutedDark', RECORDER_MUTED('dark').a, 0.56)
+  check('rs.faintLight', RECORDER_FAINT('light').r, 0.5)
+  check('rs.faintDark', RECORDER_FAINT('dark').a, 0.32)
+  check('rs.mintGreen', RECORDER_MINT.g, 0.85)
+  check('rs.positiveLightGreen', RECORDER_POSITIVE_INK('light').g, 0.46)
+  check('rs.positiveDarkGreen', RECORDER_POSITIVE_INK('dark').g, 0.85)
+  check('rs.mintWashAlpha', RECORDER_MINT_WASH_ALPHA, 0.18)
+  check('rs.silverAlpha', RECORDER_SILVER_ALPHA, 0.06)
+  check('rs.wellAlpha', RECORDER_WELL_ALPHA, 0.08)
+  check('rs.selectionLight', RECORDER_SELECTION('light').a, 0.075)
+  check('rs.selectionDark', RECORDER_SELECTION('dark').a, 0.14)
+  check('rs.lineAlpha', RECORDER_LINE_ALPHA, 0.09)
+  check('rs.liftLight', RECORDER_LIFT('light').a, 0.14)
+  check('rs.liftDark', RECORDER_LIFT('dark').a, 0.4)
+  check('rs.recordingGreen', RECORDER_RECORDING.g, 0.27)
+  check('rs.destructiveLight', RECORDER_DESTRUCTIVE_INK('light').r, 0.76)
+  check('rs.amberInkLight', RECORDER_AMBER_INK('light').g, 0.34)
+  check('rs.mediaOverlayLight', RECORDER_MEDIA_OVERLAY('light').a, 0.94)
+  check('rs.mediaOverlayDark', RECORDER_MEDIA_OVERLAY('dark').a, 0.55)
+  check('rs.mediaInkDark', RECORDER_MEDIA_INK('dark').r, 1)
+  check('rs.primaryFillLight', RECORDER_PRIMARY_FILL('light').r, 0.12)
+  check('rs.onPrimaryDark', RECORDER_ON_PRIMARY('dark').r, 0.08)
+  check('rs.edgeTopDark', RECORDER_EDGE_TOP('dark').a, 0.17)
+  check('rs.edgeBottomLight', RECORDER_EDGE_BOTTOM('light').a, 0.07)
+  check('rs.edgeBottomDark', RECORDER_EDGE_BOTTOM('dark').a, 0.04)
+  check('rs.styleTokenCount', Object.keys(RECORDER_STYLE_TOKENS).length, 17)
+  check('rs.styleColorLookup', recorderStyleColor('onPrimary', 'dark').r, 0.08)
+  check('rs.styleCSS', recorderStyleCSS('base', 'light'), 'rgba(253, 253, 254, 1)')
+  check('rs.derivedAlpha', recorderDerived('chrome', 0.06, 'light').a, 0.06)
+  check('rs.derivedLightInk', recorderDerived('chrome', 0.06, 'light').r, 0)
+  check('rs.derivedDarkInk', recorderDerived('chrome', 0.06, 'dark').r, 1)
+
+  // ================= RecorderSurfaceStyle：动效 =================
+  check('rs.morphResponse', RECORDER_MORPH_SPRING.response, 0.5)
+  check('rs.morphDamping', RECORDER_MORPH_SPRING.dampingFraction, 0.82)
+  check('rs.settleResponse', RECORDER_SETTLE_SPRING.response, 0.36)
+  check('rs.settleDamping', RECORDER_SETTLE_SPRING.dampingFraction, 0.84)
+  check('rs.quickResponse', RECORDER_QUICK_SPRING.response, 0.26)
+  check('rs.fadeDuration', RECORDER_FADE_DURATION, 0.18)
+  check('rs.motionMorph', recorderMotion('morph', false).response, 0.5)
+  check('rs.motionMorphReduced', recorderMotion('morph', true), null)
+  check('rs.motionSettleReduced', recorderMotion('settle', true), null)
+  check('rs.motionQuickReduced', recorderMotion('quick', true), null)
+  // fade 是唯一在减弱动态下仍然存在的动画
+  check('rs.motionFadeReduced', recorderMotion('fade', true).kind, 'easeOut')
+  check('rs.motionFadeReducedDuration', recorderMotion('fade', true).duration, 0.18)
+
+  // ================= RecorderSurfaceStyle：面形 =================
+  check('rs.edgeWidth', RECORDER_SURFACE_EDGE_WIDTH, 1)
+  check('rs.shadowRadius', RECORDER_SURFACE_SHADOW_RADIUS, 22)
+  check('rs.shadowY', RECORDER_SURFACE_SHADOW_Y, 10)
+  check('rs.shadowAlphaConst', RECORDER_SURFACE_SHADOW_ALPHA, 0.85)
+  check('rs.surfaceSpecDefaultShadow', recorderSurfaceSpec(18).castsShadow, false)
+  check('rs.surfaceSpecRadius', recorderSurfaceSpec(18).radius, 18)
+  const rsSurfaceFlat = recorderSurfaceStyle({ radius: 18, castsShadow: false }, 'light')
+  check('rs.surfaceNoShadow', rsSurfaceFlat.shadowAlpha, 0)
+  check('rs.surfaceFlatRadius', rsSurfaceFlat.radius, 18)
+  check('rs.surfaceStrokeWidth', rsSurfaceFlat.strokeWidth, 1)
+  check('rs.surfaceFill', rsSurfaceFlat.fill, 'rgba(253, 253, 254, 1)')
+  const rsSurfaceLifted = recorderSurfaceStyle({ radius: 22, castsShadow: true }, 'dark')
+  check('rs.surfaceShadowOn', rsSurfaceLifted.shadowAlpha, 0.85)
+  check('rs.surfaceShadowY', rsSurfaceLifted.shadowY, 10)
+  check('rs.surfaceStrokeTopDark', rsSurfaceLifted.strokeTop, 'rgba(255, 255, 255, 0.17)')
+  check('rs.surfaceStrokeBottomDark', rsSurfaceLifted.strokeBottom, 'rgba(255, 255, 255, 0.04)')
+
+  // ================= RecorderSurfaceStyle：药丸按钮 =================
+  check('rs.pillKindCount', RECORDER_PILL_KINDS.length, 4)
+  check('rs.pillHeight', RECORDER_PILL_HEIGHT, 44)
+  check('rs.pillFontSize', RECORDER_PILL_FONT_SIZE, 13)
+  check('rs.pillFontWeight', RECORDER_PILL_FONT_WEIGHT, 600)
+  check('rs.pillPaddingQuiet', recorderPillHorizontalPadding('quiet'), 14)
+  check('rs.pillPaddingRecord', recorderPillHorizontalPadding('record'), 18)
+  check('rs.pillPaddingSoft', recorderPillHorizontalPadding('soft'), 18)
+  check('rs.pillPressScale', RECORDER_PILL_PRESS_SCALE, 0.96)
+  check('rs.pillDisabledOpacity', RECORDER_PILL_DISABLED_OPACITY, 0.4)
+  check('rs.pillRecordWhite', recorderPillForeground('record', 'light').r, 1)
+  check('rs.pillPrimaryDark', recorderPillForeground('primary', 'dark').r, 0.08)
+  check('rs.pillSoftInk', recorderPillForeground('soft', 'light').r, 0.1)
+  check('rs.pillQuietAlpha', recorderPillForeground('quiet', 'dark').a, 0.7488)
+  // record / primary：静止最实、悬停次之、按下更淡
+  check('rs.fillRecordIdle', recorderPillFillAlpha('record', false, false), 1)
+  check('rs.fillRecordHover', recorderPillFillAlpha('record', true, false), 0.9)
+  check('rs.fillRecordPressed', recorderPillFillAlpha('record', false, true), 0.78)
+  check('rs.fillPrimaryIdle', recorderPillFillAlpha('primary', false, false), 0.96)
+  check('rs.fillPrimaryPressed', recorderPillFillAlpha('primary', false, true), 0.78)
+  // soft / quiet：静止最淡、按下最深（方向与上面相反）
+  check('rs.fillSoftIdle', recorderPillFillAlpha('soft', false, false), 0.1)
+  check('rs.fillSoftHover', recorderPillFillAlpha('soft', true, false), 0.15)
+  check('rs.fillSoftPressed', recorderPillFillAlpha('soft', false, true), 0.2)
+  check('rs.fillQuietIdle', recorderPillFillAlpha('quiet', false, false), 0)
+  check('rs.fillQuietHover', recorderPillFillAlpha('quiet', true, false), 0.09)
+  check('rs.fillQuietPressed', recorderPillFillAlpha('quiet', false, true), 0.14)
+  check('rs.fillBaseRecord', recorderPillFillBase('record', 'light').r, 1)
+  check('rs.fillSoftIsChrome', recorderPillFillBase('soft', 'dark').r, 1)
+  check('rs.fillComposed', recorderPillFill('soft', false, false, 'light').a, 0.1)
+  check('rs.focusPrimaryAlpha', recorderPillFocusColor('primary', 'light').a, 0.7)
+  check('rs.focusOtherUsesChrome', recorderPillFocusColor('soft', 'dark').r, 1)
+  const rsPillPressed = recorderPillRender('record',
+    { hovered: false, pressed: true, enabled: true, reduces: false }, 'light')
+  check('rs.pillRenderPressedScale', rsPillPressed.scale, 0.96)
+  check('rs.pillRenderPressedOpacity', rsPillPressed.opacity, 1)
+  check('rs.pillRenderForeground', rsPillPressed.foreground, 'rgba(255, 255, 255, 1)')
+  const rsPillReduced = recorderPillRender('record',
+    { hovered: false, pressed: true, enabled: true, reduces: true }, 'light')
+  check('rs.pillRenderReducedNoScale', rsPillReduced.scale, 1)
+  const rsPillDisabled = recorderPillRender('soft',
+    { hovered: true, pressed: false, enabled: false, reduces: false }, 'light')
+  check('rs.pillRenderDisabledOpacity', rsPillDisabled.opacity, 0.4)
+  check('rs.pillRenderDisabledIgnoresHover',
+    rsPillDisabled.fill, colorToCSS(colorWithOpacity(RECORDER_CHROME('light'), 0.1)))
+
+  // ================= RecorderSurfaceStyle：键位 / 取景框 =================
+  check('rs.keyHintSize', RECORDER_KEY_HINT_SIZE, 10.5)
+  check('rs.keyHintOpacity', RECORDER_KEY_HINT_OPACITY, 0.62)
+  check('rs.viewfinderRadius', CAPTURE_VIEWFINDER_CORNER_RADIUS, 16)
+  const rsCorners = captureViewfinderCorners(10, 30, { width: 200, height: 100 })
+  check('rs.cornerCount', rsCorners.length, 4)
+  check('rs.corner0StartY', rsCorners[0].start[1], 40)
+  check('rs.corner0StartX', rsCorners[0].start[0], 10)
+  check('rs.corner0EndX', rsCorners[0].end[0], 40)
+  check('rs.corner1StartX', rsCorners[1].start[0], 190)
+  check('rs.corner1EndX', rsCorners[1].end[0], 160)
+  check('rs.corner2StartY', rsCorners[2].start[1], 60)
+  check('rs.corner3EndY', rsCorners[3].end[1], 90)
+  const rsCmds = captureViewfinderCommands(10, 30, { width: 200, height: 100 })
+  check('rs.commandCount', rsCmds.length, 8)
+  check('rs.commandFirstOp', rsCmds[0].op, 'M')
+  check('rs.commandSecondOp', rsCmds[1].op, 'Q')
+  check('rs.commandArcStartX', rsCmds[0].points[0][0], 10)
+  check('rs.commandArcStartY', rsCmds[0].points[0][1], 24)
+  check('rs.armFits', captureViewfinderArmFits(30, { width: 200, height: 100 }, 10), true)
+  check('rs.armTooLong', captureViewfinderArmFits(41, { width: 200, height: 100 }, 10), false)
+  check('rs.armExact', captureViewfinderArmFits(40, { width: 200, height: 100 }, 10), true)
+
+  // ================= RecorderSurfaceStyle：按钮 / 按压 =================
+  check('rs.raisedRadius', RECORDER_RAISED_RADIUS, 12)
+  check('rs.raisedSelected', recorderRaisedFill(true, 'light').a, 0.075)
+  check('rs.raisedUnselected', recorderRaisedFill(false, 'light').a, 0.08)
+  check('rs.buttonPressAlpha', RECORDER_BUTTON_PRESS_ALPHA, 0.8)
+  check('rs.buttonPrimaryAlpha', RECORDER_BUTTON_PRIMARY_ALPHA, 0.95)
+  check('rs.buttonForegroundPlain', recorderButtonForeground(false, false, 'light').r, 0.1)
+  check('rs.buttonForegroundRecord', recorderButtonForeground(true, true, 'light').r, 1)
+  check('rs.buttonForegroundPrimary', recorderButtonForeground(true, false, 'dark').r, 0.08)
+  check('rs.buttonFillRecord', recorderButtonFill(true, true, false, 'light').a, 1)
+  check('rs.buttonFillRecordPressed', recorderButtonFill(true, true, true, 'light').a, 0.8)
+  check('rs.buttonFillPrimary', recorderButtonFill(true, false, false, 'light').a, 0.95)
+  check('rs.buttonFillPlain', recorderButtonFill(false, false, false, 'light').a, 0.08)
+  check('rs.buttonFocusAlpha', RECORDER_BUTTON_FOCUS_ALPHA, 0.65)
+  check('rs.plainPressRadius', RECORDER_PLAIN_PRESS_CORNER_RADIUS, 10)
+  check('rs.pressScale', RECORDER_PRESS_SCALE, 0.92)
+  check('rs.pressOpacity', RECORDER_PRESS_OPACITY, 0.62)
+  check('rs.pressSpringDown', RECORDER_PRESS_SPRING_DOWN, 0.14)
+  check('rs.pressSpringUp', RECORDER_PRESS_SPRING_UP, 0.3)
+  check('rs.pressSpringDamping', RECORDER_PRESS_SPRING_DAMPING, 0.7)
+  const rsPressDown = recorderPressFeedback(true, true, false)
+  check('rs.pressDownScale', rsPressDown.scale, 0.92)
+  check('rs.pressDownOpacity', rsPressDown.opacity, 0.62)
+  check('rs.pressDownResponse', rsPressDown.animation.response, 0.14)
+  const rsPressUp = recorderPressFeedback(false, true, false)
+  check('rs.pressUpResponse', rsPressUp.animation.response, 0.3)
+  check('rs.pressUpOpacity', rsPressUp.opacity, 1)
+  const rsPressReduced = recorderPressFeedback(true, true, true)
+  check('rs.pressReducedNoScale', rsPressReduced.scale, 1)
+  // 减弱动态只抑制位移，不抑制明暗
+  check('rs.pressReducedKeepsOpacity', rsPressReduced.opacity, 0.62)
+  check('rs.pressReducedNoAnimation', rsPressReduced.animation, null)
+  check('rs.pressDisabled', recorderPressFeedback(true, false, false).scale, 1)
+  check('rs.nativeHighlight', RECORDER_NATIVE_ACTION_HIGHLIGHT_OPACITY, 0.04)
+  check('rs.nativeDisabled', RECORDER_NATIVE_ACTION_DISABLED_OPACITY, 0.4)
+
+  // ================= RecorderSurfaceStyle：入场 / 淡入 / 圆形 =================
+  check('rs.entranceOffset', RECORDER_SELECTION_ENTRANCE_OFFSET, 7)
+  check('rs.entranceScale', RECORDER_SELECTION_ENTRANCE_SCALE, 0.985)
+  check('rs.entranceDuration', RECORDER_SELECTION_ENTRANCE_DURATION, 0.2)
+  check('rs.entranceReducedDuration', RECORDER_SELECTION_ENTRANCE_REDUCED_DURATION, 0.1)
+  const rsEntrance = recorderSelectionEntrance(false)
+  check('rs.entranceOffsetValue', rsEntrance.offsetY, 7)
+  check('rs.entranceScaleValue', rsEntrance.scale, 0.985)
+  check('rs.entranceDurationValue', rsEntrance.duration, 0.2)
+  const rsEntranceReduced = recorderSelectionEntrance(true)
+  check('rs.entranceReducedNoOffset', rsEntranceReduced.offsetY, 0)
+  check('rs.entranceReducedNoScale', rsEntranceReduced.scale, 1)
+  check('rs.entranceReducedDurationValue', rsEntranceReduced.duration, 0.1)
+  check('rs.overlayDuration', RECORDER_OVERLAY_FADE_IN_DURATION, 0.18)
+  check('rs.overlayAnimate', recorderOverlayShouldAnimate(false), true)
+  check('rs.overlayNoAnimate', recorderOverlayShouldAnimate(true), false)
+  check('rs.circleRadius', RECORDER_CIRCLE_PRESS_RADIUS, 18)
+  check('rs.circleHoverAlpha', RECORDER_CIRCLE_PRESS_HOVER_ALPHA, 0.1)
+  check('rs.circleHoverOn', recorderCircleHoverAlpha(true, true, false), 0.1)
+  check('rs.circleHoverWhilePressed', recorderCircleHoverAlpha(true, true, true), 0)
+  check('rs.circleHoverDisabled', recorderCircleHoverAlpha(false, true, false), 0)
+
+  // ================= RecorderConfigurationViews：输入种类 =================
+  check('rv.kindCount', RECORDER_INPUT_KINDS.length, 3)
+  check('rv.kindOrder', RECORDER_INPUT_KINDS.join(','), 'microphone,camera,systemAudio')
+  check('rv.titleMic', recorderInputTitle('microphone', 'screen'), '麦克风')
+  check('rv.titleCamera', recorderInputTitle('camera', 'screen'), '摄像头')
+  check('rv.titleSystemAudioScreen', recorderInputTitle('systemAudio', 'screen'), '系统声音')
+  check('rv.titleSystemAudioDevice', recorderInputTitle('systemAudio', 'device'), '设备声音')
+  const rvSnapshot = {
+    source: 'screen',
+    recordsMicrophone: true,
+    recordsCamera: false,
+    recordsSystemAudio: true,
+    microphoneDeviceID: 'mic-1',
+    cameraDeviceID: 'cam-2',
+    cameraCaptureResolution: '1920×1080',
+    systemAudioScope: 'all',
+    selectedApplicationBundleIdentifier: 'cn.laogou.dogsc',
+    selectedApplicationName: 'DogSC',
+  }
+  check('rv.isOnMic', recorderInputIsOn('microphone', rvSnapshot), true)
+  check('rv.isOnCamera', recorderInputIsOn('camera', rvSnapshot), false)
+  check('rv.isOnAudio', recorderInputIsOn('systemAudio', rvSnapshot), true)
+  const rvToggleMic = recorderInputToggleIntent('microphone', false, rvSnapshot, 'cam-9')
+  check('rv.toggleMicKind', rvToggleMic.kind, 'set-microphone-enabled')
+  check('rv.toggleMicValue', rvToggleMic.value, false)
+  check('rv.toggleMicKeepsDevice', rvToggleMic.deviceID, 'mic-1')
+  const rvToggleCamOn = recorderInputToggleIntent('camera', true, rvSnapshot, 'cam-9')
+  check('rv.toggleCameraKind', rvToggleCamOn.kind, 'select-camera')
+  check('rv.toggleCameraFirstDevice', rvToggleCamOn.deviceID, 'cam-9')
+  const rvToggleCamOff = recorderInputToggleIntent('camera', false, rvSnapshot, 'cam-9')
+  check('rv.toggleCameraOffNil', rvToggleCamOff.deviceID, null)
+  const rvToggleAudio = recorderInputToggleIntent('systemAudio', true, rvSnapshot, null)
+  check('rv.toggleAudioKind', rvToggleAudio.kind, 'set-system-audio-enabled')
+  check('rv.toggleAudioScope', rvToggleAudio.scope, 'all')
+  check('rv.refreshMic', recorderInputRefreshesDevicesOnAppear('microphone'), true)
+  check('rv.refreshAudio', recorderInputRefreshesDevicesOnAppear('systemAudio'), false)
+
+  // ================= RecorderConfigurationViews：尺寸 =================
+  check('rv.popoverSpacing', RECORDER_INPUT_POPOVER_SPACING, 4)
+  check('rv.toggleRowHeight', RECORDER_INPUT_TOGGLE_ROW_HEIGHT, 40)
+  check('rv.toggleRowPadding', RECORDER_INPUT_TOGGLE_ROW_PADDING, 10)
+  check('rv.toggleFontSize', RECORDER_INPUT_TOGGLE_FONT_SIZE, 15)
+  check('rv.toggleFontWeight', RECORDER_INPUT_TOGGLE_FONT_WEIGHT, 600)
+  check('rv.waveHeight', RECORDER_LEVEL_WAVE_HEIGHT, 40)
+  check('rv.wavePaddingH', RECORDER_LEVEL_WAVE_PADDING_HORIZONTAL, 10)
+  check('rv.wavePaddingTop', RECORDER_LEVEL_WAVE_PADDING_TOP, 8)
+  check('rv.wavePaddingBottom', RECORDER_LEVEL_WAVE_PADDING_BOTTOM, 6)
+  check('rv.wavePaddingAsymmetric',
+    RECORDER_LEVEL_WAVE_PADDING_TOP > RECORDER_LEVEL_WAVE_PADDING_BOTTOM, true)
+  check('rv.previewHeight', RECORDER_CAMERA_PREVIEW_HEIGHT, 152)
+  check('rv.previewRadius', RECORDER_CAMERA_PREVIEW_RADIUS, 14)
+  check('rv.previewPaddingH', RECORDER_CAMERA_PREVIEW_PADDING_HORIZONTAL, 10)
+  check('rv.previewPaddingTop', RECORDER_CAMERA_PREVIEW_PADDING_TOP, 6)
+  check('rv.previewButtonSpacing', RECORDER_CAMERA_PREVIEW_BUTTON_SPACING, 6)
+  check('rv.previewButtonPadding', RECORDER_CAMERA_PREVIEW_BUTTON_PADDING, 8)
+  check('rv.previewButtonSize', RECORDER_CAMERA_PREVIEW_BUTTON_SIZE, 28)
+  check('rv.previewButtonFont', RECORDER_CAMERA_PREVIEW_BUTTON_FONT_SIZE, 11)
+  check('rv.previewButtonWeight', RECORDER_CAMERA_PREVIEW_BUTTON_FONT_WEIGHT, 600)
+  check('rv.previewButtonPressRadius', RECORDER_CAMERA_PREVIEW_BUTTON_PRESS_RADIUS, 14)
+  check('rv.previewInsertScale', RECORDER_CAMERA_PREVIEW_INSERT_SCALE, 0.96)
+  check('rv.resolutionRowHeight', RECORDER_RESOLUTION_ROW_HEIGHT, 34)
+  check('rv.resolutionRowPadding', RECORDER_RESOLUTION_ROW_PADDING, 10)
+  check('rv.resolutionRowRadius', RECORDER_RESOLUTION_ROW_RADIUS, 10)
+  check('rv.resolutionRowFont', RECORDER_RESOLUTION_ROW_FONT_SIZE, 12)
+  check('rv.resolutionChevron', RECORDER_RESOLUTION_CHEVRON_SIZE, 9)
+  check('rv.resolutionChevronRotation', RECORDER_RESOLUTION_CHEVRON_ROTATION, 180)
+  check('rv.chevronCollapsed', recorderChevronRotation(false), 0)
+  check('rv.chevronExpanded', recorderChevronRotation(true), 180)
+  check('rv.resolutionPlaceholder', RECORDER_RESOLUTION_PLACEHOLDER, '采集分辨率')
+  check('rv.resolutionAuto', RECORDER_RESOLUTION_AUTO_TITLE, '自动')
+  check('rv.deviceEmpty', RECORDER_DEVICE_LIST_EMPTY_TITLE, '未发现设备')
+  check('rv.deviceEmptyPaddingH', RECORDER_DEVICE_LIST_EMPTY_PADDING_HORIZONTAL, 10)
+  check('rv.deviceEmptyPaddingV', RECORDER_DEVICE_LIST_EMPTY_PADDING_VERTICAL, 8)
+  check('rv.audioDisabledOpacity', RECORDER_SYSTEM_AUDIO_DISABLED_OPACITY, 0.4)
+  check('rv.deviceAudioNote', RECORDER_DEVICE_AUDIO_NOTE, '录制所选设备的声音')
+  check('rv.deviceAudioNotePaddingH', RECORDER_DEVICE_AUDIO_NOTE_PADDING_HORIZONTAL, 10)
+  check('rv.deviceAudioNotePaddingV', RECORDER_DEVICE_AUDIO_NOTE_PADDING_VERTICAL, 6)
+
+  // ================= RecorderConfigurationViews：电平波形 =================
+  check('rv.sampleCount', RECORDER_LEVEL_WAVE_SAMPLE_COUNT, 44)
+  check('rv.barSpacing', RECORDER_LEVEL_WAVE_BAR_SPACING, 2.5)
+  check('rv.tickSeconds', RECORDER_LEVEL_WAVE_TICK_SECONDS, 0.05)
+  check('rv.tickWindow', RECORDER_LEVEL_WAVE_SAMPLE_COUNT * RECORDER_LEVEL_WAVE_TICK_SECONDS, 2.2)
+  check('rv.activeThreshold', RECORDER_LEVEL_WAVE_ACTIVE_THRESHOLD, 0.03)
+  check('rv.heightGain', RECORDER_LEVEL_WAVE_HEIGHT_GAIN, 1.5)
+  check('rv.minHeight', RECORDER_LEVEL_WAVE_MIN_HEIGHT, 2.5)
+  check('rv.minOpacity', RECORDER_LEVEL_WAVE_MIN_OPACITY, 0.35)
+  check('rv.opacityRange', RECORDER_LEVEL_WAVE_OPACITY_RANGE, 0.65)
+  check('rv.barWidth300', recorderLevelWaveBarWidth(300, 44), 4.375)
+  check('rv.barWidthTiny', recorderLevelWaveBarWidth(20, 44), 1)
+  check('rv.barWidthZeroCount', recorderLevelWaveBarWidth(300, 0), 1)
+  check('rv.barHeightSilent', recorderLevelWaveBarHeight(40, 0), 2.5)
+  check('rv.barHeightFull', recorderLevelWaveBarHeight(40, 1), 40)
+  check('rv.barHeightHalf', recorderLevelWaveBarHeight(40, 0.5), 30)
+  check('rv.barHeightClamped', recorderLevelWaveBarHeight(40, 4), 40)
+  check('rv.barOpacityFirst', recorderLevelWaveBarOpacity(0, 44), 0.35)
+  check('rv.barOpacityLast', recorderLevelWaveBarOpacity(43, 44), 1)
+  check('rv.barOpacityMiddle', recorderLevelWaveBarOpacity(10, 44), 0.35 + (0.65 * 10) / 43)
+  check('rv.barOpacitySingle', recorderLevelWaveBarOpacity(0, 1), 1)
+  check('rv.barColorSilent', recorderLevelWaveBarColor(0.03, 'light').g,
+    RECORDER_FAINT('light').g)
+  check('rv.barColorActive', recorderLevelWaveBarColor(0.031, 'light').g, RECORDER_MINT.g)
+  const rvSamples = recorderLevelWaveInitials()
+  function recorderLevelWaveInitials() { return recorderLevelWaveInitialSamples() }
+  check('rv.initialCount', rvSamples.length, 44)
+  check('rv.initialZero', rvSamples.every((v) => v === 0), true)
+  const rvPushed = recorderLevelWavePush(rvSamples, 0.5)
+  check('rv.pushLength', rvPushed.length, 44)
+  check('rv.pushLast', rvPushed[43], 0.5)
+  check('rv.pushDropsFirst', rvPushed[0], 0)
+  const rvPushedNegative = recorderLevelWavePush(rvSamples, -3)
+  check('rv.pushClampLow', rvPushedNegative[43], 0)
+  const rvPushedHigh = recorderLevelWavePush(rvSamples, 9)
+  check('rv.pushClampHigh', rvPushedHigh[43], 1)
+  check('rv.animates', recorderLevelWaveAnimates(false), true)
+  check('rv.noAnimates', recorderLevelWaveAnimates(true), false)
+  check('rv.tickAnimation', RECORDER_LEVEL_WAVE_TICK_ANIMATION_DURATION, 0.05)
+
+  // ================= RecorderConfigurationViews：保存页 =================
+  check('rv.saveWidth', RECORDER_SAVE_POPOVER_WIDTH, 300)
+  check('rv.saveSpacing', RECORDER_SAVE_POPOVER_SPACING, 4)
+  check('rv.textfieldHeight', RECORDER_SAVE_TEXTFIELD_HEIGHT, 34)
+  check('rv.textfieldPadding', RECORDER_SAVE_TEXTFIELD_PADDING, 12)
+  check('rv.textfieldOuterH', RECORDER_SAVE_TEXTFIELD_OUTER_HORIZONTAL, 6)
+  check('rv.textfieldOuterV', RECORDER_SAVE_TEXTFIELD_OUTER_VERTICAL, 4)
+  check('rv.textfieldPlaceholder', RECORDER_SAVE_TEXTFIELD_PLACEHOLDER, '自动命名')
+  check('rv.codecHeight', RECORDER_CODEC_SEGMENT_HEIGHT, 30)
+  check('rv.codecRadiusIsHalf', RECORDER_CODEC_SEGMENT_RADIUS * 2, RECORDER_CODEC_SEGMENT_HEIGHT)
+  check('rv.codecPadding', RECORDER_CODEC_SEGMENT_OUTER_PADDING, 2)
+  check('rv.codecFont', RECORDER_CODEC_SEGMENT_FONT_SIZE, 12)
+  check('rv.codecProResLabel', recorderCodecSegmentLabel('proRes422'), 'ProRes')
+  check('rv.codecRawLabel', recorderCodecSegmentLabel('h264'), 'h264')
+  check('rv.codecAxValue', RECORDER_CODEC_SELECTED_AX_VALUE, '已选择')
+  check('rv.qualityHeight', RECORDER_QUALITY_ROW_HEIGHT, 36)
+  check('rv.qualityPadding', RECORDER_QUALITY_ROW_PADDING, 8)
+  check('rv.qualityIconSlot', RECORDER_QUALITY_ROW_ICON_SLOT, 18)
+  check('rv.qualitySpacing', RECORDER_QUALITY_ROW_SPACING, 10)
+  check('rv.qualityFont', RECORDER_QUALITY_ROW_FONT_SIZE, 13)
+  check('rv.qualityIndent', RECORDER_QUALITY_GROUP_INDENT, 20)
+  check('rv.qualityLabel', RECORDER_QUALITY_LABEL, '画质')
+  check('rv.ruleHeight', RECORDER_SAVE_RULE_HEIGHT, 1)
+  check('rv.rulePaddingH', RECORDER_SAVE_RULE_PADDING_HORIZONTAL, 8)
+  check('rv.rulePaddingV', RECORDER_SAVE_RULE_PADDING_VERTICAL, 6)
+  check('rv.warningFont', RECORDER_SAVE_WARNING_FONT_SIZE, 11)
+  check('rv.warningPaddingH', RECORDER_SAVE_WARNING_PADDING_HORIZONTAL, 8)
+  check('rv.warningPaddingTop', RECORDER_SAVE_WARNING_PADDING_TOP, 4)
+  check('rv.saveActionSpecCount', RECORDER_SAVE_ACTION_SPECS.length, 7)
+  check('rv.saveActionSeparators',
+    RECORDER_SAVE_ACTION_SPECS.filter((s) => s.separatorBefore).map((s) => s.id).join(','),
+    'open-project,quit')
+
+  const rvMinimalState = {
+    source: 'screen',
+    recordsMicrophone: false,
+    recordsCamera: false,
+    recordsSystemAudio: false,
+    microphoneDeviceID: null,
+    cameraDeviceID: null,
+    cameraCaptureResolution: null,
+    systemAudioScope: 'all',
+    selectedApplicationBundleIdentifier: null,
+    selectedApplicationName: null,
+    destinationName: 'Movies',
+    recordingTitleDraft: '',
+    captureCodec: 'h264',
+    captureResolutionLimit: '原始',
+    hidesDesktopFiles: false,
+    hidesDock: false,
+    recentProjectCount: 0,
+    recoverableProjectCount: 0,
+    hasScreenRecordingPermission: true,
+    memoVisible: false,
+    frameRateWarningText: null,
+  }
+  const rvRowsMinimal = recorderSaveActionRows(rvMinimalState)
+  check('rv.rowsMinimalCount', rvRowsMinimal.length, 4)
+  check('rv.rowsMinimalIds', rvRowsMinimal.map((r) => r.id).join(','),
+    'destination,open-project,memo,quit')
+  check('rv.rowsDestinationTitle', rvRowsMinimal[0].title, 'Movies')
+  check('rv.rowsDestinationChevron', rvRowsMinimal[0].showsChevron, true)
+  const rvRowsFull = recorderSaveActionRows({
+    ...rvMinimalState,
+    recentProjectCount: 2,
+    recoverableProjectCount: 1,
+    hasScreenRecordingPermission: false,
+    memoVisible: true,
+  })
+  check('rv.rowsFullCount', rvRowsFull.length, 7)
+  check('rv.rowsFullIds', rvRowsFull.map((r) => r.id).join(','),
+    'destination,open-project,most-recent,recover,screen-permission,memo,quit')
+  check('rv.rowsMemoClose', rvRowsFull.find((r) => r.id === 'memo').title, '收起备忘录')
+  check('rv.rowsRecoverTitle', rvRowsFull.find((r) => r.id === 'recover').title, '恢复中断录制')
+  check('rv.rowsPermissionTitle',
+    rvRowsFull.find((r) => r.id === 'screen-permission').title, '打开录屏权限设置')
+  check('rv.rowsQuitTitle', rvRowsFull.find((r) => r.id === 'quit').title, '退出DogSC')
+  check('rv.rowsRecoverHiddenWhenNone',
+    recorderSaveActionRows({ ...rvMinimalState, recentProjectCount: 0 })
+      .some((r) => r.id === 'recover'), false)
+  check('rv.rowsPermissionHiddenWhenGranted',
+    rvRowsMinimal.some((r) => r.id === 'screen-permission'), false)
+  check('rv.rowsAlwaysOpenProject',
+    rvRowsMinimal.some((r) => r.id === 'open-project'), true)
+  check('rv.codecShownOnScreen', recorderShowsCodecSegments(rvMinimalState), true)
+  check('rv.codecHiddenOnDevice',
+    recorderShowsCodecSegments({ ...rvMinimalState, source: 'device' }), false)
+  check('rv.desktopTogglesShown', recorderShowsDesktopToggles(rvMinimalState), true)
+  check('rv.desktopTogglesHidden',
+    recorderShowsDesktopToggles({ ...rvMinimalState, source: 'device' }), false)
+  check('rv.hideDesktopRow', RECORDER_HIDE_DESKTOP_FILES_ROW.title, '隐藏桌面文件')
+  check('rv.hideDockRow', RECORDER_HIDE_DOCK_ROW.title, '隐藏 Dock')
+  check('rv.warningHiddenWhenNull', recorderShowsFrameRateWarning(rvMinimalState), false)
+  check('rv.warningShownWhenText',
+    recorderShowsFrameRateWarning({ ...rvMinimalState, frameRateWarningText: '帧率过低' }), true)
+  check('rv.warningHiddenWhenEmpty',
+    recorderShowsFrameRateWarning({ ...rvMinimalState, frameRateWarningText: '' }), false)
+
+  // ================= RecorderConfigurationViews：系统声音 / 图层 =================
+  check('rv.audioAllTitle', RECORDER_SYSTEM_AUDIO_ALL_TITLE, '全部系统声音')
+  check('rv.audioAppTitle', RECORDER_SYSTEM_AUDIO_APP_TITLE, '所选窗口 App')
+  check('rv.appRowEnabled', recorderSelectedAppRowEnabled(rvSnapshot), true)
+  check('rv.appRowDisabled',
+    recorderSelectedAppRowEnabled({ ...rvSnapshot, selectedApplicationBundleIdentifier: null }),
+    false)
+  check('rv.appSubtitle', recorderSelectedAppSubtitle(rvSnapshot), 'DogSC')
+  check('rv.appSubtitleNull',
+    recorderSelectedAppSubtitle({ ...rvSnapshot, selectedApplicationBundleIdentifier: null }), null)
+  check('rv.previewGravity', RECORDER_CAMERA_PREVIEW_VIDEO_GRAVITY, 'resizeAspectFill')
+  check('rv.previewBackgroundAlpha', RECORDER_CAMERA_PREVIEW_BACKGROUND_ALPHA, 0.06)
+  check('rv.previewDefaultMirrored', RECORDER_CAMERA_PREVIEW_DEFAULT_MIRRORED, true)
+  check('rv.previewTransformMirrored', recorderCameraPreviewTransform(true)[0], -1)
+  check('rv.previewTransformPlain', recorderCameraPreviewTransform(false)[0], 1)
+  check('rv.previewTransformNoSkew', recorderCameraPreviewTransform(true)[1], 0)
+  check('rv.previewDisablesActions', RECORDER_CAMERA_PREVIEW_DISABLES_LAYOUT_ACTIONS, true)
+  const rvLayerFrame = recorderCameraPreviewLayerFrame({ width: 268, height: 152 })
+  check('rv.layerFrameWidth', rvLayerFrame.width, 268)
+  const rvLayerPosition = recorderCameraPreviewLayerPosition({ width: 268, height: 152 })
+  check('rv.layerPositionX', rvLayerPosition.x, 134)
+  check('rv.layerPositionY', rvLayerPosition.y, 76)
+  check('rv.releaseOrder', RECORDER_CAMERA_PREVIEW_RELEASE_ORDER.join(','),
+    'detach-sink,flush-and-remove-image')
+  check('rv.redrawsOnAppearance', RECORDER_CAMERA_PREVIEW_REDRAWS_ON_APPEARANCE_CHANGE, true)
+  check('rv.previewBackgroundCSS', recorderCameraPreviewBackground('light'),
+    'rgba(0, 0, 0, 0.06)')
+  const rvPreviewActive = recorderPreviewButtonStyle(true, 'light')
+  check('rv.previewActiveForeground', rvPreviewActive.foreground, 'rgba(255, 255, 255, 1)')
+  check('rv.previewActiveSize', rvPreviewActive.size, 28)
+  check('rv.previewActiveRadius', rvPreviewActive.radius, 14)
+  const rvPreviewIdle = recorderPreviewButtonStyle(false, 'light')
+  check('rv.previewIdleBackground', rvPreviewIdle.background, 'rgba(252, 252, 252, 0.94)')
+  check('rv.previewActionCount', RECORDER_CAMERA_PREVIEW_ACTIONS.length, 2)
+  check('rv.previewMirrorTitle', RECORDER_CAMERA_PREVIEW_ACTIONS[0].title, '镜像画面')
+  check('rv.effectsOrder', RECORDER_CAMERA_EFFECTS_ORDER.join(','),
+    'dismiss-popover,show-system-video-effects')
+  const rvColors = recorderConfigurationColors('light')
+  check('rv.colorsMuted', rvColors.muted, 'rgba(92, 92, 92, 1)')
+  check('rv.colorsWell', rvColors.well, 'rgba(0, 0, 0, 0.08)')
+  check('rv.colorsMint', rvColors.mint, 'rgba(77, 217, 140, 1)')
+  const rvColorsDark = recorderConfigurationColors('dark')
+  check('rv.colorsWellDark', rvColorsDark.well, 'rgba(255, 255, 255, 0.08)')
+
+  // ================= EditorInspectorMotion：页面时钟 =================
+  check('im.outgoing', EDITOR_PAGE_OUTGOING, 0.14)
+  check('im.incomingDelay', EDITOR_PAGE_INCOMING_DELAY, 0.12)
+  check('im.incomingDelayShorter', EDITOR_PAGE_INCOMING_DELAY < EDITOR_PAGE_OUTGOING, true)
+  check('im.revealSpringResponse', CONSOLE_REVEAL_SPRING.response, 0.62)
+  check('im.revealSpringDamping', CONSOLE_REVEAL_SPRING.dampingFraction, 0.82)
+  check('im.revealOffset', CONSOLE_REVEAL_OFFSET_Y, 40)
+  check('im.revealScale', CONSOLE_REVEAL_SCALE, 0.96)
+  check('im.revealAnchor', CONSOLE_REVEAL_ANCHOR, 'top')
+  check('im.revealCap', CONSOLE_REVEAL_DISTANCE_CAP, 900)
+  check('im.revealExtra', CONSOLE_REVEAL_MAX_EXTRA_DELAY, 0.3)
+  check('im.delayTop', consoleRevealDelay(0), 0.14)
+  check('im.delayMiddle', consoleRevealDelay(450), 0.29)
+  check('im.delayBottom', consoleRevealDelay(900), 0.44)
+  check('im.delayNegative', consoleRevealDelay(-100), 0.14)
+  check('im.delayBeyondCap', consoleRevealDelay(5000), 0.44)
+  check('im.delayMonotonic', consoleRevealDelay(300) < consoleRevealDelay(600), true)
+  check('im.hiddenAllTrue', consoleRevealHidden(true, false, false), true)
+  check('im.hiddenAlreadyShown', consoleRevealHidden(true, true, false), false)
+  check('im.hiddenNoReveal', consoleRevealHidden(false, false, false), false)
+  check('im.hiddenReduced', consoleRevealHidden(true, false, true), false)
+  const imRevealHidden = consoleRevealStyle(true)
+  check('im.revealHiddenOpacity', imRevealHidden.opacity, 0)
+  check('im.revealHiddenOffset', imRevealHidden.offsetY, 40)
+  check('im.revealHiddenScale', imRevealHidden.scale, 0.96)
+  const imRevealShown = consoleRevealStyle(false)
+  check('im.revealShownOpacity', imRevealShown.opacity, 1)
+  check('im.revealShownScale', imRevealShown.scale, 1)
+  check('im.revealAnimationDelay', consoleRevealAnimation(0, false).delay, 0.14)
+  check('im.revealAnimationKind', consoleRevealAnimation(0, false).kind, 'spring')
+  check('im.revealAnimationReduced', consoleRevealAnimation(0, true), null)
+
+  // ================= EditorInspectorMotion：离开 / 子页 =================
+  check('im.dropOffset', CONSOLE_DROP_OFFSET_Y, 26)
+  check('im.dropScale', CONSOLE_DROP_SCALE, 0.985)
+  check('im.dropCurve', CONSOLE_DROP_TIMING_CURVE.join(','), '0.5,0,0.9,0.5')
+  const imDrop = consoleDropStyle(true)
+  check('im.dropOpacity', imDrop.opacity, 0)
+  check('im.dropOffsetValue', imDrop.offsetY, 26)
+  const imDropIdentity = consoleDropStyle(false)
+  check('im.dropIdentityOpacity', imDropIdentity.opacity, 1)
+  check('im.pageTransitionReduced', consolePageTransition(true).removal, 'opacity')
+  check('im.pageTransitionRemoval', consolePageTransition(false).removal, 'drop')
+  check('im.pageTransitionInsertion', consolePageTransition(false).insertion, 'identity')
+  check('im.pageTransitionDuration', consolePageTransition(false).removalDuration, 0.14)
+  check('im.subpageLeading', editorSubpageIncomingOffset('leading').width, -26)
+  check('im.subpageTrailing', editorSubpageIncomingOffset('trailing').width, 26)
+  check('im.subpageTop', editorSubpageIncomingOffset('top').height, -14)
+  check('im.subpageBottom', editorSubpageIncomingOffset('bottom').height, 14)
+  check('im.subpageRatio', EDITOR_SUBPAGE_OUTGOING_RATIO, 18 / 26)
+  check('im.subpageOutgoingLeading', editorSubpageOutgoingOffset('leading').width, 18)
+  check('im.subpageOutgoingTrailing', editorSubpageOutgoingOffset('trailing').width, -18)
+  check('im.subpageOutgoingTop', editorSubpageOutgoingOffset('top').height, 9.692307692307692)
+  check('im.subpageOutgoingShorter', Math.abs(editorSubpageOutgoingOffset('leading').width)
+    < Math.abs(editorSubpageIncomingOffset('leading').width), true)
+  check('im.subpageSpringResponse', EDITOR_SUBPAGE_SPRING.response, 0.4)
+  check('im.subpageSpringDamping', EDITOR_SUBPAGE_SPRING.dampingFraction, 0.84)
+  check('im.subpageOpacity', EDITOR_SUBPAGE_OPACITY, 0)
+  check('im.subpageScale', EDITOR_SUBPAGE_SCALE, 0.985)
+  const imSubpage = editorSubpageTransition('trailing', false)
+  check('im.subpageInsertOffset', imSubpage.insertionOffset.width, 26)
+  check('im.subpageRemovalOffset', imSubpage.removalOffset.width, -18)
+  check('im.subpageInsertDelay', imSubpage.insertionAnimation.delay, 0.12)
+  check('im.subpageRemovalDuration', imSubpage.removalAnimation.duration, 0.14)
+  const imSubpageReduced = editorSubpageTransition('trailing', true)
+  check('im.subpageReducedOffset', imSubpageReduced.insertionOffset.width, 0)
+  check('im.subpageReducedScale', imSubpageReduced.inactiveScale, 1)
+  check('im.subpageReducedNoAnim', imSubpageReduced.insertionAnimation, null)
+
+  // ================= EditorInspectorMotion：整页到达 =================
+  check('im.arrivalOffset', CONSOLE_PAGE_ARRIVAL_OFFSET_Y, 14)
+  check('im.arrivalSmallerThanModule', CONSOLE_PAGE_ARRIVAL_OFFSET_Y < CONSOLE_REVEAL_OFFSET_Y, true)
+  check('im.arrivalSpring', CONSOLE_PAGE_ARRIVAL_SPRING.response, 0.42)
+  check('im.arrivalDamping', CONSOLE_PAGE_ARRIVAL_SPRING.dampingFraction, 0.86)
+  check('im.arrivalHidden', consolePageArrivalHidden(false, false), true)
+  check('im.arrivalHiddenReduced', consolePageArrivalHidden(false, true), false)
+  check('im.arrivalShown', consolePageArrivalHidden(true, false), false)
+  check('im.arrivalStyleHidden', consolePageArrivalStyle(true).offsetY, 14)
+  check('im.arrivalStyleShown', consolePageArrivalStyle(false).opacity, 1)
+
+  // ================= EditorInspectorMotion：滚动标题 =================
+  check('im.titleSize', EDITOR_ROLLING_TITLE_SIZE, 38)
+  check('im.titleHeightRatio', EDITOR_ROLLING_TITLE_HEIGHT_RATIO, 1.22)
+  check('im.titleTracking', EDITOR_ROLLING_TITLE_TRACKING_RATIO, -0.03)
+  check('im.titleHeight', editorRollingTitleHeight(), 46.36)
+  check('im.titleHeightCustom', editorRollingTitleHeight(20), 24.4)
+  check('im.travelRatio', EDITOR_ROLLING_GLYPH_TRAVEL_RATIO, 1.1)
+  check('im.travel', editorRollingGlyphTravel(38), 41.8)
+  const imPhaseStart = editorRollingGlyphPhases(38, 0)
+  check('im.phaseStartPrevOffset', imPhaseStart.previous.offsetY, 0)
+  check('im.phaseStartPrevOpacity', imPhaseStart.previous.opacity, 1)
+  check('im.phaseStartPrevBlur', imPhaseStart.previous.blur, 0)
+  check('im.phaseStartCurOffset', imPhaseStart.current.offsetY, 41.8)
+  check('im.phaseStartCurOpacity', imPhaseStart.current.opacity, 0)
+  check('im.phaseStartCurBlur', imPhaseStart.current.blur, 8)
+  const imPhaseEnd = editorRollingGlyphPhases(38, 1)
+  check('im.phaseEndPrevOffset', imPhaseEnd.previous.offsetY, -41.8)
+  check('im.phaseEndPrevOpacity', imPhaseEnd.previous.opacity, 0)
+  check('im.phaseEndPrevBlur', imPhaseEnd.previous.blur, 6)
+  check('im.phaseEndCurOffset', imPhaseEnd.current.offsetY, 0)
+  check('im.phaseEndCurOpacity', imPhaseEnd.current.opacity, 1)
+  check('im.phaseEndCurBlur', imPhaseEnd.current.blur, 0)
+  const imPhaseMid = editorRollingGlyphPhases(38, 0.5)
+  check('im.phaseMidPrevOpacity', imPhaseMid.previous.opacity, 0)
+  check('im.phaseMidCurOpacity', imPhaseMid.current.opacity, 1)
+  check('im.phaseMidCurBlur', imPhaseMid.current.blur, 4)
+  const imPhaseEarly = editorRollingGlyphPhases(38, 0.2)
+  check('im.phaseEarlyPrevOpacity', imPhaseEarly.previous.opacity, 0.4)
+  check('im.phaseEarlyCurOpacity', imPhaseEarly.current.opacity, 0.48)
+  check('im.rollingSpring', EDITOR_ROLLING_SPRING.response, 0.66)
+  check('im.rollingDamping', EDITOR_ROLLING_SPRING.dampingFraction, 0.74)
+  check('im.glyphDelayBase', EDITOR_ROLLING_GLYPH_DELAY_BASE, 0.04)
+  check('im.glyphDelayStep', EDITOR_ROLLING_GLYPH_DELAY_STEP, 0.07)
+  check('im.glyphDelay0', editorRollingGlyphDelay(0), 0.04)
+  check('im.glyphDelay3', editorRollingGlyphDelay(3), 0.25)
+  const imGlyphSame = editorRollingGlyphChange('A', 'A', 4, false)
+  check('im.glyphSameRevision', imGlyphSame.revision, 4)
+  check('im.glyphSameProgress', imGlyphSame.progress, 1)
+  check('im.glyphSameNoAnimation', imGlyphSame.animation, null)
+  const imGlyphReduced = editorRollingGlyphChange('A', 'B', 4, true)
+  check('im.glyphReducedRevision', imGlyphReduced.revision, 5)
+  check('im.glyphReducedNoPrevious', imGlyphReduced.previous, null)
+  check('im.glyphReducedProgress', imGlyphReduced.progress, 1)
+  const imGlyph = editorRollingGlyphChange('A', 'B', 4, false, 2)
+  check('im.glyphPrevious', imGlyph.previous, 'A')
+  check('im.glyphCurrent', imGlyph.current, 'B')
+  check('im.glyphProgress', imGlyph.progress, 0)
+  check('im.glyphRevision', imGlyph.revision, 5)
+  check('im.glyphDelay', imGlyph.animation.delay, 0.18)
+
+  // ================= EditorInspectorMotion：HUD =================
+  check('im.hudHold', EDITOR_CONSOLE_HUD_HOLD_SECONDS, 1.6)
+  check('im.hudRelease', EDITOR_CONSOLE_HUD_RELEASE_SECONDS, 0.9)
+  check('im.hudReleaseShorter', EDITOR_CONSOLE_HUD_RELEASE_SECONDS < EDITOR_CONSOLE_HUD_HOLD_SECONDS, true)
+  check('im.hudIdleInactive', EDITOR_CONSOLE_HUD_IDLE.isActive, false)
+  check('im.hudIdleLabel', EDITOR_CONSOLE_HUD_IDLE.label, '')
+  const imHudShow = editorConsoleHUDShow('大小', '42')
+  check('im.hudShowLabel', imHudShow.state.label, '大小')
+  check('im.hudShowValue', imHudShow.state.value, '42')
+  check('im.hudShowActive', imHudShow.state.isActive, true)
+  check('im.hudShowHideAfter', imHudShow.hideAfter, 1.6)
+  check('im.hudReleaseHideAfter', editorConsoleHUDRelease().hideAfter, 0.9)
+  const imHudHidden = editorConsoleHUDHide(imHudShow.state)
+  check('im.hudHiddenInactive', imHudHidden.isActive, false)
+  check('im.hudHiddenKeepsValue', imHudHidden.value, '42')
+  check('im.hudInsetActive', EDITOR_CONSOLE_HUD_INSET_ACTIVE, 20)
+  check('im.hudInsetIdle', EDITOR_CONSOLE_HUD_INSET_IDLE, 8)
+  check('im.hudInsetActiveValue', editorConsoleHUDInset(true), 20)
+  check('im.hudInsetIdleValue', editorConsoleHUDInset(false), 8)
+  check('im.hudBracketSize', EDITOR_CONSOLE_HUD_BRACKET_SIZE, 18)
+  check('im.hudBracketLine', EDITOR_CONSOLE_HUD_BRACKET_LINE_WIDTH, 2.2)
+  check('im.hudBracketRadius', EDITOR_CONSOLE_HUD_BRACKET_RADIUS, 5)
+  check('im.hudBracketShadow', EDITOR_CONSOLE_HUD_BRACKET_SHADOW_ALPHA, 0.45)
+  check('im.hudBracketShadowRadius', EDITOR_CONSOLE_HUD_BRACKET_SHADOW_RADIUS, 2)
+  const imCorners = [
+    editorConsoleHUDCornerPosition(0, { width: 400, height: 300 }, true),
+    editorConsoleHUDCornerPosition(1, { width: 400, height: 300 }, true),
+    editorConsoleHUDCornerPosition(2, { width: 400, height: 300 }, true),
+    editorConsoleHUDCornerPosition(3, { width: 400, height: 300 }, true),
+  ]
+  check('im.corner0', `${imCorners[0].x},${imCorners[0].y}`, '29,29')
+  check('im.corner1', `${imCorners[1].x},${imCorners[1].y}`, '371,29')
+  check('im.corner2', `${imCorners[2].x},${imCorners[2].y}`, '29,271')
+  check('im.corner3', `${imCorners[3].x},${imCorners[3].y}`, '371,271')
+  const imCornerIdle = editorConsoleHUDCornerPosition(0, { width: 400, height: 300 }, false)
+  check('im.cornerIdleInset', imCornerIdle.x, 17)
+  check('im.hudCapsuleHeight', EDITOR_CONSOLE_HUD_CAPSULE_HEIGHT, 28)
+  check('im.hudCapsulePadding', EDITOR_CONSOLE_HUD_CAPSULE_PADDING, 12)
+  check('im.hudLabelSpacing', EDITOR_CONSOLE_HUD_LABEL_SPACING, 7)
+  check('im.hudBackground', EDITOR_CONSOLE_HUD_BACKGROUND_ALPHA, 0.58)
+  check('im.hudLabelOpacity', EDITOR_CONSOLE_HUD_LABEL_OPACITY, 0.78)
+  check('im.hudFontSize', EDITOR_CONSOLE_HUD_FONT_SIZE, 12)
+  const imCapsuleOffset = editorConsoleHUDCapsuleOffset(true)
+  check('im.capsuleLeading', imCapsuleOffset.leading, 24)
+  check('im.capsuleBottom', imCapsuleOffset.bottom, 22)
+  check('im.capsuleIdleLeading', editorConsoleHUDCapsuleOffset(false).leading, 12)
+  check('im.hudHiddenOffset', EDITOR_CONSOLE_HUD_HIDDEN_OFFSET_Y, 6)
+  check('im.hudStyleActive', editorConsoleHUDStyle(true).opacity, 1)
+  check('im.hudStyleIdleOffset', editorConsoleHUDStyle(false).offsetY, 6)
+  check('im.hudSpring', EDITOR_CONSOLE_HUD_SPRING.response, 0.42)
+  check('im.hudDamping', EDITOR_CONSOLE_HUD_SPRING.dampingFraction, 0.8)
+  check('im.hudAnimationKind', editorConsoleHUDAnimation(false).kind, 'spring')
+  check('im.hudAnimationReduced', editorConsoleHUDAnimation(true), null)
+  const imBracket0 = editorConsoleHUDBracketPath(0, 18)
+  check('im.bracketCommandCount', imBracket0.length, 4)
+  check('im.bracketStart', `${imBracket0[0].points[0][0]},${imBracket0[0].points[0][1]}`, '0,18')
+  check('im.bracketQuad', imBracket0[2].op, 'Q')
+  const imBracket1 = editorConsoleHUDBracketPath(1, 18)
+  check('im.bracket1Start', `${imBracket1[0].points[0][0]},${imBracket1[0].points[0][1]}`, '0,0')
+  check('im.bracket1Line', imBracket1[1].points[0][0], 13)
+  const imBracket3 = editorConsoleHUDBracketPath(3, 18)
+  check('im.bracket3Last', `${imBracket3[3].points[0][0]},${imBracket3[3].points[0][1]}`, '18,0')
+
+  // ================= EditorMenuBridge：标识符 / 动作 =================
+  check('mb.fileId', EDITOR_MENU_FILE_IDENTIFIER, 'cn.laogou.dogsc.file-menu')
+  check('mb.editId', EDITOR_MENU_EDIT_IDENTIFIER, 'cn.laogou.dogsc.edit-menu')
+  check('mb.separatorId', EDITOR_MENU_PROJECT_MEDIA_SEPARATOR_IDENTIFIER,
+    'cn.laogou.dogsc.file-menu.project-media-separator')
+  check('mb.exportMediaId', EDITOR_MENU_EXPORT_PROJECT_MEDIA_IDENTIFIER,
+    'cn.laogou.dogsc.file-menu.export-project-media')
+  check('mb.replaceCameraId', EDITOR_MENU_REPLACE_CAMERA_MEDIA_IDENTIFIER,
+    'cn.laogou.dogsc.file-menu.replace-camera-media')
+  check('mb.projectMediaCount', EDITOR_MENU_PROJECT_MEDIA_IDENTIFIERS.length, 3)
+  check('mb.openProjectAction', EDITOR_MENU_ACTION_OPEN_PROJECT, 'openProjectFromMenu:')
+  check('mb.exportAction', EDITOR_MENU_ACTION_EXPORT, 'exportFromMenu:')
+  check('mb.undoAction', EDITOR_MENU_ACTION_UNDO, 'undoFromMenu:')
+  check('mb.nativeUndoSelector', EDITOR_MENU_SELECTOR_UNDO_NATIVE, 'undo:')
+  check('mb.nativeRedoSelector', EDITOR_MENU_SELECTOR_REDO_NATIVE, 'redo:')
+  check('mb.showHelpAction', EDITOR_MENU_ACTION_SHOW_HELP, 'showHelp:')
+  check('mb.fullScreenAction', EDITOR_MENU_ACTION_TOGGLE_FULL_SCREEN, 'toggleFullScreen:')
+  check('mb.fileItemCount', EDITOR_MENU_FILE_ITEMS.length, 2)
+  check('mb.fileOpenShortcut', EDITOR_MENU_FILE_ITEMS[0].keyEquivalent, 'o')
+  check('mb.fileExportShortcut', EDITOR_MENU_FILE_ITEMS[1].keyEquivalent, 'e')
+  check('mb.undoKey', EDITOR_MENU_UNDO_ITEM.keyEquivalent, 'z')
+  check('mb.undoModifiers', EDITOR_MENU_UNDO_ITEM.modifiers.join(','), 'command')
+  check('mb.redoModifiers', EDITOR_MENU_REDO_ITEM.modifiers.join(','), 'command,shift')
+  check('mb.redoSameKey', EDITOR_MENU_REDO_ITEM.keyEquivalent, EDITOR_MENU_UNDO_ITEM.keyEquivalent)
+  check('mb.fileInsertIndex', EDITOR_MENU_FILE_INSERTION_INDEX, 1)
+  check('mb.editInsertIndex', editorMenuEditInsertionIndex(5), 2)
+  check('mb.editInsertClamped', editorMenuEditInsertionIndex(1), 1)
+  check('mb.editInsertZero', editorMenuEditInsertionIndex(0), 0)
+  const mbItem = editorMenuItem({ title: 'X', action: 'x:', keyEquivalent: 'x' })
+  check('mb.itemDefaultModifiers', mbItem.modifiers.join(','), 'command')
+  check('mb.itemDefaultHidden', mbItem.hidden, false)
+  check('mb.itemDefaultSubmenu', mbItem.submenu.length, 0)
+  check('mb.itemNoIdentifier', mbItem.identifier, null)
+
+  // ================= EditorMenuBridge：安装计划 =================
+  const mbEmptyMenu = []
+  const mbInstall = editorMenuInstallPlan(mbEmptyMenu, '文件')
+  check('mb.installStepCount', mbInstall.length, 3)
+  check('mb.installFirstOp', mbInstall[0].op, 'insert-root')
+  check('mb.installIndex', mbInstall[0].index, 1)
+  check('mb.installTitle', mbInstall[0].title, '文件')
+  check('mb.installItemAction', mbInstall[1].action, EDITOR_MENU_ACTION_OPEN_PROJECT)
+  check('mb.installItemParent', mbInstall[1].parent, EDITOR_MENU_FILE_IDENTIFIER)
+  const mbFileTree = [
+    editorMenuItem({ title: 'DogSC', identifier: 'app' }),
+    editorMenuItem({
+      title: '文件',
+      identifier: EDITOR_MENU_FILE_IDENTIFIER,
+      submenu: [editorMenuItem({ title: '打开项目…', action: EDITOR_MENU_ACTION_OPEN_PROJECT })],
+    }),
+  ]
+  const mbReinstall = editorMenuInstallPlan(mbFileTree, 'File')
+  check('mb.reinstallStepCount', mbReinstall.length, 1)
+  check('mb.reinstallOp', mbReinstall[0].op, 'retitle-root')
+  check('mb.reinstallTitle', mbReinstall[0].title, 'File')
+  check('mb.findRootIndex', editorMenuFindRoot(mbFileTree, EDITOR_MENU_FILE_IDENTIFIER).index, 1)
+  check('mb.findRootMiss', editorMenuFindRoot(mbFileTree, 'nope'), null)
+  check('mb.findByAction',
+    editorMenuFindByAction(mbFileTree, EDITOR_MENU_ACTION_OPEN_PROJECT).title, '打开项目…')
+  check('mb.findByActionMiss', editorMenuFindByAction(mbFileTree, 'nope:'), null)
+
+  const mbEditInstall = editorMenuEditInstallPlan([], '编辑')
+  check('mb.editInstallCount', mbEditInstall.length, 3)
+  check('mb.editInstallRootOp', mbEditInstall[0].op, 'insert-root')
+  check('mb.editInstallIndex', mbEditInstall[0].index, 0)
+  check('mb.editInstallUndo', mbEditInstall[1].action, EDITOR_MENU_ACTION_UNDO)
+  check('mb.editInstallRedo', mbEditInstall[2].action, EDITOR_MENU_ACTION_REDO)
+  check('mb.editInstallRedoModifiers', mbEditInstall[2].modifiers.join(','), 'command,shift')
+
+  const mbNativeEditTree = [
+    editorMenuItem({ title: 'DogSC', identifier: 'app' }),
+    editorMenuItem({
+      title: 'Edit',
+      identifier: null,
+      submenu: [editorMenuItem({ title: 'Undo', action: EVENT_UNDO_SELECTOR() })],
+    }),
+  ]
+  function EVENT_UNDO_SELECTOR() { return EDITOR_MENU_SELECTOR_UNDO_NATIVE }
+  const mbExistingEdit = editorMenuFindExistingEditRoot(mbNativeEditTree)
+  check('mb.existingEditBySelector', mbExistingEdit.index, 1)
+  check('mb.existingEditByIdentifier',
+    editorMenuFindExistingEditRoot([
+      editorMenuItem({ title: '编辑', identifier: EDITOR_MENU_EDIT_IDENTIFIER }),
+    ]).index, 0)
+  check('mb.existingEditNone',
+    editorMenuFindExistingEditRoot([editorMenuItem({ title: 'DogSC', identifier: 'app' })]), null)
+  check('mb.existingEditCustomAction',
+    editorMenuFindExistingEditRoot([
+      editorMenuItem({
+        title: '编辑',
+        submenu: [editorMenuItem({ title: '撤销', action: EDITOR_MENU_ACTION_UNDO })],
+      }),
+    ]).index, 0)
+
+  // ================= EditorMenuBridge：可见性 / 帮助 =================
+  const mbVisTree = [
+    editorMenuItem({ title: 'DogSC', identifier: 'app' }),
+    editorMenuItem({
+      title: '文件',
+      identifier: EDITOR_MENU_FILE_IDENTIFIER,
+      submenu: [
+        editorMenuItem({ title: '打开项目…', action: EDITOR_MENU_ACTION_OPEN_PROJECT }),
+        editorMenuItem({ title: '导出成片…', action: EDITOR_MENU_ACTION_EXPORT }),
+        editorMenuItem({ title: '', identifier: EDITOR_MENU_PROJECT_MEDIA_SEPARATOR_IDENTIFIER }),
+      ],
+    }),
+    editorMenuItem({ title: '编辑', identifier: EDITOR_MENU_EDIT_IDENTIFIER }),
+    editorMenuItem({
+      title: '显示',
+      identifier: 'view',
+      submenu: [editorMenuItem({ title: '进入全屏', action: EDITOR_MENU_ACTION_TOGGLE_FULL_SCREEN })],
+    }),
+    editorMenuItem({ title: '窗口', identifier: 'win' }),
+  ]
+  const mbIsWin = (node) => node.identifier === 'win'
+  const mbViewByAction = editorMenuIsViewRoot(mbVisTree[3], false, ['显示', 'View'])
+  check('mb.viewByFullScreenAction', mbViewByAction, true)
+  check('mb.viewExcludesWindowsMenu',
+    editorMenuIsViewRoot(mbVisTree[4], true, ['显示', 'View']), false)
+  check('mb.viewByTitle',
+    editorMenuIsViewRoot(editorMenuItem({ title: 'View' }), false, ['显示', 'View']), true)
+  check('mb.viewTitleMismatch',
+    editorMenuIsViewRoot(editorMenuItem({ title: 'Other' }), false, ['显示', 'View']), false)
+  const mbTargets = editorMenuVisibilityTargets(mbVisTree, mbIsWin)
+  check('mb.visibilityTargetCount', mbTargets.length, 5)
+  check('mb.visibilityTargetsOrder', mbTargets.join('|'),
+    `${EDITOR_MENU_EDIT_IDENTIFIER}|${EDITOR_MENU_FILE_IDENTIFIER}/${EDITOR_MENU_ACTION_EXPORT}|` +
+    `${EDITOR_MENU_FILE_IDENTIFIER}/${EDITOR_MENU_PROJECT_MEDIA_SEPARATOR_IDENTIFIER}|view|win`)
+  check('mb.visibilityNoOpenProject',
+    mbTargets.some((t) => t.includes(EDITOR_MENU_ACTION_OPEN_PROJECT)), false)
+  check('mb.visibilityHiddenTrue', editorMenuVisibilityPlan(mbVisTree, false, mbIsWin).hidden, true)
+  check('mb.visibilityHiddenFalse', editorMenuVisibilityPlan(mbVisTree, true, mbIsWin).hidden, false)
+
+  const mbHelpTree = [
+    editorMenuItem({ title: 'DogSC', identifier: 'app' }),
+    editorMenuItem({ title: '帮助', identifier: 'help' }),
+  ]
+  check('mb.helpByTitle', editorMenuIsGeneratedHelpRoot(mbHelpTree[1], false), true)
+  check('mb.helpByRole', editorMenuIsGeneratedHelpRoot(editorMenuItem({ title: 'X' }), true), true)
+  check('mb.helpByAction', editorMenuIsGeneratedHelpRoot(
+    editorMenuItem({ title: 'X', submenu: [editorMenuItem({ title: 'Y', action: EDITOR_MENU_ACTION_SHOW_HELP })] }),
+    false), true)
+  check('mb.helpFalse', editorMenuIsGeneratedHelpRoot(editorMenuItem({ title: 'DogSC' }), false), false)
+  check('mb.helpRoots', editorMenuHelpRootsToRemove(mbHelpTree, () => false).join(','), 'help')
+  check('mb.helpSkipsFirst', editorMenuHelpRootsToRemove(
+    [editorMenuItem({ title: '帮助', identifier: 'help0' }),
+      editorMenuItem({ title: 'DogSC', identifier: 'app' })], () => false).length, 0)
+  check('mb.helpClearsRole', EDITOR_MENU_CLEARS_HELP_MENU_ROLE, true)
+
+  // ================= EditorMenuBridge：本地化 =================
+  check('mb.titleCut', EDITOR_MENU_STANDARD_TITLES['cut:'], '剪切')
+  check('mb.titleCopy', EDITOR_MENU_STANDARD_TITLES['copy:'], '拷贝')
+  check('mb.titleArrange', EDITOR_MENU_STANDARD_TITLES['arrangeInFront:'], '前置所有窗口')
+  check('mb.titleCount', Object.keys(EDITOR_MENU_STANDARD_TITLES).length, 11)
+  check('mb.hideFormat', EDITOR_MENU_HIDE_FORMAT, '隐藏%@')
+  check('mb.hideTitle', editorMenuHideTitle('DogSC'), '隐藏DogSC')
+  check('mb.fullScreenEnter', EDITOR_MENU_FULL_SCREEN_ENTER_TITLE, '进入全屏')
+  check('mb.fullScreenExit', EDITOR_MENU_FULL_SCREEN_EXIT_TITLE, '退出全屏')
+  check('mb.fullScreenTitleIn', editorMenuFullScreenTitle(false), '进入全屏')
+  check('mb.fullScreenTitleOut', editorMenuFullScreenTitle(true), '退出全屏')
+  check('mb.servicesTitle', EDITOR_MENU_SERVICES_TITLE, '服务')
+  check('mb.windowsTitle', EDITOR_MENU_WINDOWS_TITLE, '窗口')
+  check('mb.viewTitle', EDITOR_MENU_VIEW_TITLE, '显示')
+  const mbLocalizeCtx = { appDisplayName: 'DogSC', anyKeyWindowFullScreen: false }
+  check('mb.localizedCopy', editorMenuLocalizedTitle('copy:', mbLocalizeCtx), '拷贝')
+  check('mb.localizedHide', editorMenuLocalizedTitle('hide:', mbLocalizeCtx), '隐藏DogSC')
+  check('mb.localizedFullScreen', editorMenuLocalizedTitle('toggleFullScreen:', mbLocalizeCtx),
+    '进入全屏')
+  check('mb.localizedUnknown', editorMenuLocalizedTitle('nope:', mbLocalizeCtx), null)
+  const mbLocalizePlan = editorMenuLocalizePlan(
+    [
+      editorMenuItem({
+        title: 'Edit',
+        identifier: 'edit',
+        submenu: [editorMenuItem({ title: 'Copy', action: 'copy:' })],
+      }),
+    ],
+    mbLocalizeCtx,
+    () => null
+  )
+  check('mb.localizePlanCount', mbLocalizePlan.length, 1)
+  check('mb.localizePlanTitle', mbLocalizePlan[0].title, '拷贝')
+  check('mb.localizePlanPath', mbLocalizePlan[0].path, 'edit/Copy')
+  const mbLocalizeRoles = editorMenuLocalizePlan(
+    [
+      editorMenuItem({ title: 'S', identifier: 'services' }),
+      editorMenuItem({ title: 'W', identifier: 'windows' }),
+      editorMenuItem({ title: 'V', identifier: 'view' }),
+    ],
+    mbLocalizeCtx,
+    (node) => (node.identifier === 'services' ? 'services'
+      : node.identifier === 'windows' ? 'windows' : node.identifier === 'view' ? 'view' : null)
+  )
+  check('mb.localizeRolesCount', mbLocalizeRoles.length, 0)
+
+  // ================= EditorMenuBridge：撤销路由 / 校验 =================
+  const mbCtxBase = {
+    hasEditableTextFocus: false,
+    textCanUndo: false,
+    textCanRedo: false,
+    editorCanUndo: true,
+    editorCanRedo: false,
+    editorUndoActionName: null,
+    editorRedoActionName: null,
+    isEditorActive: true,
+  }
+  check('mb.undoToEditor', editorMenuUndoTarget(mbCtxBase), 'editor')
+  check('mb.undoToText', editorMenuUndoTarget({ ...mbCtxBase, hasEditableTextFocus: true }), 'text')
+  check('mb.undoNone', editorMenuUndoTarget({ ...mbCtxBase, editorCanUndo: false }), 'none')
+  check('mb.redoToEditor',
+    editorMenuRedoTarget({ ...mbCtxBase, editorCanRedo: true }), 'editor')
+  check('mb.redoToText', editorMenuRedoTarget({ ...mbCtxBase, hasEditableTextFocus: true }), 'text')
+  check('mb.redoNone', editorMenuRedoTarget(mbCtxBase), 'none')
+  check('mb.undoTitleNamed', editorMenuUndoTitle('复制'), '撤销“复制”')
+  check('mb.undoTitlePlain', editorMenuUndoTitle(null), '撤销')
+  check('mb.undoTitleEmpty', editorMenuUndoTitle(''), '撤销')
+  check('mb.redoTitleNamed', editorMenuRedoTitle('粘贴'), '重做“粘贴”')
+  check('mb.redoTitlePlain', editorMenuRedoTitle(null), '重做')
+
+  const mbValidateUndo = editorMenuValidate(EDITOR_MENU_ACTION_UNDO, mbCtxBase, '撤销')
+  check('mb.validateUndoEnabled', mbValidateUndo.enabled, true)
+  check('mb.validateUndoTitle', mbValidateUndo.title, '撤销')
+  const mbValidateUndoNamed = editorMenuValidate(
+    EDITOR_MENU_ACTION_UNDO, { ...mbCtxBase, editorUndoActionName: '移动片段' }, '撤销')
+  check('mb.validateUndoNamedTitle', mbValidateUndoNamed.title, '撤销“移动片段”')
+  const mbValidateUndoText = editorMenuValidate(
+    EDITOR_MENU_ACTION_UNDO,
+    { ...mbCtxBase, hasEditableTextFocus: true, textCanUndo: false, editorUndoActionName: 'X' }, '撤销')
+  check('mb.validateUndoTextDisabled', mbValidateUndoText.enabled, false)
+  // 文本域焦点下标题必须回到「撤销」，不能带编辑器的动作名
+  check('mb.validateUndoTextTitle', mbValidateUndoText.title, '撤销')
+  const mbValidateRedo = editorMenuValidate(EDITOR_MENU_ACTION_REDO, mbCtxBase, '重做')
+  check('mb.validateRedoDisabled', mbValidateRedo.enabled, false)
+  check('mb.validateRedoTitle', mbValidateRedo.title, '重做')
+  check('mb.validateExportInactive',
+    editorMenuValidate(EDITOR_MENU_ACTION_EXPORT, { ...mbCtxBase, isEditorActive: false }, '')
+      .enabled, false)
+  check('mb.validateExportActive',
+    editorMenuValidate(EDITOR_MENU_ACTION_EXPORT, mbCtxBase, '').enabled, true)
+  check('mb.validateExportNoTitle',
+    editorMenuValidate(EDITOR_MENU_ACTION_EXPORT, mbCtxBase, '导出').title, null)
+  check('mb.validateOpenProjectAlways',
+    editorMenuValidate(EDITOR_MENU_ACTION_OPEN_PROJECT,
+      { ...mbCtxBase, isEditorActive: false }, '').enabled, true)
+  check('mb.validateUnknown', editorMenuValidate('nope:', mbCtxBase, 'X').enabled, true)
+
+  const mbAttached = editorMenuAttach(true)
+  check('mb.attachActive', mbAttached.isEditorActive, true)
+  check('mb.attachUndoManager', mbAttached.hasUndoManager, true)
+  const mbDetach = editorMenuDetach(7, 7)
+  check('mb.detachAccepted', mbDetach.accepted, true)
+  check('mb.detachInactive', mbDetach.isEditorActive, false)
+  const mbDetachStale = editorMenuDetach(7, 8)
+  check('mb.detachStaleRejected', mbDetachStale.accepted, false)
+  // 旧编辑器的延迟卸载不得清掉新编辑器
+  check('mb.detachStaleKeepsActive', mbDetachStale.isEditorActive, true)
+  check('mb.requestChannels', EDITOR_MENU_REQUEST_CHANNELS.length, 3)
+  check('mb.requestChannelsNames', EDITOR_MENU_REQUEST_CHANNELS.join(','),
+    'exportRequest,shortcutCheatsheetRequest,quitRequest')
+
+  // ================= AppLineIcon：网格 / 线宽 =================
+  check('ic.grid', APP_LINE_ICON_GRID, 18)
+  check('ic.defaultSize', APP_LINE_ICON_DEFAULT_SIZE, 18)
+  check('ic.kindCount', APP_LINE_ICON_KINDS.length, 93)
+  check('ic.stroke18', appLineIconStrokeWidth(18), 1.5)
+  check('ic.stroke12Clamped', appLineIconStrokeWidth(12), 1.2)
+  check('ic.stroke14Clamped', appLineIconStrokeWidth(14), 1.2)
+  check('ic.stroke24', appLineIconStrokeWidth(24), 24 / 14)
+  check('ic.stroke28', appLineIconStrokeWidth(28), 2)
+  check('ic.strokeMonotonic',
+    appLineIconStrokeWidth(16) <= appLineIconStrokeWidth(18), true)
+  check('ic.strokeJumpAt24',
+    appLineIconStrokeWidth(24) > appLineIconStrokeWidth(23), true)
+  check('ic.scaleNormal', appLineIconScale(18).scaleX, 1)
+  check('ic.scaleDouble', appLineIconScale(36).scaleX, 2)
+  check('ic.scaleOffset', appLineIconScale(36).offsetX, 0)
+
+  // 每个图标：至少一条指令、在网格内（留 5 的余量）、包围盒非退化
+  for (const kind of APP_LINE_ICON_KINDS) {
+    check(`ic.ops.${kind}`, appLineIconOps(kind).length > 0, true)
+    check(`ic.cmds.${kind}`, appLineIconCommands(kind).length > 0, true)
+    check(`ic.grid.${kind}`, appLineIconFitsGrid(kind, 5), true)
+    const b = appLineIconBounds(kind)
+    // 单线图标（例如 `minus`）高度为 0 是正常的，只要至少一个方向有长度
+    check(`ic.bounds.${kind}`, b.width >= 0 && b.height >= 0 && (b.width > 0 || b.height > 0), true)
+  }
+
+  // ================= AppLineIcon：具体几何 =================
+  check('ic.recordOps', appLineIconOpCount('record'), 2)
+  check('ic.recordCmds', appLineIconCommands('record').length, 2)
+  check('ic.recordSummary', JSON.stringify(appLineIconCommandSummary('record')), '{"E":2}')
+  check('ic.recordCenterX', appLineIconCenter('record').x, 9)
+  check('ic.recordCenterY', appLineIconCenter('record').y, 9)
+  check('ic.recordBounds', appLineIconBounds('record').width, 14)
+  check('ic.plusOps', appLineIconOpCount('plus'), 2)
+  // 一条两点的 line 展开成 M + L
+  check('ic.plusCmds', appLineIconCommands('plus').length, 4)
+  check('ic.plusMinX', appLineIconBounds('plus').minX, 3.5)
+  check('ic.plusMaxY', appLineIconBounds('plus').maxY, 14.5)
+  check('ic.minusCmd', appLineIconCommands('minus').length, 2)
+  check('ic.checkCmds', appLineIconCommands('check').length, 3)
+  check('ic.checkSummary', JSON.stringify(appLineIconCommandSummary('check')), '{"M":1,"L":2}')
+  check('ic.checkCircleCmds', appLineIconCommands('checkCircle').length, 4)
+  check('ic.circleCmd', appLineIconCommands('shapeCircle').length, 1)
+  check('ic.circleCmdOp', appLineIconCommands('shapeCircle')[0].op, 'E')
+  check('ic.roundedCmdOp', appLineIconCommands('shapeRounded')[0].op, 'R')
+  check('ic.globeEllipse', appLineIconCommands('globe').filter((c) => c.op === 'O').length, 1)
+  check('ic.settingsCmds', appLineIconCommands('settings').length, 50)
+  check('ic.sunCmds', appLineIconCommands('sun').length, 17)
+  check('ic.zoomCmds', appLineIconCommands('zoom').length, 9)
+  check('ic.waveformCmds', appLineIconCommands('waveform').length, 10)
+  check('ic.listCmds', appLineIconCommands('list').length, 9)
+  check('ic.filmCmds', appLineIconCommands('film').length, 13)
+
+  // 镜像：同一份几何沿 x=9 翻转
+  const icUndo = appLineIconCommands('undo')
+  const icRedo = appLineIconCommands('redo')
+  check('ic.undoLen', icUndo.length, 7)
+  check('ic.redoLen', icRedo.length, 7)
+  check('ic.undoStartX', icUndo[0].x, 7)
+  check('ic.redoStartX', icRedo[0].x, 11)
+  check('ic.redoMirrorsX', icUndo[0].y, icRedo[0].y)
+  for (const [a, b] of APP_LINE_ICON_MIRROR_PAIRS) {
+    check(`ic.mirror.${a}.${b}`,
+      appLineIconCommands(a).length, appLineIconCommands(b).length)
+  }
+  // 叠加组：第二个不比第一个少
+  for (const [a, b] of APP_LINE_ICON_ADDITIVE_PAIRS) {
+    check(`ic.additive.${a}.${b}`,
+      appLineIconCommands(b).length >= appLineIconCommands(a).length, true)
+  }
+  check('ic.eyeOffLonger',
+    appLineIconCommands('eyeOff').length > appLineIconCommands('eye').length, true)
+  check('ic.speakerOffSameLength',
+    appLineIconCommands('speakerOff').length, appLineIconCommands('speaker').length)
+
+  // 超网格的图标：控制点在画布外，包围盒必须能报出来
+  const icMoon = appLineIconBounds('moon')
+  check('ic.moonMinX', icMoon.minX, -5)
+  check('ic.moonMaxY', icMoon.maxY, 22)
+  check('ic.moonOutsideGrid', appLineIconFitsGrid('moon', 0), false)
+  check('ic.moonInsidePadded', appLineIconFitsGrid('moon', 5), true)
+  const icSpeaker = appLineIconBounds('speaker')
+  check('ic.speakerMaxX', icSpeaker.maxX, 18.5)
+  const icCup = appLineIconBounds('cup')
+  check('ic.cupMaxX', icCup.maxX, 18)
+
+  // 渲染描述
+  const icRender = appLineIconRender('sliders', 20)
+  check('ic.renderKind', icRender.kind, 'sliders')
+  check('ic.renderSize', icRender.size, 20)
+  check('ic.renderStroke', icRender.strokeWidth, 1.55)
+  check('ic.renderLineCap', icRender.lineCap, 'round')
+  check('ic.renderLineJoin', icRender.lineJoin, 'round')
+  check('ic.renderHidden', icRender.hiddenFromAX, true)
+  check('ic.renderCommands', icRender.commands.length, 15)
+  const icRender36 = appLineIconRender('plus', 36)
+  check('ic.render36Stroke', icRender36.strokeWidth, 36 / 14)
+
+  // 每个镜像对里的图标都必须能渲染出非空指令
+  for (const [a, b] of APP_LINE_ICON_ADDITIVE_PAIRS) {
+    check(`ic.additiveRender.${a}`, appLineIconRender(a).commands.length > 0, true)
+    check(`ic.additiveRender.${b}`, appLineIconRender(b).commands.length > 0, true)
+  }
+}
+
+await runDesignSystemBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

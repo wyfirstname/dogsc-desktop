@@ -20,15 +20,15 @@
 /** 窗口最小尺寸。 */
 export const EDITOR_MINIMUM_WINDOW_SIZE = { width: 840, height: 600 } as const
 
-/** Swift EditorInterfaceRadius 的固定值（EditorDesignTokens 尚未转写，先按需内联）。 */
-export const EDITOR_INTERFACE_RADIUS = {
-  compact: 8,
-  control: 10,
-  group: 12,
-  card: 14,
-  floating: 20,
-  tile: 18,
-} as const
+/**
+ * 圆角令牌。
+ *
+ * 这批值原本内联在本文件里（注释写的是「EditorDesignTokens 尚未转写」），
+ * 现在 `EditorDesignTokens.swift` 已经逐结构转写完成，改为从那里取
+ * 唯一的一份，避免两处各改一次、慢慢漂移。
+ */
+export { EDITOR_INTERFACE_RADIUS } from './EditorDesignTokens'
+import { EDITOR_INTERFACE_RADIUS } from './EditorDesignTokens'
 
 export interface EditorWorkspaceLayoutInput {
   readonly width: number
