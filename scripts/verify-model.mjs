@@ -15584,5 +15584,1017 @@ async function runOnboardingSurfaceBatch() {
 }
 await runOnboardingSurfaceBatch()
 
+
+async function runTimelineCacheBatch() {
+  // ========== 6 文件 / 1,965 行：时间线派生缓存 / 轨道显隐 / 显示器选择 /
+  //            原生控件 / 场景预设 / 画布预览缓存
+  const {
+    // ---- EditorTimelineDerivedPresentationCache.swift
+    editorRecordingMarkers, editorTimelineCacheReuses, editorTimelineInputEquals,
+    editorIndexByID, editorIndexLookup, editorMotionClipIsVisible, editorMotionClipOrder,
+    editorMotionTimelineClips, EDITOR_PRIMARY_PRESENTATION_PARTS,
+    editorPrimaryPresentationStale, EDITOR_SYNC_DISPLAY_RANGE_MINIMUM,
+    EDITOR_SYNC_DISPLAY_RANGE_FACTOR, editorSyncDisplayRange, editorFirstAnchorIndexAfter,
+    editorCameraSyncSampleReserveCapacity, editorCameraSyncCurveSamples,
+    editorCameraSyncPathUsesPreparedCurve, editorTimelineWaveformSegmentKey,
+    editorTimelinePlanConstructionFailureIsSilent,
+    // ---- EditorTimelineTrackVisibility.swift
+    TIMELINE_TRACK_MANAGER_INSET, TIMELINE_TRACK_MANAGER_ICON_SIZE,
+    TIMELINE_TRACK_MANAGER_ICON_FRAME, TIMELINE_TRACK_MANAGER_SPACING,
+    TIMELINE_TRACK_MANAGER_LABEL_FONT_SIZE, TIMELINE_TRACK_MANAGER_LABEL,
+    TIMELINE_TRACK_MANAGER_CHEVRON_SIZE, TIMELINE_TRACK_MANAGER_CHEVRON_FRAME,
+    TIMELINE_TRACK_MANAGER_COLLAPSED_INSET, timelineTrackManagerAlpha,
+    timelineTrackManagerChevronAlpha, timelineTrackManagerBackgroundAlpha,
+    TIMELINE_TRACK_MANAGER_OPEN_WASH, TIMELINE_TRACK_MANAGER_HOVER_WASH,
+    timelineTrackManagerBorderAlpha, TIMELINE_TRACK_MANAGER_BORDER_WIDTH,
+    TIMELINE_TRACK_MANAGER_CORNER_RADIUS, TIMELINE_TRACK_MANAGER_HELP,
+    timelineTrackManagerAccessibilityValue, timelineTrackManagerHorizontalInset,
+    TIMELINE_TRACK_ROW_DISABLED_OPACITY, TIMELINE_TRACK_ROW_CORNER_RADIUS,
+    timelineTrackRowScale, timelineTrackRowBackgroundAlpha, TIMELINE_TRACK_ROW_ANIMATION,
+    timelineEmptyHintVisibleWidth, TIMELINE_EMPTY_HINT_MAXIMUM_WIDTH,
+    TIMELINE_EMPTY_HINT_SPACING, TIMELINE_EMPTY_HINT_PLUS_SIZE, TIMELINE_EMPTY_HINT_FONT_SIZE,
+    TIMELINE_EMPTY_HINT_PLUS_ALPHA, TIMELINE_EMPTY_HINT_TEXT_ALPHA,
+    TIMELINE_EMPTY_HINT_PADDING, TIMELINE_EMPTY_HINT_HEIGHT,
+    TIMELINE_EMPTY_HINT_CORNER_RADIUS, TIMELINE_EMPTY_HINT_FILL_ALPHA,
+    TIMELINE_EMPTY_HINT_BORDER_ALPHA, TIMELINE_EMPTY_HINT_BORDER_WIDTH,
+    TIMELINE_EMPTY_HINT_BORDER_DASH, TIMELINE_EMPTY_HINT_LEADING_REGULAR,
+    TIMELINE_EMPTY_HINT_LEADING_COMPACT, timelineEmptyHintLeading,
+    timelineEmptyHintAcceptsHitTesting, timelineEmptyHintOffsetX, TIMELINE_OPTIONAL_TRACKS,
+    TIMELINE_OPTIONAL_TRACK_COUNT_MAXIMUM, timelineVisibleOptionalTrackCount,
+    timelineTrackCountBadgeText, timelineTrackIsVisible, timelineTrackContentCountText,
+    TIMELINE_TRACK_PANEL_WIDTH, TIMELINE_TRACK_PANEL_PADDING,
+    TIMELINE_TRACK_PANEL_SECTION_SPACING, TIMELINE_TRACK_PANEL_TITLE_FONT_SIZE,
+    TIMELINE_TRACK_PANEL_DETAIL_FONT_SIZE, TIMELINE_TRACK_PANEL_TITLE_STACK_SPACING,
+    TIMELINE_TRACK_PANEL_HEADER_SPACING, TIMELINE_TRACK_PANEL_TITLE,
+    TIMELINE_TRACK_PANEL_DETAIL, TIMELINE_TRACK_COUNT_BADGE_HEIGHT,
+    TIMELINE_TRACK_COUNT_BADGE_PADDING, TIMELINE_TRACK_COUNT_BADGE_BACKGROUND_ALPHA,
+    TIMELINE_TRACK_ROW_TILE_PADDING, TIMELINE_TRACK_ROW_SPACING,
+    TIMELINE_TRACK_TILE_CORNER_RADIUS, TIMELINE_TRACK_ROW_ICON_CORNER_RADIUS,
+    TIMELINE_TRACK_ROW_INNER_SPACING, TIMELINE_TRACK_ROW_ICON_SIZE,
+    TIMELINE_TRACK_ROW_ICON_FRAME, timelineTrackRowIconSaturation, timelineTrackRowIconOpacity,
+    TIMELINE_TRACK_ROW_TITLE_FONT_SIZE, TIMELINE_TRACK_ROW_DETAIL_FONT_SIZE,
+    TIMELINE_TRACK_ROW_TEXT_SPACING, TIMELINE_TRACK_ROW_HEIGHT, TIMELINE_TRACK_ROW_PADDING,
+    TIMELINE_TRACK_ROW_UNAVAILABLE_OPACITY, TIMELINE_TRACK_ROW_SETTLE_ANIMATION,
+    TIMELINE_TRACK_ROW_TOGGLE_SPACER_MIN, TIMELINE_TRACK_UNAVAILABLE_DETAIL,
+    timelineTrackRowDetailText, TIMELINE_TRACK_ROW_DEFINITIONS, timelineOptionalTrackSymbol,
+    timelineTrackVisibilityValueLabel, timelineTrackToggleAccessibilityLabel,
+    timelineTrackToggleHelpText, timelineSetTrackCancelsGesture,
+    // ---- CaptureDisplaySelection.swift
+    CAPTURE_DISPLAY_PANEL_STYLE_MASK, CAPTURE_DISPLAY_PANEL_COLLECTION_BEHAVIOR,
+    CAPTURE_DISPLAY_PANEL_SHARING_TYPE, CAPTURE_DISPLAY_PANEL_IS_OPAQUE,
+    CAPTURE_DISPLAY_PANEL_HAS_SHADOW, CAPTURE_DISPLAY_PANEL_HIDES_ON_DEACTIVATE,
+    captureDisplayCanBecomeKey, captureDisplayCanBecomeMain, CAPTURE_DISPLAY_SCREEN_NUMBER_KEY,
+    CAPTURE_DISPLAY_ESCAPE_KEY_CODE, captureDisplayKeyCommand,
+    captureDisplayCommandSwallowsEvent, captureDisplayReconcilePlan,
+    captureDisplayShouldAutoSelect, captureDisplayRefreshOutcome,
+    captureDisplaySelectionGuard, captureDisplayKeyPanelIndex,
+    captureDisplayClearsFirstResponderAfterKey, CAPTURE_DISPLAY_RETIRE_ORDER,
+    captureDisplayFinishesTransitionImmediately, CAPTURE_DISPLAY_RETIREMENT_STEPS,
+    captureViewfinderInset, CAPTURE_VIEWFINDER_HIDDEN_INSET, CAPTURE_VIEWFINDER_IDLE_INSET,
+    CAPTURE_VIEWFINDER_SELECTED_INSET, captureViewfinderArm, captureViewfinderStrokeAlpha,
+    captureViewfinderLineWidth, CAPTURE_VIEWFINDER_SHADOW_ALPHA, CAPTURE_VIEWFINDER_SHADOW_RADIUS,
+    captureDisplayDimAlpha, captureDisplayOverlayTapSelects, captureDisplayOverlayAcceptsHitTesting,
+    CAPTURE_DISPLAY_ISLAND_BOTTOM_PADDING, CAPTURE_DISPLAY_ISLAND_CORNER_RADIUS,
+    CAPTURE_DISPLAY_ISLAND_PADDING, CAPTURE_DISPLAY_ISLAND_SPACING,
+    CAPTURE_DISPLAY_ISLAND_NAME_LEADING, CAPTURE_DISPLAY_ISLAND_NAME_TRAILING,
+    CAPTURE_DISPLAY_ISLAND_NAME_FONT_SIZE, CAPTURE_DISPLAY_ISLAND_SPEC_FONT_SIZE,
+    CAPTURE_DISPLAY_ISLAND_TEXT_SPACING, CAPTURE_DISPLAY_RECORD_PIP_SIZE,
+    captureDisplayIslandOpacity, captureDisplayIslandOffsetY, captureDisplayIslandBlur,
+    captureDisplayIslandScale, CAPTURE_DISPLAY_ISLAND_HIDDEN_OFFSET_Y,
+    CAPTURE_DISPLAY_ISLAND_HIDDEN_BLUR, CAPTURE_DISPLAY_ISLAND_HIDDEN_SCALE,
+    captureDisplayPrimaryButtonKind, captureDisplayActionLabel, CAPTURE_DISPLAY_SELECT_LABEL,
+    CAPTURE_DISPLAY_START_LABEL, CAPTURE_DISPLAY_CANCEL_LABEL, CAPTURE_DISPLAY_ESCAPE_HINT,
+    CAPTURE_DISPLAY_START_HINT, CAPTURE_DISPLAY_CANCEL_HELP, captureDisplaySpecText,
+    captureDisplayButtonSizesForBothLabels, CAPTURE_DISPLAY_MORPH_ANIMATION,
+    CAPTURE_DISPLAY_SETTLE_ANIMATION,
+    // ---- RecorderNativeControls.swift
+    RECORDER_MENU_SEPARATOR_TITLE, recorderMenuActionItem, recorderMenuInfoItem,
+    recorderMenuSeparatorItem, recorderMenuItemIsInteractive, recorderMenuItemIsVisible,
+    RECORDER_MENU_FOCUS_ALPHA, RECORDER_MENU_FOCUS_LINE_WIDTH, recorderMenuFocusVisible,
+    RECORDER_MENU_FOCUS_INSET, recorderMenuFocusRadius, recorderMenuFocusPathAllowed,
+    recorderMenuFocusTracking, recorderMenuWindowMatches, RECORDER_MENU_HOVER_CORNER_RADIUS,
+    RECORDER_MENU_HOVER_OPACITY, recorderMenuIsCircle, recorderMenuCornerCurve,
+    recorderMenuMasksToBounds, RECORDER_MENU_HOVER_NOTIFICATION, RECORDER_MENU_HOVER_GAIN,
+    recorderMenuHoverAlpha, recorderMenuHoverDuration, RECORDER_MENU_HOVER_DURATION,
+    RECORDER_MENU_HOVER_CURVE, RECORDER_MENU_HOVER_ANIMATION_KEY, recorderMenuHoverStyleChanged,
+    recorderMenuHovering, recorderMenuHoverObservationNeeded, recorderMenuShouldRemoveHoverObservation,
+    RECORDER_MENU_TRACKING_AREA_OPTIONS, RECORDER_MENU_TRACKING_AREA_USES_ZERO_RECT,
+    recorderMenuAcceptsFirstMouse, recorderMenuPressChangeEnabled,
+    recorderMenuRequiresMouseMovedEvents, RECORDER_ACTION_TRIGGER_CORNER_RADIUS,
+    RECORDER_ACTION_TRIGGER_HIGHLIGHT_OPACITY, RECORDER_ACTION_TRIGGER_SEND_ON,
+    RECORDER_ACTION_TRIGGER_FOCUS_RING, RECORDER_ACTION_TRIGGER_IS_BORDERED,
+    RECORDER_ACTION_TRIGGER_TITLE, RECORDER_ACTION_TRIGGER_UPDATE_FIELDS,
+    recorderActionTriggerIdentifier,
+    // ---- EditorScenePresets.swift
+    SCENE_PRESET_NAME_PREFIX, scenePresetNextName, scenePresetNameKey, scenePresetNameConflict,
+    scenePresetTrimmedName, scenePresetCanSave, scenePresetBeginEditing,
+    SCENE_PRESET_LABEL_TRUNCATE_THRESHOLD, SCENE_PRESET_LABEL_PREFIX_LENGTH,
+    SCENE_PRESET_LABEL_ELLIPSIS, scenePresetLabelText, scenePresetMenuButtonTitle,
+    SCENE_PRESET_EMPTY_SAVE_LABEL, SCENE_PRESET_DEFAULT_LABEL, SCENE_PRESET_MENU_TITLE,
+    SCENE_PRESET_UPDATE_LABEL, SCENE_PRESET_MODIFIED_BADGE, SCENE_PRESET_MODIFIED_DOT_SIZE,
+    SCENE_PRESET_MODIFIED_DOT_FONT_SIZE, SCENE_PRESET_BUTTON_CORNER_RADIUS,
+    scenePresetIsModified, scenePresetBackgroundIsKnown, SCENE_PRESET_ROW_HEIGHT,
+    SCENE_PRESET_LIST_MAXIMUM_HEIGHT, scenePresetListHeight, SCENE_PRESET_POPOVER_WIDTH,
+    SCENE_PRESET_POPOVER_PADDING, SCENE_PRESET_MENU_SPACING, SCENE_PRESET_CARD_SPACING,
+    SCENE_PRESET_ROW_ICON_SIZE, SCENE_PRESET_ROW_ICON_FRAME, SCENE_PRESET_ROW_SPACING,
+    SCENE_PRESET_ROW_PADDING, SCENE_PRESET_ROW_TITLE_FONT_SIZE, SCENE_PRESET_ADD_BUTTON_SIZE,
+    SCENE_PRESET_ADD_BUTTON_ICON_SIZE, SCENE_PRESET_DELETE_BUTTON_WIDTH,
+    SCENE_PRESET_DELETE_BUTTON_HEIGHT, SCENE_PRESET_DEFAULT_BUTTON_HEIGHT,
+    SCENE_PRESET_UPDATE_BUTTON_HEIGHT, SCENE_PRESET_CARD_BORDER_WIDTH,
+    scenePresetCardBorderAlpha, scenePresetRowIconTone, scenePresetRowIconBackgroundAlpha,
+    scenePresetRowCheckmarkVisible, SCENE_PRESET_CARD_FOOTER_PADDING,
+    SCENE_PRESET_CARD_FOOTER_SPACING, scenePresetDefaultButtonTitle,
+    scenePresetDefaultButtonSymbol, scenePresetDefaultToggleTarget, scenePresetDefaultHintText,
+    scenePresetDeleteHelpText, scenePresetRequiresSourceConfirmation,
+    SCENE_PRESET_NOTICE_MISSING_BACKGROUND, SCENE_PRESET_NOTICE_LEGACY_PRESET,
+    SCENE_PRESET_NOTICE_NO_CAMERA_MEDIA, SCENE_PRESET_NOTICE_SEPARATOR, scenePresetNotices,
+    scenePresetNoticesText, SCENE_PRESET_SAVE_ERROR, scenePresetShouldReportSaveError,
+    scenePresetShouldReportApplyError, scenePresetShouldRejectStaleProject,
+    SCENE_PRESET_STALE_STATE_DOMAIN, scenePresetApplyActionName, SCENE_PRESET_APPLY_COMMANDS,
+    scenePresetOpeningCommandNeeded, scenePresetDeleteOutcome,
+    scenePresetKnownBackgroundSourcesAfterSave, scenePresetKnownBackgroundSourcesAfterApply,
+    SCENE_PRESET_MISSING_BACKGROUND_ERROR,
+    // ---- EditorCanvasPreviewCaches.swift
+    editorCanvasZoomTrackNeedsRebuild, editorCanvasTrackNeedsRebuild, EDITOR_CANVAS_TRACK_ORDER,
+    editorCanvasPrewarmPlanCount, editorCanvasPrewarmReuses, editorCanvasCropFrameReusable,
+    EDITOR_CANVAS_PLAN_IDLE_GATE_MS, EDITOR_CANVAS_PLAN_BATCH_SIZE,
+    EDITOR_CANVAS_PLAN_HORIZON_SECONDS, EDITOR_CANVAS_PLAN_LEAD_SECONDS,
+    EDITOR_CANVAS_PLAN_TRAIL_SECONDS, EDITOR_CANVAS_PLAN_MINIMUM_SPAN_SECONDS,
+    EDITOR_CANVAS_PLAN_MAXIMUM_SPAN_SECONDS, editorCanvasFrameIndex, editorCanvasHandleIsCurrent,
+    editorCanvasPreparationStep, editorCanvasShouldStopPreparation,
+    editorCanvasCanKeepHandleWhileBusy, editorCanvasShouldStartPreparation,
+    editorCanvasInstallAllowed, editorCanvasClearsFramesOnStart, editorCanvasCompletedIndices,
+    editorCanvasShouldDecodeIndex, editorCanvasFrameTime, editorCanvasShouldInstallFinalBatch,
+    EDITOR_CANVAS_INVALIDATE_ORDER, editorCanvasFrameOrNothing,
+    editorCanvasAnimationFrameRange, editorCanvasSelectInterval, editorCanvasFrameRangeCount,
+    editorCanvasFramesIncomplete, EDITOR_CANVAS_PLAN_CACHES_PIXELS,
+  } = m
+
+  // ================ 时间线派生缓存
+  const tdMarkers = editorRecordingMarkers({
+    markers: [{ number: 3 }, { number: 1 }, { number: 2 }, { number: 9 }],
+    outputTimeOf: (marker) => (marker.number === 9 ? null : marker.number === 2 ? 1 : 2),
+  })
+  check('td.markersCount', tdMarkers.length, 3)
+  check('td.markersFirst', tdMarkers[0].marker.number, 2)
+  check('td.markersSecond', tdMarkers[1].marker.number, 1)
+  check('td.markersThird', tdMarkers[2].marker.number, 3)
+  check('td.markersUnmappedDropped', tdMarkers.every((entry) => entry.marker.number !== 9), true)
+
+  check('td.equalsSame', editorTimelineInputEquals({ a: 1 }, { a: 1 }), true)
+  check('td.equalsDiff', editorTimelineInputEquals({ a: 1 }, { a: 2 }), false)
+  check('td.equalsArrays', editorTimelineInputEquals([1, 2], [1, 2]), true)
+  check('td.equalsArrayLength', editorTimelineInputEquals([1], [1, 2]), false)
+  check('td.equalsNested', editorTimelineInputEquals({ a: { b: [1, { c: 3 }] } },
+    { a: { b: [1, { c: 3 }] } }), true)
+  check('td.equalsKeyCount', editorTimelineInputEquals({ a: 1 }, { a: 1, b: 2 }), false)
+  check('td.reusesNull', editorTimelineCacheReuses(null, { a: 1 }), false)
+  const tdInput = { clips: [1, 2], duration: 5 }
+  check('td.reusesSame', editorTimelineCacheReuses(tdInput, { clips: [1, 2], duration: 5 }), true)
+  check('td.reusesChanged', editorTimelineCacheReuses(tdInput, { clips: [1], duration: 5 }), false)
+
+  const tdIndex = editorIndexByID(['a', 'b', 'a'])
+  check('td.indexSize', tdIndex.size, 2)
+  check('td.indexFirst', tdIndex.get('a'), 0)
+  check('td.indexSecond', tdIndex.get('b'), 1)
+  check('td.lookupHit', editorIndexLookup(tdIndex, 'b'), 1)
+  check('td.lookupMiss', editorIndexLookup(tdIndex, 'zz'), null)
+  check('td.lookupNull', editorIndexLookup(tdIndex, null), null)
+
+  check('td.visibleNormal', editorMotionClipIsVisible({ startTime: 0, endTime: 1,
+    duration: 2 }), true)
+  check('td.visibleStartsAtEnd', editorMotionClipIsVisible({ startTime: 2, endTime: 3,
+    duration: 2 }), false)
+  check('td.visibleZeroLength', editorMotionClipIsVisible({ startTime: 0, endTime: 0,
+    duration: 2 }), false)
+  check('td.orderByStart', editorMotionClipOrder({ startTime: 0, id: 'z' },
+    { startTime: 1, id: 'a' }), -1)
+  check('td.orderById', editorMotionClipOrder({ startTime: 1, id: 'b' },
+    { startTime: 1, id: 'a' }), 1)
+  check('td.orderSame', editorMotionClipOrder({ startTime: 1, id: 'a' },
+    { startTime: 1, id: 'a' }), 0)
+
+  const tdClips = editorMotionTimelineClips({
+    clips: [
+      { id: 'c', startTime: 0, endTime: 1, groupID: null },
+      { id: 'a', startTime: 0, endTime: 1, groupID: 'g' },
+      { id: 'b', startTime: 0, endTime: 1, groupID: null },
+      { id: 'dropped', startTime: 20, endTime: 21, groupID: null },
+    ],
+    duration: 10,
+    track: 'screen',
+  })
+  check('td.clipsCount', tdClips.length, 3)
+  check('td.clipsSorted0', tdClips[0].id, 'a')
+  check('td.clipsSorted1', tdClips[1].id, 'b')
+  check('td.clipsSorted2', tdClips[2].id, 'c')
+  check('td.clipsTrack', tdClips[0].track, 'screen')
+  check('td.clipsGroup', tdClips[0].groupID, 'g')
+  check('td.cameraTrack', editorMotionTimelineClips({
+    clips: [{ id: 'x', startTime: 0, endTime: 1, groupID: null }], duration: 10,
+    track: 'camera' })[0].track, 'camera')
+
+  check('td.presentationParts', EDITOR_PRIMARY_PRESENTATION_PARTS.length, 3)
+  check('td.presentationStaleSame', editorPrimaryPresentationStale(tdInput, tdInput), false)
+  check('td.presentationStaleOther', editorPrimaryPresentationStale(tdInput, { clips: [],
+    duration: 5 }), true)
+
+  check('td.syncMinimum', EDITOR_SYNC_DISPLAY_RANGE_MINIMUM, 0.1)
+  check('td.syncFactor', EDITOR_SYNC_DISPLAY_RANGE_FACTOR, 1.18)
+  check('td.syncFloor', editorSyncDisplayRange([0.02, -0.05]), 0.118, 1e-12)
+  check('td.syncEmpty', editorSyncDisplayRange([]), 0.118, 1e-12)
+  check('td.syncAbove', editorSyncDisplayRange([0.3, -0.2]), 0.354, 1e-12)
+
+  check('td.anchorFound', editorFirstAnchorIndexAfter(5, [1, 3, 5, 7]), 3)
+  check('td.anchorZero', editorFirstAnchorIndexAfter(0, [0, 1]), 1)
+  check('td.anchorBeyond', editorFirstAnchorIndexAfter(9, [1, 2]), 2)
+  check('td.anchorEmpty', editorFirstAnchorIndexAfter(0, []), 0)
+  check('td.reserveCapacity', editorCameraSyncSampleReserveCapacity(2, 3), 7)
+  check('td.reserveCapacityZero', editorCameraSyncSampleReserveCapacity(0, 0), 0)
+
+  const tdSamplesSingle = editorCameraSyncCurveSamples({
+    segments: [{ outputStart: 0, outputEnd: 1, sourceStart: 0, sourceEnd: 1 }],
+    anchorSourceTimes: [0.5],
+    offsetAtSourceTime: (time) => time * 10,
+  })
+  check('td.samplesSingleCount', tdSamplesSingle.length, 3)
+  check('td.samplesStartSubpath', tdSamplesSingle[0].startsSubpath, true)
+  check('td.samplesStartTime', tdSamplesSingle[0].outputTime, 0)
+  check('td.samplesStartOffset', tdSamplesSingle[0].offset, 0)
+  check('td.samplesAnchorSubpath', tdSamplesSingle[1].startsSubpath, false)
+  check('td.samplesAnchorTime', tdSamplesSingle[1].outputTime, 0.5)
+  check('td.samplesAnchorOffset', tdSamplesSingle[1].offset, 5)
+  check('td.samplesEndTime', tdSamplesSingle[2].outputTime, 1)
+  check('td.samplesEndOffset', tdSamplesSingle[2].offset, 10)
+
+  const tdSamplesTwo = editorCameraSyncCurveSamples({
+    segments: [
+      { outputStart: 0, outputEnd: 1, sourceStart: 0, sourceEnd: 1 },
+      { outputStart: 1, outputEnd: 2, sourceStart: 1, sourceEnd: 2 },
+    ],
+    anchorSourceTimes: [1.5],
+    offsetAtSourceTime: (time) => time * 10,
+  })
+  check('td.samplesTwoCount', tdSamplesTwo.length, 5)
+  check('td.samplesTwoSecondStart', tdSamplesTwo[2].startsSubpath, true)
+  check('td.samplesTwoSecondStartOffset', tdSamplesTwo[2].offset, 10)
+  check('td.samplesTwoAnchorTime', tdSamplesTwo[3].outputTime, 1.5)
+  check('td.samplesTwoAnchorOffset', tdSamplesTwo[3].offset, 15)
+  check('td.samplesTwoEndOffset', tdSamplesTwo[4].offset, 20)
+
+  // 正好落在片段末尾的锚点由终点承担，不重复添加
+  const tdSamplesBoundary = editorCameraSyncCurveSamples({
+    segments: [{ outputStart: 0, outputEnd: 1, sourceStart: 0, sourceEnd: 1 }],
+    anchorSourceTimes: [1],
+    offsetAtSourceTime: (time) => time,
+  })
+  check('td.samplesBoundaryCount', tdSamplesBoundary.length, 2)
+  check('td.samplesBoundaryEnd', tdSamplesBoundary[1].offset, 1)
+
+  check('td.pathUsesPrepared', editorCameraSyncPathUsesPreparedCurve(), true)
+  check('td.waveformKey', editorTimelineWaveformSegmentKey({ id: 'a', sourceStart: 1,
+    sourceDuration: 2, playbackRate: 1 }), 'a|1|2|1')
+  check('td.planFailureSilent', editorTimelinePlanConstructionFailureIsSilent(), true)
+
+  // ================ 轨道显隐
+  check('tv.managerInset', TIMELINE_TRACK_MANAGER_INSET, 16)
+  check('tv.managerIcon', TIMELINE_TRACK_MANAGER_ICON_SIZE, 15.5)
+  check('tv.managerIconFrame', TIMELINE_TRACK_MANAGER_ICON_FRAME, 20)
+  check('tv.managerSpacing', TIMELINE_TRACK_MANAGER_SPACING, 8)
+  check('tv.managerLabelFont', TIMELINE_TRACK_MANAGER_LABEL_FONT_SIZE, 11)
+  check('tv.managerLabel', TIMELINE_TRACK_MANAGER_LABEL, '轨道')
+  check('tv.managerChevron', TIMELINE_TRACK_MANAGER_CHEVRON_SIZE, 10.5)
+  check('tv.managerChevronFrame', TIMELINE_TRACK_MANAGER_CHEVRON_FRAME, 24)
+  check('tv.managerCollapsedInset', TIMELINE_TRACK_MANAGER_COLLAPSED_INSET, 16)
+  check('tv.managerAlphaHover', timelineTrackManagerAlpha(true, false), 0.96)
+  check('tv.managerAlphaPresented', timelineTrackManagerAlpha(false, true), 0.96)
+  check('tv.managerAlphaIdle', timelineTrackManagerAlpha(false, false), 0.74)
+  check('tv.chevronAlphaHover', timelineTrackManagerChevronAlpha(true, false), 0.82)
+  check('tv.chevronAlphaIdle', timelineTrackManagerChevronAlpha(false, false), 0.46)
+  check('tv.bgPresented', timelineTrackManagerBackgroundAlpha({ presented: true,
+    hovered: false }), 0.14)
+  check('tv.bgHover', timelineTrackManagerBackgroundAlpha({ presented: false,
+    hovered: true }), 0.08)
+  check('tv.bgIdle', timelineTrackManagerBackgroundAlpha({ presented: false,
+    hovered: false }), 0)
+  check('tv.openWash', TIMELINE_TRACK_MANAGER_OPEN_WASH, 0.14)
+  check('tv.hoverWash', TIMELINE_TRACK_MANAGER_HOVER_WASH, 0.08)
+  check('tv.borderPresented', timelineTrackManagerBorderAlpha({ presented: true,
+    hovered: true }), 0.18)
+  check('tv.borderHover', timelineTrackManagerBorderAlpha({ presented: false,
+    hovered: true }), 0.11)
+  check('tv.borderIdle', timelineTrackManagerBorderAlpha({ presented: false,
+    hovered: false }), 0)
+  check('tv.borderWidth', TIMELINE_TRACK_MANAGER_BORDER_WIDTH, 0.75)
+  check('tv.managerRadius', TIMELINE_TRACK_MANAGER_CORNER_RADIUS, 8)
+  check('tv.managerHelp', TIMELINE_TRACK_MANAGER_HELP, '管理动画轨道')
+  check('tv.a11yValue', timelineTrackManagerAccessibilityValue(3), '3 条显示')
+  check('tv.insetCollapsed', timelineTrackManagerHorizontalInset({ collapsed: true,
+    regular: 12, compact: 6 }), 16)
+  check('tv.insetExpanded', timelineTrackManagerHorizontalInset({ collapsed: false,
+    regular: 12, compact: 6 }), 12)
+
+  check('tv.rowDisabledOpacity', TIMELINE_TRACK_ROW_DISABLED_OPACITY, 0.42)
+  check('tv.rowRadius', TIMELINE_TRACK_ROW_CORNER_RADIUS, 10)
+  check('tv.rowScalePressed', timelineTrackRowScale(true, true), 0.985)
+  check('tv.rowScaleDisabled', timelineTrackRowScale(true, false), 1)
+  check('tv.rowScaleIdle', timelineTrackRowScale(false, true), 1)
+  check('tv.rowBgDisabled', timelineTrackRowBackgroundAlpha({ enabled: false,
+    pressed: true, hovered: true }), 0)
+  check('tv.rowBgPressed', timelineTrackRowBackgroundAlpha({ enabled: true, pressed: true,
+    hovered: true }), 0.11)
+  check('tv.rowBgHovered', timelineTrackRowBackgroundAlpha({ enabled: true, pressed: false,
+    hovered: true }), 0.065)
+  check('tv.rowBgIdle', timelineTrackRowBackgroundAlpha({ enabled: true, pressed: false,
+    hovered: false }), 0)
+  check('tv.rowAnimResponse', TIMELINE_TRACK_ROW_ANIMATION.response, 0.26)
+
+  check('tv.hintWidthMeasured', timelineEmptyHintVisibleWidth({ measuredWidth: 500,
+    documentWidth: 1000 }), 500)
+  // 桥接首帧的 0...1 哨兵值 → 退回文档宽并夹到 1200
+  check('tv.hintWidthSentinel', timelineEmptyHintVisibleWidth({ measuredWidth: 1,
+    documentWidth: 2000 }), 1200)
+  check('tv.hintWidthSentinelZero', timelineEmptyHintVisibleWidth({ measuredWidth: 0.5,
+    documentWidth: 0 }), 1)
+  check('tv.hintWidthSentinelDoc', timelineEmptyHintVisibleWidth({ measuredWidth: 1,
+    documentWidth: 800 }), 800)
+  check('tv.hintMaximumWidth', TIMELINE_EMPTY_HINT_MAXIMUM_WIDTH, 1200)
+  check('tv.hintSpacing', TIMELINE_EMPTY_HINT_SPACING, 7)
+  check('tv.hintPlusSize', TIMELINE_EMPTY_HINT_PLUS_SIZE, 13.5)
+  check('tv.hintFont', TIMELINE_EMPTY_HINT_FONT_SIZE, 12)
+  check('tv.hintPlusAlpha', TIMELINE_EMPTY_HINT_PLUS_ALPHA, 0.4)
+  check('tv.hintTextAlpha', TIMELINE_EMPTY_HINT_TEXT_ALPHA, 0.48)
+  check('tv.hintPadding', TIMELINE_EMPTY_HINT_PADDING, 13)
+  check('tv.hintHeight', TIMELINE_EMPTY_HINT_HEIGHT, 28)
+  check('tv.hintRadius', TIMELINE_EMPTY_HINT_CORNER_RADIUS, 14)
+  check('tv.hintFill', TIMELINE_EMPTY_HINT_FILL_ALPHA, 0.03)
+  check('tv.hintBorderAlpha', TIMELINE_EMPTY_HINT_BORDER_ALPHA, 0.14)
+  check('tv.hintBorderWidth', TIMELINE_EMPTY_HINT_BORDER_WIDTH, 1)
+  check('tv.hintDashCount', TIMELINE_EMPTY_HINT_BORDER_DASH.length, 2)
+  check('tv.hintDash0', TIMELINE_EMPTY_HINT_BORDER_DASH[0], 5)
+  check('tv.hintDash1', TIMELINE_EMPTY_HINT_BORDER_DASH[1], 4)
+  check('tv.hintLeadingRegular', TIMELINE_EMPTY_HINT_LEADING_REGULAR, 26)
+  check('tv.hintLeadingCompact', TIMELINE_EMPTY_HINT_LEADING_COMPACT, 22)
+  check('tv.hintLeadingCompactFn', timelineEmptyHintLeading(true), 22)
+  check('tv.hintLeadingRegularFn', timelineEmptyHintLeading(false), 26)
+  check('tv.hintNoHitTesting', timelineEmptyHintAcceptsHitTesting(), false)
+  check('tv.hintOffset', timelineEmptyHintOffsetX(120), 120)
+  check('tv.hintOffsetNaN', timelineEmptyHintOffsetX(NaN), 0)
+
+  check('tv.optionalTracks', TIMELINE_OPTIONAL_TRACKS.length, 4)
+  check('tv.optionalFirst', TIMELINE_OPTIONAL_TRACKS[0], 'zoom')
+  check('tv.optionalMaximum', TIMELINE_OPTIONAL_TRACK_COUNT_MAXIMUM, 4)
+  const tvAllOff = { zoom: false, screenMotion: false, cameraMotion: false, overlays: false }
+  const tvAllOn = { zoom: true, screenMotion: true, cameraMotion: true, overlays: true }
+  check('tv.countAllOn', timelineVisibleOptionalTrackCount(tvAllOn), 4)
+  check('tv.countAllOff', timelineVisibleOptionalTrackCount(tvAllOff), 0)
+  check('tv.countZoomOnly', timelineVisibleOptionalTrackCount({ ...tvAllOff,
+    zoom: true }), 1)
+  check('tv.badgeText', timelineTrackCountBadgeText(2), '2 / 4')
+  check('tv.badgeTextZero', timelineTrackCountBadgeText(0), '0 / 4')
+  check('tv.isVisibleOverlays', timelineTrackIsVisible('overlays', { ...tvAllOff,
+    overlays: true }), true)
+  check('tv.isVisibleZoomOff', timelineTrackIsVisible('zoom', tvAllOff), false)
+  check('tv.contentCount', timelineTrackContentCountText(5), '5 个内容')
+
+  check('tv.panelWidth', TIMELINE_TRACK_PANEL_WIDTH, 300)
+  check('tv.panelPadding', TIMELINE_TRACK_PANEL_PADDING, 12)
+  check('tv.panelSectionSpacing', TIMELINE_TRACK_PANEL_SECTION_SPACING, 12)
+  check('tv.panelTitleFont', TIMELINE_TRACK_PANEL_TITLE_FONT_SIZE, 14)
+  check('tv.panelDetailFont', TIMELINE_TRACK_PANEL_DETAIL_FONT_SIZE, 11)
+  check('tv.panelTitleStack', TIMELINE_TRACK_PANEL_TITLE_STACK_SPACING, 3)
+  check('tv.panelHeaderSpacing', TIMELINE_TRACK_PANEL_HEADER_SPACING, 10)
+  check('tv.panelTitle', TIMELINE_TRACK_PANEL_TITLE, '轨道显示')
+  check('tv.panelDetail', TIMELINE_TRACK_PANEL_DETAIL, '隐藏只收起编辑区，不会停用效果')
+  check('tv.badgeHeight', TIMELINE_TRACK_COUNT_BADGE_HEIGHT, 24)
+  check('tv.badgePadding', TIMELINE_TRACK_COUNT_BADGE_PADDING, 9)
+  check('tv.badgeBg', TIMELINE_TRACK_COUNT_BADGE_BACKGROUND_ALPHA, 0.06)
+  check('tv.rowTilePadding', TIMELINE_TRACK_ROW_TILE_PADDING, 6)
+  check('tv.rowSpacing', TIMELINE_TRACK_ROW_SPACING, 2)
+  check('tv.tileRadius', TIMELINE_TRACK_TILE_CORNER_RADIUS, 18)
+  check('tv.rowIconRadius', TIMELINE_TRACK_ROW_ICON_CORNER_RADIUS, 8)
+  check('tv.rowInnerSpacing', TIMELINE_TRACK_ROW_INNER_SPACING, 11)
+  check('tv.rowIcon', TIMELINE_TRACK_ROW_ICON_SIZE, 15)
+  check('tv.rowIconFrame', TIMELINE_TRACK_ROW_ICON_FRAME, 30)
+  check('tv.iconSaturationOn', timelineTrackRowIconSaturation(true), 1)
+  check('tv.iconSaturationOff', timelineTrackRowIconSaturation(false), 0.2)
+  check('tv.iconOpacityOn', timelineTrackRowIconOpacity(true), 1)
+  check('tv.iconOpacityOff', timelineTrackRowIconOpacity(false), 0.7)
+  check('tv.rowTitleFont', TIMELINE_TRACK_ROW_TITLE_FONT_SIZE, 13)
+  check('tv.rowDetailFont', TIMELINE_TRACK_ROW_DETAIL_FONT_SIZE, 11)
+  check('tv.rowTextSpacing', TIMELINE_TRACK_ROW_TEXT_SPACING, 2)
+  check('tv.rowHeight', TIMELINE_TRACK_ROW_HEIGHT, 48)
+  check('tv.rowPadding', TIMELINE_TRACK_ROW_PADDING, 8)
+  check('tv.rowUnavailable', TIMELINE_TRACK_ROW_UNAVAILABLE_OPACITY, 0.45)
+  check('tv.rowSettleResponse', TIMELINE_TRACK_ROW_SETTLE_ANIMATION.response, 0.34)
+  check('tv.rowToggleSpacer', TIMELINE_TRACK_ROW_TOGGLE_SPACER_MIN, 6)
+  check('tv.unavailableDetail', TIMELINE_TRACK_UNAVAILABLE_DETAIL, '当前不可用')
+  check('tv.detailDisabled', timelineTrackRowDetailText({ enabled: false, clipCount: 5,
+    disabledDetail: '无摄像头素材' }), '无摄像头素材')
+  check('tv.detailDisabledFallback', timelineTrackRowDetailText({ enabled: false,
+    clipCount: 5, disabledDetail: null }), '当前不可用')
+  check('tv.detailEnabled', timelineTrackRowDetailText({ enabled: true, clipCount: 5,
+    disabledDetail: null }), '5 个内容')
+
+  check('tv.rowDefs', TIMELINE_TRACK_ROW_DEFINITIONS.length, 4)
+  check('tv.rowDef0', TIMELINE_TRACK_ROW_DEFINITIONS[0].title, '缩放')
+  check('tv.rowDef1', TIMELINE_TRACK_ROW_DEFINITIONS[1].title, '屏幕 3D')
+  check('tv.rowDef2Track', TIMELINE_TRACK_ROW_DEFINITIONS[2].track, 'cameraMotion')
+  check('tv.symbolZoom', timelineOptionalTrackSymbol('zoom'), 'plus.magnifyingglass')
+  check('tv.symbolOverlays', timelineOptionalTrackSymbol('overlays'), 'square.3.layers.3d')
+  check('tv.symbolFallback', timelineOptionalTrackSymbol('unknown'), 'square.stack')
+  check('tv.valueLabelOn', timelineTrackVisibilityValueLabel(true), '轨道状态 · 显示')
+  check('tv.valueLabelOff', timelineTrackVisibilityValueLabel(false), '轨道状态 · 隐藏')
+  check('tv.toggleA11y', timelineTrackToggleAccessibilityLabel('缩放'), '缩放轨道')
+  check('tv.helpHide', timelineTrackToggleHelpText({ enabled: true, visible: true,
+    localizedTitle: '缩放', disabledDetail: null }), '隐藏“缩放”轨道；隐藏不会停用效果')
+  check('tv.helpShow', timelineTrackToggleHelpText({ enabled: true, visible: false,
+    localizedTitle: '缩放', disabledDetail: null }), '显示“缩放”轨道；隐藏不会停用效果')
+  check('tv.helpDisabled', timelineTrackToggleHelpText({ enabled: false, visible: true,
+    localizedTitle: '缩放', disabledDetail: '无摄像头素材' }), '无摄像头素材')
+  check('tv.setTrackCancelsGesture', timelineSetTrackCancelsGesture(), true)
+
+  // ================ 显示器选择
+  check('ds.styleMask', CAPTURE_DISPLAY_PANEL_STYLE_MASK.length, 2)
+  check('ds.styleMask0', CAPTURE_DISPLAY_PANEL_STYLE_MASK[0], 'borderless')
+  check('ds.styleMask1', CAPTURE_DISPLAY_PANEL_STYLE_MASK[1], 'nonactivatingPanel')
+  check('ds.collectionCount', CAPTURE_DISPLAY_PANEL_COLLECTION_BEHAVIOR.length, 4)
+  check('ds.collection1', CAPTURE_DISPLAY_PANEL_COLLECTION_BEHAVIOR[1], 'fullScreenAuxiliary')
+  check('ds.sharing', CAPTURE_DISPLAY_PANEL_SHARING_TYPE, 'readOnly')
+  check('ds.isOpaque', CAPTURE_DISPLAY_PANEL_IS_OPAQUE, false)
+  check('ds.hasShadow', CAPTURE_DISPLAY_PANEL_HAS_SHADOW, false)
+  check('ds.hidesOnDeactivate', CAPTURE_DISPLAY_PANEL_HIDES_ON_DEACTIVATE, false)
+  check('ds.canBecomeKey', captureDisplayCanBecomeKey(false), true)
+  check('ds.cannotBecomeKeyRetiring', captureDisplayCanBecomeKey(true), false)
+  check('ds.cannotBecomeMain', captureDisplayCanBecomeMain(), false)
+  check('ds.screenNumberKey', CAPTURE_DISPLAY_SCREEN_NUMBER_KEY, 'NSScreenNumber')
+
+  check('ds.escapeKeyCode', CAPTURE_DISPLAY_ESCAPE_KEY_CODE, 53)
+  check('ds.keyCancel', captureDisplayKeyCommand({ keyCode: 53, hasCommandModifier: false,
+    charactersIgnoringModifiers: null }), 'cancel')
+  check('ds.keyStart', captureDisplayKeyCommand({ keyCode: 15, hasCommandModifier: true,
+    charactersIgnoringModifiers: 'r' }), 'start')
+  check('ds.keyStartUpper', captureDisplayKeyCommand({ keyCode: 15, hasCommandModifier: true,
+    charactersIgnoringModifiers: 'R' }), 'start')
+  check('ds.keyPassNoCommand', captureDisplayKeyCommand({ keyCode: 15, hasCommandModifier: false,
+    charactersIgnoringModifiers: 'r' }), 'pass')
+  check('ds.keyPassOther', captureDisplayKeyCommand({ keyCode: 3, hasCommandModifier: true,
+    charactersIgnoringModifiers: 'f' }), 'pass')
+  check('ds.swallowsCancel', captureDisplayCommandSwallowsEvent('cancel'), true)
+  check('ds.swallowsStart', captureDisplayCommandSwallowsEvent('start'), true)
+  check('ds.swallowsPass', captureDisplayCommandSwallowsEvent('pass'), false)
+
+  const dsPlan = captureDisplayReconcilePlan({ screenDisplayIDs: [1, 2, 3],
+    availableDisplayIDs: [1, 2, 3], previousPanelDisplayIDs: [2] })
+  check('ds.planReuseCount', dsPlan.reuse.length, 1)
+  check('ds.planReuseScreen', dsPlan.reuse[0].screenIndex, 1)
+  check('ds.planReusePanel', dsPlan.reuse[0].panelIndex, 0)
+  check('ds.planCreateCount', dsPlan.create.length, 2)
+  check('ds.planCreate0', dsPlan.create[0], 0)
+  check('ds.planCreate1', dsPlan.create[1], 2)
+  check('ds.planRetireCount', dsPlan.retire.length, 0)
+
+  const dsPlanRemoved = captureDisplayReconcilePlan({ screenDisplayIDs: [1, 9],
+    availableDisplayIDs: [1], previousPanelDisplayIDs: [1, 2] })
+  check('ds.planRemovedReuse', dsPlanRemoved.reuse.length, 1)
+  check('ds.planRemovedCreate', dsPlanRemoved.create.length, 0)
+  check('ds.planRemovedRetire', dsPlanRemoved.retire.length, 1)
+  check('ds.planRemovedRetireIndex', dsPlanRemoved.retire[0], 1)
+
+  // 不在可录列表里的屏幕（null / 未授权）不建面板
+  const dsPlanUnknown = captureDisplayReconcilePlan({ screenDisplayIDs: [null, 7],
+    availableDisplayIDs: [7], previousPanelDisplayIDs: [] })
+  check('ds.planUnknownCreate', dsPlanUnknown.create.length, 1)
+  check('ds.planUnknownCreateIndex', dsPlanUnknown.create[0], 1)
+
+  check('ds.autoSelectOne', captureDisplayShouldAutoSelect(1), true)
+  check('ds.autoSelectTwo', captureDisplayShouldAutoSelect(2), false)
+  check('ds.refreshEmpty', captureDisplayRefreshOutcome({ displaysEmpty: true,
+    selectedStillPresent: true }), 'cancel')
+  check('ds.refreshSelectedGone', captureDisplayRefreshOutcome({ displaysEmpty: false,
+    selectedStillPresent: false }), 'cancel')
+  check('ds.refreshOK', captureDisplayRefreshOutcome({ displaysEmpty: false,
+    selectedStillPresent: true }), 'reconcile')
+  check('ds.guardOK', captureDisplaySelectionGuard({ activeTokenMatches: true,
+    displayStillAvailable: true }), true)
+  check('ds.guardStaleToken', captureDisplaySelectionGuard({ activeTokenMatches: false,
+    displayStillAvailable: true }), false)
+  check('ds.guardGone', captureDisplaySelectionGuard({ activeTokenMatches: true,
+    displayStillAvailable: false }), false)
+
+  check('ds.keyPanelUnderPointer', captureDisplayKeyPanelIndex({ pointerInsideIndices: [2],
+    panelCount: 3 }), 2)
+  check('ds.keyPanelFallback', captureDisplayKeyPanelIndex({ pointerInsideIndices: [],
+    panelCount: 3 }), 0)
+  check('ds.keyPanelNone', captureDisplayKeyPanelIndex({ pointerInsideIndices: [],
+    panelCount: 0 }), null)
+  check('ds.clearsFirstResponder', captureDisplayClearsFirstResponderAfterKey(), true)
+  check('ds.retireOrder', CAPTURE_DISPLAY_RETIRE_ORDER.length, 5)
+  check('ds.retireOrder0', CAPTURE_DISPLAY_RETIRE_ORDER[0], 'clearActiveToken')
+  check('ds.retireOrder4', CAPTURE_DISPLAY_RETIRE_ORDER[4], 'retirePanels')
+  check('ds.finishImmediately', captureDisplayFinishesTransitionImmediately(false), true)
+  check('ds.preserveRetiring', captureDisplayFinishesTransitionImmediately(true), false)
+  check('ds.retirementSteps', CAPTURE_DISPLAY_RETIREMENT_STEPS.length, 5)
+
+  check('ds.insetHidden', captureViewfinderInset({ shown: false, selected: true }), -80)
+  check('ds.insetSelected', captureViewfinderInset({ shown: true, selected: true }), 20)
+  check('ds.insetIdle', captureViewfinderInset({ shown: true, selected: false }), 34)
+  check('ds.hiddenInset', CAPTURE_VIEWFINDER_HIDDEN_INSET, -80)
+  check('ds.idleInset', CAPTURE_VIEWFINDER_IDLE_INSET, 34)
+  check('ds.selectedInset', CAPTURE_VIEWFINDER_SELECTED_INSET, 20)
+  check('ds.armSelected', captureViewfinderArm(true), 54)
+  check('ds.armIdle', captureViewfinderArm(false), 38)
+  check('ds.strokeSelected', captureViewfinderStrokeAlpha(true), 1)
+  check('ds.strokeIdle', captureViewfinderStrokeAlpha(false), 0.62)
+  check('ds.widthSelected', captureViewfinderLineWidth(true), 3)
+  check('ds.widthIdle', captureViewfinderLineWidth(false), 2)
+  check('ds.shadowAlpha', CAPTURE_VIEWFINDER_SHADOW_ALPHA, 0.4)
+  check('ds.shadowRadius', CAPTURE_VIEWFINDER_SHADOW_RADIUS, 8)
+
+  check('ds.dimHidden', captureDisplayDimAlpha({ shown: false, selected: true }), 0)
+  check('ds.dimSelected', captureDisplayDimAlpha({ shown: true, selected: true }), 0.08)
+  check('ds.dimIdle', captureDisplayDimAlpha({ shown: true, selected: false }), 0.26)
+  check('ds.tapSelectsIdle', captureDisplayOverlayTapSelects(false), true)
+  check('ds.tapSelectsSelected', captureDisplayOverlayTapSelects(true), false)
+  check('ds.hitTestOK', captureDisplayOverlayAcceptsHitTesting(false), true)
+  check('ds.hitTestRetiring', captureDisplayOverlayAcceptsHitTesting(true), false)
+
+  check('ds.islandBottom', CAPTURE_DISPLAY_ISLAND_BOTTOM_PADDING, 132)
+  check('ds.islandRadius', CAPTURE_DISPLAY_ISLAND_CORNER_RADIUS, 30)
+  check('ds.islandPadding', CAPTURE_DISPLAY_ISLAND_PADDING, 8)
+  check('ds.islandSpacing', CAPTURE_DISPLAY_ISLAND_SPACING, 6)
+  check('ds.islandLeading', CAPTURE_DISPLAY_ISLAND_NAME_LEADING, 24)
+  check('ds.islandTrailing', CAPTURE_DISPLAY_ISLAND_NAME_TRAILING, 18)
+  check('ds.islandNameFont', CAPTURE_DISPLAY_ISLAND_NAME_FONT_SIZE, 14)
+  check('ds.islandSpecFont', CAPTURE_DISPLAY_ISLAND_SPEC_FONT_SIZE, 11)
+  check('ds.islandTextSpacing', CAPTURE_DISPLAY_ISLAND_TEXT_SPACING, 2)
+  check('ds.pipSize', CAPTURE_DISPLAY_RECORD_PIP_SIZE, 8)
+  check('ds.islandOpacityShown', captureDisplayIslandOpacity(true), 1)
+  check('ds.islandOpacityHidden', captureDisplayIslandOpacity(false), 0)
+  check('ds.islandOffsetShown', captureDisplayIslandOffsetY(true, false), 0)
+  check('ds.islandOffsetHidden', captureDisplayIslandOffsetY(false, false), 36)
+  check('ds.islandOffsetReduced', captureDisplayIslandOffsetY(false, true), 0)
+  check('ds.islandBlurShown', captureDisplayIslandBlur(true), 0)
+  check('ds.islandBlurHidden', captureDisplayIslandBlur(false), 8)
+  check('ds.islandScaleShown', captureDisplayIslandScale(true, false), 1)
+  check('ds.islandScaleHidden', captureDisplayIslandScale(false, false), 0.94)
+  check('ds.islandScaleReduced', captureDisplayIslandScale(false, true), 1)
+  check('ds.hiddenOffset', CAPTURE_DISPLAY_ISLAND_HIDDEN_OFFSET_Y, 36)
+  check('ds.hiddenBlur', CAPTURE_DISPLAY_ISLAND_HIDDEN_BLUR, 8)
+  check('ds.hiddenScale', CAPTURE_DISPLAY_ISLAND_HIDDEN_SCALE, 0.94)
+
+  check('ds.buttonKindSelected', captureDisplayPrimaryButtonKind(true), 'record')
+  check('ds.buttonKindIdle', captureDisplayPrimaryButtonKind(false), 'primary')
+  check('ds.actionLabelSelected', captureDisplayActionLabel(true), '开始录制')
+  check('ds.actionLabelIdle', captureDisplayActionLabel(false), '选择此显示器')
+  check('ds.selectLabel', CAPTURE_DISPLAY_SELECT_LABEL, '选择此显示器')
+  check('ds.startLabel', CAPTURE_DISPLAY_START_LABEL, '开始录制')
+  check('ds.cancelLabel', CAPTURE_DISPLAY_CANCEL_LABEL, '取消')
+  check('ds.escapeHint', CAPTURE_DISPLAY_ESCAPE_HINT, 'esc')
+  check('ds.startHint', CAPTURE_DISPLAY_START_HINT, '⌘R')
+  check('ds.cancelHelp', CAPTURE_DISPLAY_CANCEL_HELP, '按 Esc 取消')
+  check('ds.specText', captureDisplaySpecText({ width: 2560, height: 1440,
+    refreshRate: 120 }), '2560 × 1440 · 120 Hz')
+  check('ds.bothLabelsSize', captureDisplayButtonSizesForBothLabels(), true)
+  check('ds.morphResponse', CAPTURE_DISPLAY_MORPH_ANIMATION.response, 0.42)
+  check('ds.settleResponse', CAPTURE_DISPLAY_SETTLE_ANIMATION.response, 0.3)
+
+  // ================ 原生控件
+  check('rn.separatorTitle', RECORDER_MENU_SEPARATOR_TITLE, '')
+  const rnAction = recorderMenuActionItem({ title: '打开' })
+  check('rn.actionKind', rnAction.kind, 'action')
+  check('rn.actionOn', rnAction.isOn, false)
+  check('rn.actionEnabled', rnAction.isEnabled, true)
+  check('rn.actionImage', rnAction.systemImage, null)
+  const rnActionFull = recorderMenuActionItem({ title: '打开', systemImage: 'star',
+    detail: '说明', isOn: true, isEnabled: false })
+  check('rn.actionImage', rnActionFull.systemImage, 'star')
+  check('rn.actionDetail', rnActionFull.detail, '说明')
+  check('rn.actionOn', rnActionFull.isOn, true)
+  check('rn.actionDisabled', rnActionFull.isEnabled, false)
+  const rnInfo = recorderMenuInfoItem('说明行')
+  check('rn.infoKind', rnInfo.kind, 'info')
+  check('rn.infoDisabled', rnInfo.isEnabled, false)
+  check('rn.infoTitle', rnInfo.title, '说明行')
+  const rnSep = recorderMenuSeparatorItem()
+  check('rn.sepKind', rnSep.kind, 'separator')
+  check('rn.sepTitle', rnSep.title, '')
+  check('rn.interactiveAction', recorderMenuItemIsInteractive('action'), true)
+  check('rn.interactiveInfo', recorderMenuItemIsInteractive('info'), false)
+  check('rn.interactiveSeparator', recorderMenuItemIsInteractive('separator'), false)
+  check('rn.visibleAction', recorderMenuItemIsVisible('action'), true)
+  check('rn.visibleSeparator', recorderMenuItemIsVisible('separator'), false)
+
+  check('rn.focusAlpha', RECORDER_MENU_FOCUS_ALPHA, 0.62)
+  check('rn.focusWidth', RECORDER_MENU_FOCUS_LINE_WIDTH, 1.5)
+  const rnFocusBase = { isEnabled: true, hasNativeFocus: true, isKeyWindow: true,
+    navigationIsVisible: true }
+  check('rn.focusVisible', recorderMenuFocusVisible(rnFocusBase), true)
+  check('rn.focusNotKey', recorderMenuFocusVisible({ ...rnFocusBase,
+    isKeyWindow: false }), false)
+  check('rn.focusNavHidden', recorderMenuFocusVisible({ ...rnFocusBase,
+    navigationIsVisible: false }), false)
+  check('rn.focusDisabled', recorderMenuFocusVisible({ ...rnFocusBase,
+    isEnabled: false }), false)
+  check('rn.focusInset', RECORDER_MENU_FOCUS_INSET, 0.75)
+  check('rn.focusRadius', recorderMenuFocusRadius(10), 9.25)
+  check('rn.focusRadiusFloor', recorderMenuFocusRadius(0.5), 0)
+  check('rn.focusPathOK', recorderMenuFocusPathAllowed(20, 20), true)
+  check('rn.focusPathTooNarrow', recorderMenuFocusPathAllowed(1, 20), false)
+  check('rn.focusTracking', recorderMenuFocusTracking({ hasWindow: true,
+    isEnabled: true }), true)
+  check('rn.focusTrackingNoWindow', recorderMenuFocusTracking({ hasWindow: false,
+    isEnabled: true }), false)
+  check('rn.windowMatches', recorderMenuWindowMatches(true), true)
+  check('rn.windowMismatch', recorderMenuWindowMatches(false), false)
+
+  check('rn.hoverRadius', RECORDER_MENU_HOVER_CORNER_RADIUS, 10)
+  check('rn.hoverOpacity', RECORDER_MENU_HOVER_OPACITY, 0.065)
+  check('rn.isCircle', recorderMenuIsCircle({ width: 30, height: 30, cornerRadius: 15 }), true)
+  check('rn.isCircleSmallRadius', recorderMenuIsCircle({ width: 30, height: 30,
+    cornerRadius: 14 }), false)
+  check('rn.isCircleOblong', recorderMenuIsCircle({ width: 30, height: 20,
+    cornerRadius: 15 }), false)
+  check('rn.isCircleZero', recorderMenuIsCircle({ width: 0, height: 0, cornerRadius: 15 }), false)
+  check('rn.curveCircle', recorderMenuCornerCurve(true), 'circular')
+  check('rn.curveContinuous', recorderMenuCornerCurve(false), 'continuous')
+  check('rn.masksToBounds', recorderMenuMasksToBounds(), true)
+  check('rn.hoverNotification', RECORDER_MENU_HOVER_NOTIFICATION,
+    'cn.laogou.dogsc.recorder-hover-changed')
+  check('rn.hoverGain', RECORDER_MENU_HOVER_GAIN, 1.6)
+  check('rn.hoverAlpha', recorderMenuHoverAlpha({ hovering: true, isEnabled: true,
+    highlightOpacity: 0.065 }), 0.104, 1e-12)
+  check('rn.hoverAlphaNotHovering', recorderMenuHoverAlpha({ hovering: false,
+    isEnabled: true, highlightOpacity: 0.065 }), 0)
+  check('rn.hoverAlphaDisabled', recorderMenuHoverAlpha({ hovering: true, isEnabled: false,
+    highlightOpacity: 0.065 }), 0)
+  check('rn.hoverDurationReduced', recorderMenuHoverDuration(true), 0)
+  check('rn.hoverDuration', recorderMenuHoverDuration(false), 0.14)
+  check('rn.hoverDurationConstant', RECORDER_MENU_HOVER_DURATION, 0.14)
+  check('rn.hoverCurve', RECORDER_MENU_HOVER_CURVE, 'easeOut')
+  check('rn.hoverAnimationKey', RECORDER_MENU_HOVER_ANIMATION_KEY, 'recorderMenuHover')
+  check('rn.hoverStyleChanged', recorderMenuHoverStyleChanged('a', 'b'), true)
+  check('rn.hoverStyleSame', recorderMenuHoverStyleChanged('a', 'a'), false)
+  check('rn.hoveringNoWindow', recorderMenuHovering({ hasWindow: false,
+    boundsContainsPointer: true }), false)
+  check('rn.hoveringInside', recorderMenuHovering({ hasWindow: true,
+    boundsContainsPointer: true }), true)
+  check('rn.hoverObserveNeeded', recorderMenuHoverObservationNeeded({ hasWindow: true,
+    alreadyObserving: false }), true)
+  check('rn.hoverObserveDuplicate', recorderMenuHoverObservationNeeded({ hasWindow: true,
+    alreadyObserving: true }), false)
+  check('rn.hoverObserveNoWindow', recorderMenuHoverObservationNeeded({ hasWindow: false,
+    alreadyObserving: false }), false)
+  check('rn.hoverRemove', recorderMenuShouldRemoveHoverObservation({ hasWindow: false,
+    alreadyObserving: true }), true)
+  check('rn.hoverKeep', recorderMenuShouldRemoveHoverObservation({ hasWindow: true,
+    alreadyObserving: true }), false)
+
+  check('rn.trackingAreaCount', RECORDER_MENU_TRACKING_AREA_OPTIONS.length, 4)
+  check('rn.trackingArea3', RECORDER_MENU_TRACKING_AREA_OPTIONS[3], 'enabledDuringMouseDrag')
+  check('rn.trackingZeroRect', RECORDER_MENU_TRACKING_AREA_USES_ZERO_RECT, true)
+  check('rn.acceptsFirstMouse', recorderMenuAcceptsFirstMouse(), true)
+  check('rn.pressChangeEnabled', recorderMenuPressChangeEnabled(true), true)
+  check('rn.pressChangeDisabled', recorderMenuPressChangeEnabled(false), false)
+  check('rn.mouseMovedEvents', recorderMenuRequiresMouseMovedEvents(), true)
+
+  check('rn.triggerRadius', RECORDER_ACTION_TRIGGER_CORNER_RADIUS, 10)
+  check('rn.triggerHighlight', RECORDER_ACTION_TRIGGER_HIGHLIGHT_OPACITY, 0.075)
+  check('rn.triggerSendOn', RECORDER_ACTION_TRIGGER_SEND_ON, 'leftMouseUp')
+  check('rn.triggerFocusRing', RECORDER_ACTION_TRIGGER_FOCUS_RING, 'none')
+  check('rn.triggerBordered', RECORDER_ACTION_TRIGGER_IS_BORDERED, false)
+  check('rn.triggerTitle', RECORDER_ACTION_TRIGGER_TITLE, '')
+  check('rn.triggerUpdateFields', RECORDER_ACTION_TRIGGER_UPDATE_FIELDS.length, 7)
+  check('rn.triggerIdentifier', recorderActionTriggerIdentifier('a'), 'a')
+  check('rn.triggerIdentifierNull', recorderActionTriggerIdentifier(null), null)
+
+  // ================ 场景预设
+  check('sp.namePrefix', SCENE_PRESET_NAME_PREFIX, '场景')
+  check('sp.nextFirst', scenePresetNextName([]), '场景 1')
+  check('sp.nextSecond', scenePresetNextName(['场景 1']), '场景 2')
+  check('sp.nextFourth', scenePresetNextName(['场景 1', '场景 2', '场景 3']), '场景 4')
+  check('sp.nextGap', scenePresetNextName(['场景 2']), '场景 1')
+  check('sp.nameKey', scenePresetNameKey('AbC'), 'abc')
+  check('sp.conflict', scenePresetNameConflict({ name: 'A', savedNames: ['a'],
+    savedIDs: ['1'], updatingID: null }), true)
+  check('sp.conflictSelf', scenePresetNameConflict({ name: 'A', savedNames: ['a'],
+    savedIDs: ['1'], updatingID: '1' }), false)
+  check('sp.noConflict', scenePresetNameConflict({ name: 'B', savedNames: ['a'],
+    savedIDs: ['1'], updatingID: null }), false)
+  check('sp.trimmed', scenePresetTrimmedName('  x  '), 'x')
+  check('sp.canSave', scenePresetCanSave({ name: 'x', hasConflict: false,
+    isSaving: false }), true)
+  check('sp.cannotSaveBlank', scenePresetCanSave({ name: '   ', hasConflict: false,
+    isSaving: false }), false)
+  check('sp.cannotSaveConflict', scenePresetCanSave({ name: 'x', hasConflict: true,
+    isSaving: false }), false)
+  check('sp.cannotSaveBusy', scenePresetCanSave({ name: 'x', hasConflict: false,
+    isSaving: true }), false)
+  check('sp.beginNew', scenePresetBeginEditing({ existingName: null,
+    nextName: '场景 1' }).name, '场景 1')
+  check('sp.beginUpdate', scenePresetBeginEditing({ existingName: 'A',
+    nextName: '场景 1' }).name, 'A')
+  check('sp.beginClearsError', scenePresetBeginEditing({ existingName: 'A',
+    nextName: '场景 1' }).error, null)
+
+  check('sp.truncateThreshold', SCENE_PRESET_LABEL_TRUNCATE_THRESHOLD, 14)
+  check('sp.prefixLength', SCENE_PRESET_LABEL_PREFIX_LENGTH, 13)
+  check('sp.ellipsis', SCENE_PRESET_LABEL_ELLIPSIS, '…')
+  check('sp.labelShort', scenePresetLabelText('短名'), '短名')
+  check('sp.labelExactLimit', scenePresetLabelText('12345678901234'), '12345678901234')
+  check('sp.labelTruncated', scenePresetLabelText('123456789012345'), '1234567890123…')
+  check('sp.labelTruncatedLength', scenePresetLabelText('123456789012345').length, 14)
+
+  check('sp.buttonEmpty', scenePresetMenuButtonTitle({ hasSavedPresets: false,
+    activeName: 'x' }), '保存场景')
+  check('sp.buttonActive', scenePresetMenuButtonTitle({ hasSavedPresets: true,
+    activeName: 'x' }), 'x')
+  check('sp.buttonDefault', scenePresetMenuButtonTitle({ hasSavedPresets: true,
+    activeName: null }), '场景预设')
+  check('sp.emptySaveLabel', SCENE_PRESET_EMPTY_SAVE_LABEL, '保存场景')
+  check('sp.defaultLabel', SCENE_PRESET_DEFAULT_LABEL, '场景预设')
+  check('sp.menuTitle', SCENE_PRESET_MENU_TITLE, '场景预设')
+  check('sp.updateLabel', SCENE_PRESET_UPDATE_LABEL, '更新此预设…')
+  check('sp.modifiedBadge', SCENE_PRESET_MODIFIED_BADGE, '已修改')
+  check('sp.modifiedDot', SCENE_PRESET_MODIFIED_DOT_SIZE, 9)
+  check('sp.modifiedDotFont', SCENE_PRESET_MODIFIED_DOT_FONT_SIZE, 5)
+  check('sp.buttonRadius', SCENE_PRESET_BUTTON_CORNER_RADIUS, 16)
+
+  check('sp.notModifiedNoSnapshot', scenePresetIsModified({ hasSnapshot: false,
+    backgroundSourceIsKnown: true, matchesRaw: false, matchesWithSubstitutedSource: false }), false)
+  // 背景源已知时改用替换后的比较结果 —— 刚应用完的预设不该立刻显示「已修改」
+  check('sp.substitutionSavesIt', scenePresetIsModified({ hasSnapshot: true,
+    backgroundSourceIsKnown: true, matchesRaw: false, matchesWithSubstitutedSource: true }), false)
+  check('sp.substitutionNotApplied', scenePresetIsModified({ hasSnapshot: true,
+    backgroundSourceIsKnown: false, matchesRaw: true, matchesWithSubstitutedSource: false }), false)
+  check('sp.modifiedWhenMismatch', scenePresetIsModified({ hasSnapshot: true,
+    backgroundSourceIsKnown: true, matchesRaw: true, matchesWithSubstitutedSource: false }), true)
+  check('sp.modifiedRawMismatch', scenePresetIsModified({ hasSnapshot: true,
+    backgroundSourceIsKnown: false, matchesRaw: false, matchesWithSubstitutedSource: true }), true)
+
+  const spKnownBase = { activePresetIDMatches: true, assetAvailable: true,
+    snapshotAssetMatches: true, sourceInActiveSet: true, fileExists: true }
+  check('sp.backgroundKnown', scenePresetBackgroundIsKnown(spKnownBase), true)
+  check('sp.backgroundFileGone', scenePresetBackgroundIsKnown({ ...spKnownBase,
+    fileExists: false }), false)
+  check('sp.backgroundAssetGone', scenePresetBackgroundIsKnown({ ...spKnownBase,
+    assetAvailable: false }), false)
+  check('sp.backgroundNotInSet', scenePresetBackgroundIsKnown({ ...spKnownBase,
+    sourceInActiveSet: false }), false)
+
+  check('sp.rowHeight', SCENE_PRESET_ROW_HEIGHT, 84)
+  check('sp.listMax', SCENE_PRESET_LIST_MAXIMUM_HEIGHT, 320)
+  check('sp.listHeightTwo', scenePresetListHeight(2), 168)
+  check('sp.listHeightClamped', scenePresetListHeight(10), 320)
+  check('sp.listHeightEmpty', scenePresetListHeight(0), 0)
+  check('sp.popoverWidth', SCENE_PRESET_POPOVER_WIDTH, 320)
+  check('sp.popoverPadding', SCENE_PRESET_POPOVER_PADDING, 18)
+  check('sp.menuSpacing', SCENE_PRESET_MENU_SPACING, 12)
+  check('sp.cardSpacing', SCENE_PRESET_CARD_SPACING, 8)
+  check('sp.rowIcon', SCENE_PRESET_ROW_ICON_SIZE, 14)
+  check('sp.rowIconFrame', SCENE_PRESET_ROW_ICON_FRAME, 28)
+  check('sp.rowSpacing', SCENE_PRESET_ROW_SPACING, 10)
+  check('sp.rowPadding', SCENE_PRESET_ROW_PADDING, 12)
+  check('sp.rowTitleFont', SCENE_PRESET_ROW_TITLE_FONT_SIZE, 13)
+  check('sp.addButton', SCENE_PRESET_ADD_BUTTON_SIZE, 30)
+  check('sp.addButtonIcon', SCENE_PRESET_ADD_BUTTON_ICON_SIZE, 14)
+  check('sp.deleteWidth', SCENE_PRESET_DELETE_BUTTON_WIDTH, 26)
+  check('sp.deleteHeight', SCENE_PRESET_DELETE_BUTTON_HEIGHT, 24)
+  check('sp.defaultButtonHeight', SCENE_PRESET_DEFAULT_BUTTON_HEIGHT, 26)
+  check('sp.updateButtonHeight', SCENE_PRESET_UPDATE_BUTTON_HEIGHT, 36)
+  check('sp.cardBorderWidth', SCENE_PRESET_CARD_BORDER_WIDTH, 1.5)
+  check('sp.cardBorderActive', scenePresetCardBorderAlpha(true), 1)
+  check('sp.cardBorderIdle', scenePresetCardBorderAlpha(false), 0)
+  check('sp.iconToneActive', scenePresetRowIconTone(true), 'primaryText')
+  check('sp.iconToneIdle', scenePresetRowIconTone(false), 'secondaryText')
+  check('sp.iconBgActive', scenePresetRowIconBackgroundAlpha(true), null)
+  check('sp.iconBgIdle', scenePresetRowIconBackgroundAlpha(false), 0.06)
+  check('sp.checkmarkActive', scenePresetRowCheckmarkVisible(true), true)
+  check('sp.footerPadding', SCENE_PRESET_CARD_FOOTER_PADDING, 8)
+  check('sp.footerSpacing', SCENE_PRESET_CARD_FOOTER_SPACING, 8)
+  check('sp.defaultTitleOn', scenePresetDefaultButtonTitle(true), '新录制默认')
+  check('sp.defaultTitleOff', scenePresetDefaultButtonTitle(false), '设为新录制默认')
+  check('sp.defaultSymbolOn', scenePresetDefaultButtonSymbol(true), 'checkmark.circle.fill')
+  check('sp.defaultSymbolOff', scenePresetDefaultButtonSymbol(false), 'circle')
+  check('sp.defaultToggleOff', scenePresetDefaultToggleTarget('a', 'a'), null)
+  check('sp.defaultToggleOn', scenePresetDefaultToggleTarget('a', 'b'), 'b')
+  check('sp.defaultToggleFromNone', scenePresetDefaultToggleTarget(null, 'a'), 'a')
+  check('sp.defaultHintOn', scenePresetDefaultHintText(true), '新录制将应用已选默认场景')
+  check('sp.defaultHintOff', scenePresetDefaultHintText(false), '新录制沿用上次外观')
+  check('sp.deleteHelp', scenePresetDeleteHelpText('A'), '删除预设：A')
+
+  check('sp.noCrop', scenePresetRequiresSourceConfirmation({ includesCrop: false,
+    cropIsFull: false, presetSourceDimensions: null, currentSourceDimensions: null }), false)
+  check('sp.fullCrop', scenePresetRequiresSourceConfirmation({ includesCrop: true,
+    cropIsFull: true, presetSourceDimensions: { width: 1920, height: 1080 },
+    currentSourceDimensions: { width: 3840, height: 2160 } }), false)
+  check('sp.noPresetDimensions', scenePresetRequiresSourceConfirmation({ includesCrop: true,
+    cropIsFull: false, presetSourceDimensions: null,
+    currentSourceDimensions: { width: 3840, height: 2160 } }), false)
+  check('sp.sameDimensions', scenePresetRequiresSourceConfirmation({ includesCrop: true,
+    cropIsFull: false, presetSourceDimensions: { width: 1920, height: 1080 },
+    currentSourceDimensions: { width: 1920, height: 1080 } }), false)
+  check('sp.differentDimensions', scenePresetRequiresSourceConfirmation({ includesCrop: true,
+    cropIsFull: false, presetSourceDimensions: { width: 1920, height: 1080 },
+    currentSourceDimensions: { width: 3840, height: 2160 } }), true)
+  check('sp.unknownCurrentDimensions', scenePresetRequiresSourceConfirmation({ includesCrop: true,
+    cropIsFull: false, presetSourceDimensions: { width: 1920, height: 1080 },
+    currentSourceDimensions: null }), true)
+
+  check('sp.noticeMissing', SCENE_PRESET_NOTICE_MISSING_BACKGROUND,
+    '此预设的背景未包含或已不可用，已保留当前背景。')
+  check('sp.noticeLegacy', SCENE_PRESET_NOTICE_LEGACY_PRESET,
+    '这是旧版外观预设，已保留当前裁切和摄像头显隐。更新此预设后可保存完整场景。')
+  check('sp.noticeNoCamera', SCENE_PRESET_NOTICE_NO_CAMERA_MEDIA,
+    '摄像头布局已应用；当前项目没有摄像头素材。')
+  check('sp.noticeSeparator', SCENE_PRESET_NOTICE_SEPARATOR, '\n\n')
+  check('sp.noticesAll', scenePresetNotices({ hasAvailableBackground: false,
+    includesCrop: false, cameraVisible: true, projectHasCameraMedia: false }).length, 3)
+  check('sp.noticesNone', scenePresetNotices({ hasAvailableBackground: true,
+    includesCrop: true, cameraVisible: true, projectHasCameraMedia: true }).length, 0)
+  check('sp.noticesCameraHidden', scenePresetNotices({ hasAvailableBackground: true,
+    includesCrop: true, cameraVisible: false, projectHasCameraMedia: false }).length, 0)
+  const spNotices = scenePresetNotices({ hasAvailableBackground: true, includesCrop: true,
+    cameraVisible: true, projectHasCameraMedia: false })
+  check('sp.noticesOne', spNotices.length, 1)
+  check('sp.noticesOneText', spNotices[0], SCENE_PRESET_NOTICE_NO_CAMERA_MEDIA)
+  check('sp.noticesText', scenePresetNoticesText(['a', 'b']), 'a\n\nb')
+  check('sp.noticesTextEmpty', scenePresetNoticesText([]), '')
+
+  check('sp.saveError', SCENE_PRESET_SAVE_ERROR, '预设未保存。请确认背景文件可读取后重试。')
+  check('sp.reportSaveError', scenePresetShouldReportSaveError(false), true)
+  check('sp.silentOnCancel', scenePresetShouldReportSaveError(true), false)
+  check('sp.reportApplyError', scenePresetShouldReportApplyError(false), true)
+  check('sp.rejectStale', scenePresetShouldRejectStaleProject(true), true)
+  check('sp.acceptFresh', scenePresetShouldRejectStaleProject(false), false)
+  check('sp.staleDomain', SCENE_PRESET_STALE_STATE_DOMAIN, '场景配置')
+  check('sp.actionName', scenePresetApplyActionName('A'), '应用场景预设“A”')
+  check('sp.applyCommands', SCENE_PRESET_APPLY_COMMANDS.length, 6)
+  check('sp.applyCommands0', SCENE_PRESET_APPLY_COMMANDS[0], 'replacingCanvas')
+  check('sp.openingNeeded', scenePresetOpeningCommandNeeded(true), true)
+  check('sp.openingSkipped', scenePresetOpeningCommandNeeded(false), false)
+
+  const spDeleteDefault = scenePresetDeleteOutcome({ deletingID: 'a', defaultID: 'a',
+    activeID: 'b' })
+  check('sp.deleteClearsDefault', spDeleteDefault.clearsDefault, true)
+  check('sp.deleteKeepsActive', spDeleteDefault.clearsActive, false)
+  const spDeleteActive = scenePresetDeleteOutcome({ deletingID: 'a', defaultID: 'b',
+    activeID: 'a' })
+  check('sp.deleteClearsActive', spDeleteActive.clearsActive, true)
+  check('sp.deleteKeepsDefault', spDeleteActive.clearsDefault, false)
+
+  const spSavedSources = scenePresetKnownBackgroundSourcesAfterSave({ hasBackgroundAsset: true,
+    backgroundSource: 's' })
+  check('sp.savedSourcesCount', spSavedSources.length, 1)
+  check('sp.savedSources0', spSavedSources[0], 's')
+  check('sp.savedNoAsset', scenePresetKnownBackgroundSourcesAfterSave({ hasBackgroundAsset: false,
+    backgroundSource: 's' }).length, 0)
+  check('sp.savedNullSource', scenePresetKnownBackgroundSourcesAfterSave({ hasBackgroundAsset: true,
+    backgroundSource: null }).length, 0)
+
+  const spAppliedSources = scenePresetKnownBackgroundSourcesAfterApply({
+    previousKnownSources: ['a'], newBackgroundSource: 'b' })
+  check('sp.appliedSourcesCount', spAppliedSources.length, 2)
+  check('sp.appliedSources0', spAppliedSources[0], 'a')
+  check('sp.appliedSources1', spAppliedSources[1], 'b')
+  check('sp.appliedDeduped', scenePresetKnownBackgroundSourcesAfterApply({
+    previousKnownSources: ['a'], newBackgroundSource: 'a' }).length, 1)
+  check('sp.appliedNoBackground', scenePresetKnownBackgroundSourcesAfterApply({
+    previousKnownSources: ['a'], newBackgroundSource: null }).length, 0)
+  check('sp.missingBackgroundError', SCENE_PRESET_MISSING_BACKGROUND_ERROR, 'fileReadNoSuchFile')
+
+  // ================ 画布预览缓存
+  check('cc.zoomRebuildNone', editorCanvasZoomTrackNeedsRebuild({ clipsChanged: false,
+    durationChanged: false }), false)
+  check('cc.zoomRebuildClips', editorCanvasZoomTrackNeedsRebuild({ clipsChanged: true,
+    durationChanged: false }), true)
+  // 片段没变但时长变了也必须重建（缩放索引按秒定位）
+  check('cc.zoomRebuildDuration', editorCanvasZoomTrackNeedsRebuild({ clipsChanged: false,
+    durationChanged: true }), true)
+  check('cc.trackRebuildNone', editorCanvasTrackNeedsRebuild(false), false)
+  check('cc.trackRebuild', editorCanvasTrackNeedsRebuild(true), true)
+  check('cc.trackOrder', EDITOR_CANVAS_TRACK_ORDER.length, 4)
+  check('cc.trackOrder3', EDITOR_CANVAS_TRACK_ORDER[3], 'stickers')
+  check('cc.prewarmCount', editorCanvasPrewarmPlanCount([1, 2, 3]), 3)
+  check('cc.prewarmReuse', editorCanvasPrewarmReuses({ contextEqual: true,
+    timesEqual: true }), true)
+  check('cc.prewarmStaleTimes', editorCanvasPrewarmReuses({ contextEqual: true,
+    timesEqual: false }), false)
+  check('cc.cropReuse', editorCanvasCropFrameReusable({ projectEqual: true, sizeEqual: true,
+    aspectEqual: true, hasCachedFrame: true }), true)
+  check('cc.cropNoFrame', editorCanvasCropFrameReusable({ projectEqual: true, sizeEqual: true,
+    aspectEqual: true, hasCachedFrame: false }), false)
+  check('cc.cropSizeChanged', editorCanvasCropFrameReusable({ projectEqual: true,
+    sizeEqual: false, aspectEqual: true, hasCachedFrame: true }), false)
+
+  check('cc.idleGate', EDITOR_CANVAS_PLAN_IDLE_GATE_MS, 180)
+  check('cc.batchSize', EDITOR_CANVAS_PLAN_BATCH_SIZE, 8)
+  check('cc.horizon', EDITOR_CANVAS_PLAN_HORIZON_SECONDS, 8)
+  check('cc.lead', EDITOR_CANVAS_PLAN_LEAD_SECONDS, 0.2)
+  check('cc.trail', EDITOR_CANVAS_PLAN_TRAIL_SECONDS, 0.2)
+  check('cc.minSpan', EDITOR_CANVAS_PLAN_MINIMUM_SPAN_SECONDS, 0.5)
+  check('cc.maxSpan', EDITOR_CANVAS_PLAN_MAXIMUM_SPAN_SECONDS, 2.5)
+
+  check('cc.frameIndex', editorCanvasFrameIndex(1.5, 60), 90)
+  check('cc.frameIndexNegative', editorCanvasFrameIndex(-1, 60), 0)
+  check('cc.frameIndexNaN', editorCanvasFrameIndex(NaN, 60), 0)
+  check('cc.frameIndexZeroRate', editorCanvasFrameIndex(0.5, 0), 1)
+  check('cc.handleCurrent', editorCanvasHandleIsCurrent(1, 1), true)
+  check('cc.handleStale', editorCanvasHandleIsCurrent(1, 2), false)
+
+  check('cc.stepInvalidatePlaying', editorCanvasPreparationStep({ contextChanged: true,
+    isPlaying: true, isInteracting: false, hasUsableFrames: true }), 'invalidate-then-stop')
+  check('cc.stepKeepPlaying', editorCanvasPreparationStep({ contextChanged: false,
+    isPlaying: true, isInteracting: false, hasUsableFrames: true }), 'keep-handle-while-playing')
+  check('cc.stepKeepInteracting', editorCanvasPreparationStep({ contextChanged: false,
+    isPlaying: false, isInteracting: true, hasUsableFrames: true }), 'keep-handle-while-playing')
+  check('cc.stepStopNoFrames', editorCanvasPreparationStep({ contextChanged: false,
+    isPlaying: true, isInteracting: false, hasUsableFrames: false }), 'stop-without-handle')
+  check('cc.stepStart', editorCanvasPreparationStep({ contextChanged: false,
+    isPlaying: false, isInteracting: false, hasUsableFrames: false }), 'start-preparation')
+  check('cc.stopPlaying', editorCanvasShouldStopPreparation({ isPlaying: true,
+    isInteracting: false }), true)
+  check('cc.stopInteracting', editorCanvasShouldStopPreparation({ isPlaying: false,
+    isInteracting: true }), true)
+  check('cc.stopIdle', editorCanvasShouldStopPreparation({ isPlaying: false,
+    isInteracting: false }), false)
+  check('cc.keepHandleOK', editorCanvasCanKeepHandleWhileBusy({ contextStillMatches: true,
+    frameCount: 3 }), true)
+  check('cc.keepHandleNoFrames', editorCanvasCanKeepHandleWhileBusy({ contextStillMatches: true,
+    frameCount: 0 }), false)
+  check('cc.keepHandleContext', editorCanvasCanKeepHandleWhileBusy({ contextStillMatches: false,
+    frameCount: 3 }), false)
+
+  check('cc.startInputChanged', editorCanvasShouldStartPreparation({ inputChanged: true,
+    taskIsNil: true, frameCount: 10, requestedFrameCount: 10 }), true)
+  // 任务被取消后帧只装了一半 —— 必须重新启动
+  check('cc.startPartial', editorCanvasShouldStartPreparation({ inputChanged: false,
+    taskIsNil: true, frameCount: 3, requestedFrameCount: 10 }), true)
+  check('cc.startComplete', editorCanvasShouldStartPreparation({ inputChanged: false,
+    taskIsNil: true, frameCount: 10, requestedFrameCount: 10 }), false)
+  check('cc.startTaskRunning', editorCanvasShouldStartPreparation({ inputChanged: false,
+    taskIsNil: false, frameCount: 3, requestedFrameCount: 10 }), false)
+
+  check('cc.installAllowed', editorCanvasInstallAllowed({ requestedGeneration: 1,
+    currentGeneration: 1, inputMatches: true }), true)
+  check('cc.installStaleGeneration', editorCanvasInstallAllowed({ requestedGeneration: 1,
+    currentGeneration: 2, inputMatches: true }), false)
+  check('cc.installInputChanged', editorCanvasInstallAllowed({ requestedGeneration: 1,
+    currentGeneration: 1, inputMatches: false }), false)
+  check('cc.clearsFrames', editorCanvasClearsFramesOnStart(true), true)
+  check('cc.keepsFrames', editorCanvasClearsFramesOnStart(false), false)
+  check('cc.completedSet', editorCanvasCompletedIndices([1, 2]).has(2), true)
+  check('cc.skipCompleted', editorCanvasShouldDecodeIndex(1, new Set([1])), false)
+  check('cc.decodeMissing', editorCanvasShouldDecodeIndex(2, new Set([1])), true)
+  check('cc.frameTime', editorCanvasFrameTime(60, 60), 1)
+  check('cc.frameTimeZeroRate', editorCanvasFrameTime(30, 0), 30)
+  check('cc.installFinalEmpty', editorCanvasShouldInstallFinalBatch({ batchCount: 0,
+    cancelled: false }), false)
+  check('cc.installFinalOK', editorCanvasShouldInstallFinalBatch({ batchCount: 1,
+    cancelled: false }), true)
+  check('cc.installFinalCancelled', editorCanvasShouldInstallFinalBatch({ batchCount: 1,
+    cancelled: true }), false)
+  check('cc.invalidateOrder', EDITOR_CANVAS_INVALIDATE_ORDER.length, 4)
+  check('cc.invalidateOrder0', EDITOR_CANVAS_INVALIDATE_ORDER[0], 'bumpGeneration')
+
+  const ccFrames = new Map([[1, 'a'], [2, 'b']])
+  check('cc.frameFound', editorCanvasFrameOrNothing(ccFrames, 1), 'a')
+  // 不做「就近取一帧」回退
+  check('cc.frameMissing', editorCanvasFrameOrNothing(ccFrames, 9), null)
+
+  const ccRange = editorCanvasAnimationFrameRange({ requestedTime: 0, duration: 10,
+    intervals: [{ start: 1, end: 2 }], frameRate: 60 })
+  check('cc.rangeFirst', ccRange.firstFrame, 48)
+  check('cc.rangeLast', ccRange.lastFrame, 132)
+  check('cc.rangeNoDuration', editorCanvasAnimationFrameRange({ requestedTime: 0,
+    duration: 0, intervals: [{ start: 1, end: 2 }], frameRate: 60 }), null)
+  check('cc.rangeNoInterval', editorCanvasAnimationFrameRange({ requestedTime: 0,
+    duration: 10, intervals: [], frameRate: 60 }), null)
+  check('cc.rangeNaNTime', editorCanvasAnimationFrameRange({ requestedTime: NaN,
+    duration: 10, intervals: [{ start: 1, end: 2 }], frameRate: 60 }).firstFrame, 48)
+  // 区间太短时按 0.50 秒最短跨度撑开
+  const ccShortRange = editorCanvasAnimationFrameRange({ requestedTime: 0, duration: 10,
+    intervals: [{ start: 0, end: 0.1 }], frameRate: 60 })
+  check('cc.shortRangeFirst', ccShortRange.firstFrame, 0)
+  check('cc.shortRangeLast', ccShortRange.lastFrame, 30)
+
+  check('cc.selectEarlier', editorCanvasSelectInterval([{ start: 2, end: 3 },
+    { start: 1, end: 5 }], 0, 8).start, 1)
+  check('cc.selectShorterEnd', editorCanvasSelectInterval([{ start: 0, end: 1 },
+    { start: 0, end: 0.5 }], 0, 8).end, 0.5)
+  check('cc.selectEnded', editorCanvasSelectInterval([{ start: 0, end: 1 }], 5, 8), null)
+  check('cc.selectBeyondHorizon', editorCanvasSelectInterval([{ start: 9, end: 10 }], 0, 8), null)
+  check('cc.rangeCount', editorCanvasFrameRangeCount({ firstFrame: 48, lastFrame: 132 }), 85)
+  check('cc.rangeCountEmpty', editorCanvasFrameRangeCount({ firstFrame: 10,
+    lastFrame: 5 }), 0)
+  check('cc.framesIncomplete', editorCanvasFramesIncomplete({ frameCount: 80,
+    firstFrame: 48, lastFrame: 132 }), true)
+  check('cc.framesComplete', editorCanvasFramesIncomplete({ frameCount: 85,
+    firstFrame: 48, lastFrame: 132 }), false)
+  check('cc.cachesNoPixels', EDITOR_CANVAS_PLAN_CACHES_PIXELS, false)
+}
+
+await runTimelineCacheBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
