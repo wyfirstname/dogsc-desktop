@@ -5079,5 +5079,289 @@ async function runEditorExportRequestBatch() {
 
 await runEditorExportRequestBatch()
 
+async function runUiSmallPartsBatch() {
+  // ============================== UI 小件与运行时身份（12 文件 / 303 行）
+  const {
+    RECORDER_ACCESSIBILITY_ID, recorderPhaseAccessibilityID,
+    EDITOR_ICON_LINE_GRID, EDITOR_MAGNET_ICON_SCALE, EDITOR_MAGNET_ICON_KIND,
+    EDITOR_MAGNET_ICON_ACCESSIBILITY_HIDDEN, editorMagnetIconGlyphSize, editorMagnetIconLayout,
+    APP_IDENTITY_FALLBACK_DISPLAY_NAME, appDisplayName,
+    WINDOW_SURFACE_CORNER_CURVE, WINDOW_SURFACE_MASKS_TO_BOUNDS, appWindowSurfaceStyle,
+    windowSurfaceCornerRadius,
+    ROTATION_HANDLE_SIZE, ROTATION_HANDLE_GLYPH_SIZE, ROTATION_HANDLE_SYMBOL,
+    ROTATION_HANDLE_FONT_SIZE, ROTATION_HANDLE_FONT_WEIGHT, ROTATION_HANDLE_SHADOW,
+    rotationHandleGlyphRotation, rotationHandleSurface,
+    colorChannelByte, cssColorFromHexColor, hexColorFromRgbComponents,
+    recorderViewStyleRoundTrip, RECORDER_VIEW_FALLBACK_HEX_COLOR, HexColor,
+    compositeSharedFrame,
+    ISLAND_CONTENT_BLUR, ISLAND_CANVAS_VERTICAL_SLACK, compactIslandLayout,
+    islandCanvasHorizontalMargin, morphIslandLayout,
+    SOURCE_THUMBNAIL_WIDTH, SOURCE_THUMBNAIL_MINIMUM_HEIGHT, SOURCE_THUMBNAIL_SHOWS_CURSOR,
+    sourceThumbnailSize, resolveSourceThumbnailTarget,
+    CAMERA_FULL_HD_PIXELS, CAMERA_FULL_HD_PIXEL_HEADROOM, cameraFormatIsLandscape,
+    preferredCameraFormatIndex,
+    MINIATURE_CORNER_RADIUS, MINIATURE_GEOMETRY, MINIATURE_PALETTE,
+    miniatureContentRowCount, miniatureLayers,
+    APPEARANCE_PREFERENCE_KEY, APPEARANCE_DEFAULT_PREFERENCE, APPEARANCE_TOGGLE_CORNER_RADIUS,
+    appearanceToggleState, appearanceToggleTransition, appearanceToggleAnimation,
+  } = m
+
+  // ------------------------------------------------ RecorderAccessibility.swift
+  check('ra.phaseSetup', RECORDER_ACCESSIBILITY_ID.phaseSetup, 'recorder.phase.setup')
+  check('ra.phaseFinishing', RECORDER_ACCESSIBILITY_ID.phaseFinishing, 'recorder.phase.finishing')
+  check('ra.permissionGate', RECORDER_ACCESSIBILITY_ID.permissionGate, 'recorder.permission-gate')
+  check('ra.pauseResume', RECORDER_ACCESSIBILITY_ID.recordingPauseResume, 'recorder.recording.pause-resume')
+  check('ra.stop', RECORDER_ACCESSIBILITY_ID.recordingStop, 'recorder.recording.stop')
+  check('ra.phasePreparing', recorderPhaseAccessibilityID('preparing'), 'recorder.phase.preparing')
+  check('ra.phaseRecording', recorderPhaseAccessibilityID('recording'), 'recorder.phase.recording')
+  check(
+    'ra.idCount',
+    Object.keys(RECORDER_ACCESSIBILITY_ID).length,
+    7
+  )
+
+  // ------------------------------------------------ EditorMagnetIcon.swift
+  check('mi.grid', EDITOR_ICON_LINE_GRID, 18)
+  check('mi.scale', EDITOR_MAGNET_ICON_SCALE, 1.15)
+  check('mi.kind', EDITOR_MAGNET_ICON_KIND, 'magnet')
+  check('mi.hidden', EDITOR_MAGNET_ICON_ACCESSIBILITY_HIDDEN, true)
+  check('mi.glyphSquare', editorMagnetIconGlyphSize(20, 20), 23, 1e-9)
+  check('mi.glyphMinAxis', editorMagnetIconGlyphSize(20, 30), 23, 1e-9)
+  const magnetLayout = editorMagnetIconLayout(40, 24)
+  check('mi.frameWidth', magnetLayout.frameWidth, 40)
+  check('mi.frameHeight', magnetLayout.frameHeight, 24)
+  check('mi.layoutGlyph', magnetLayout.glyphSize, 24 * 1.15, 1e-9)
+
+  // ------------------------------------------------ AppIdentity.swift
+  check('ai.fallback', APP_IDENTITY_FALLBACK_DISPLAY_NAME, 'DogSC')
+  check('ai.null', appDisplayName(null), 'DogSC')
+  check('ai.undefined', appDisplayName(undefined), 'DogSC')
+  check('ai.blank', appDisplayName('   '), 'DogSC')
+  check('ai.trimmed', appDisplayName('  DogSC Dev\n'), 'DogSC Dev')
+  check('ai.passthrough', appDisplayName('狗录屏'), '狗录屏')
+
+  // ------------------------------------------------ AppWindowSurface.swift
+  check('ws.curve', WINDOW_SURFACE_CORNER_CURVE, 'continuous')
+  check('ws.masks', WINDOW_SURFACE_MASKS_TO_BOUNDS, true)
+  check('ws.radiusKept', windowSurfaceCornerRadius(16, 100, 40), 16)
+  check('ws.radiusClamped', windowSurfaceCornerRadius(16, 100, 30), 15)
+  check('ws.radiusNegative', windowSurfaceCornerRadius(-4, 100, 40), 0)
+  check('ws.radiusNaN', windowSurfaceCornerRadius(NaN, 100, 40), 0)
+  const surfaceStyle = appWindowSurfaceStyle(30, 60, 40)
+  check('ws.styleRadius', surfaceStyle.cornerRadius, 20)
+  check('ws.styleCurve', surfaceStyle.cornerCurve, 'continuous')
+  check('ws.styleMasks', surfaceStyle.masksToBounds, true)
+
+  // --------------------------------- EditorLinearFocusRotationHandle.swift
+  check('rh.size', ROTATION_HANDLE_SIZE, 28)
+  check('rh.glyph', ROTATION_HANDLE_GLYPH_SIZE, 17)
+  check('rh.symbol', ROTATION_HANDLE_SYMBOL, 'arrow.triangle.2.circlepath')
+  check('rh.fontSize', ROTATION_HANDLE_FONT_SIZE, 13)
+  check('rh.fontWeight', ROTATION_HANDLE_FONT_WEIGHT, 600)
+  check('rh.shadowY', ROTATION_HANDLE_SHADOW.offsetY, 1)
+  check('rh.shadowOpacity', ROTATION_HANDLE_SHADOW.opacity, 0.24)
+  const idleHandle = rotationHandleSurface(false)
+  const activeHandle = rotationHandleSurface(true)
+  check('rh.idleWhite', idleHandle.white, 0.19)
+  check('rh.activeWhite', activeHandle.white, 0.13)
+  check('rh.idleStroke', idleHandle.strokeWhite, 0.6)
+  check('rh.activeStroke', activeHandle.strokeWhite, 0.85)
+  check('rh.surfaceOpacity', idleHandle.opacity, 0.94)
+  check('rh.strokeWidth', activeHandle.strokeWidth, 0.75)
+  check('rh.rotationPassThrough', rotationHandleGlyphRotation(37.5), 37.5)
+  check('rh.rotationNaN', rotationHandleGlyphRotation(NaN), 0)
+
+  // ------------------------------------------- RecorderViewStyle.swift
+  check('vs.byteMid', colorChannelByte(0.5), 128)
+  check('vs.byteLow', colorChannelByte(-1), 0)
+  check('vs.byteHigh', colorChannelByte(2), 255)
+  check('vs.byteNaN', colorChannelByte(NaN), 0)
+  check('vs.byteOne', colorChannelByte(1), 255)
+  const sampleHex = HexColor.fromRgb24(0x33_66_99)
+  check('vs.css', cssColorFromHexColor(sampleHex), 'rgb(51, 102, 153)')
+  const rebuilt = hexColorFromRgbComponents(0.2, 0.4, 0.6)
+  check('vs.rgb24', rebuilt.rgb24, 0x33_66_99)
+  check('vs.roundTrip', recorderViewStyleRoundTrip(sampleHex).rgb24, 0x33_66_99)
+  check('vs.roundTripTwice', recorderViewStyleRoundTrip(recorderViewStyleRoundTrip(sampleHex)).rgb24, 0x33_66_99)
+  check('vs.fallbackWhite', RECORDER_VIEW_FALLBACK_HEX_COLOR.rgb24, 0xff_ff_ff)
+  check('vs.clampsComponents', hexColorFromRgbComponents(-5, 5, NaN).rgb24, 0x00_ff_00)
+
+  // ------------------------------------------- SharedFrameCompositor.swift
+  const compositorCalls = []
+  const compositorPorts = (preparedBackground, wallpaperSource = null) => ({
+    preparedBackground,
+    wallpaperSource,
+    backgroundImage: (args) => {
+      compositorCalls.push(['background', args.time, args.canvasRect.width])
+      return 'computed-bg'
+    },
+    renderOver: (scene, resources, background) => {
+      compositorCalls.push(['render', background, resources.tag])
+      return `stack(${background})`
+    },
+    crop: (image, extent) => {
+      compositorCalls.push(['crop', extent.width, extent.height])
+      return `cropped(${image})`
+    },
+  })
+  check(
+    'fc.zeroExtent',
+    compositeSharedFrame({ scene: { time: 1 } }, { tag: 'r' }, { width: 0, height: 10 }, compositorPorts('bg')),
+    null
+  )
+  check('fc.zeroExtentNoCalls', compositorCalls.length, 0)
+  compositorCalls.length = 0
+  check(
+    'fc.reusesPrepared',
+    compositeSharedFrame({ scene: { time: 2 } }, { tag: 'r' }, { width: 8, height: 4 }, compositorPorts('ready-bg')),
+    'cropped(stack(ready-bg))'
+  )
+  check('fc.reusesPreparedCalls', compositorCalls.length, 2)
+  check('fc.reusesPreparedFirst', compositorCalls[0][0], 'render')
+  compositorCalls.length = 0
+  check(
+    'fc.computesBackground',
+    compositeSharedFrame({ scene: { time: 3 } }, { tag: 'r' }, { width: 8, height: 4 }, compositorPorts(null, 'wall')),
+    'cropped(stack(computed-bg))'
+  )
+  check('fc.computesTime', compositorCalls[0][1], 3)
+  check('fc.computesCanvas', compositorCalls[0][2], 8)
+  check('fc.cropsToExtent', compositorCalls[2][1], 8)
+
+  // ------------------------------------------- RecorderIslandLayout.swift
+  check('il.blur', ISLAND_CONTENT_BLUR, 6)
+  check('il.slack', ISLAND_CANVAS_VERTICAL_SLACK, 32)
+  const compactIsland = compactIslandLayout({ width: 200, height: 40 })
+  check('il.compactCanvas', compactIsland.canvasWidth, 200)
+  check('il.compactPlacement', compactIsland.placementHeight, 40)
+  check('il.marginFloor', islandCanvasHorizontalMargin(100), 16)
+  check('il.marginPercent', islandCanvasHorizontalMargin(1000), 50)
+  const morphed = morphIslandLayout({ width: 200, height: 40 }, { width: 260, height: 40 }, compactIsland)
+  check('il.morphPlacement', morphed.placementWidth, 260)
+  check('il.morphCanvasWidth', morphed.canvasWidth, 292)
+  check('il.morphCanvasHeight', morphed.canvasHeight, 72)
+  // 重指向到更小的内容：canvas 只增不减
+  const shrunk = morphIslandLayout({ width: 260, height: 40 }, { width: 180, height: 36 }, morphed)
+  check('il.shrinkKeepsCanvas', shrunk.canvasWidth, 292)
+  check('il.shrinkPlacement', shrunk.placementWidth, 260)
+  check('il.shrinkHeightCanvas', shrunk.canvasHeight, 72)
+
+  // ------------------------------------------- RecorderSourceThumbnail.swift
+  check('st.width', SOURCE_THUMBNAIL_WIDTH, 256)
+  check('st.minHeight', SOURCE_THUMBNAIL_MINIMUM_HEIGHT, 2)
+  check('st.noCursor', SOURCE_THUMBNAIL_SHOWS_CURSOR, false)
+  const hd = sourceThumbnailSize(1920, 1080)
+  check('st.hdWidth', hd.width, 256)
+  check('st.hdHeight', hd.height, 144)
+  check('st.tallHeight', sourceThumbnailSize(1000, 4000).height, 1024)
+  check('st.zeroHeight', sourceThumbnailSize(0, 0).height, 2)
+  check('st.ultraWideHeight', sourceThumbnailSize(3840, 1080).height, 72)
+  check(
+    'st.windowPreferred',
+    resolveSourceThumbnailTarget({ windowID: 5, displayID: 1, availableWindowIDs: [5], availableDisplayIDs: [1] }).kind,
+    'window'
+  )
+  check(
+    'st.displayFallback',
+    resolveSourceThumbnailTarget({ windowID: 9, displayID: 1, availableWindowIDs: [5], availableDisplayIDs: [1] })
+      .kind,
+    'display'
+  )
+  check(
+    'st.displayExcludesOwn',
+    resolveSourceThumbnailTarget({ windowID: null, displayID: 1, availableWindowIDs: [], availableDisplayIDs: [1] })
+      .excludesOwnApplications,
+    true
+  )
+  check(
+    'st.none',
+    resolveSourceThumbnailTarget({ windowID: 9, displayID: 7, availableWindowIDs: [5], availableDisplayIDs: [1] }),
+    null
+  )
+
+  // --------------------------------------- CameraCaptureFormatSelector.swift
+  check('cf.fullHd', CAMERA_FULL_HD_PIXELS, 2073600)
+  check('cf.headroom', CAMERA_FULL_HD_PIXEL_HEADROOM, 1.05)
+  check('cf.landscape', cameraFormatIsLandscape({ width: 1920, height: 1080 }), true)
+  check('cf.landscapeSquare', cameraFormatIsLandscape({ width: 1080, height: 1080 }), true)
+  const formats = [
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 },
+    { width: 3840, height: 2160 },
+    { width: 1080, height: 1920 },
+  ]
+  check('cf.capsAtFullHd', preferredCameraFormatIndex(formats, true), 1)
+  check('cf.portraitDeviceKeepsTallest', preferredCameraFormatIndex(formats, false), 2)
+  check(
+    'cf.noLandscapeFallsBack',
+    preferredCameraFormatIndex([{ width: 1080, height: 1920 }, { width: 720, height: 1280 }], true),
+    0
+  )
+  check('cf.allInvalid', preferredCameraFormatIndex([{ width: 0, height: 1080 }, { width: 1920, height: 0 }], true), null)
+  check('cf.empty', preferredCameraFormatIndex([], false), null)
+  check('cf.tieKeepsFirst', preferredCameraFormatIndex([{ width: 1280, height: 720 }, { width: 1280, height: 720 }], true), 0)
+  check(
+    'cf.headroomAccepted',
+    preferredCameraFormatIndex([{ width: 1936, height: 1088 }, { width: 1280, height: 720 }], true),
+    0
+  )
+  check(
+    'cf.skipInvalidKeepsOriginalIndex',
+    preferredCameraFormatIndex([{ width: 0, height: 0 }, { width: 1280, height: 720 }], true),
+    1
+  )
+
+  // --------------------------------------- SettingsAppearanceMiniature.swift
+  check('mn.corner', MINIATURE_CORNER_RADIUS, 6)
+  check('mn.sidebarWidth', MINIATURE_GEOMETRY.sidebarWidth, 30)
+  check('mn.sidebarPadding', MINIATURE_GEOMETRY.sidebarPadding, 7)
+  check('mn.dotSize', MINIATURE_GEOMETRY.sidebarDotSize, 5)
+  check('mn.contentBars', MINIATURE_GEOMETRY.contentRowCount, 3)
+  check('mn.trailingPadding', MINIATURE_GEOMETRY.contentTrailingPadding, 8)
+  check('mn.canvasDark', MINIATURE_PALETTE.canvasDark, 0.1)
+  check('mn.sidebarLight', MINIATURE_PALETTE.sidebarLight, 0.94)
+  check('mn.rowCount', miniatureContentRowCount(), 3)
+  const systemLayers = miniatureLayers('system')
+  check('mn.systemLayers', systemLayers.length, 2)
+  check('mn.systemBaseLight', systemLayers[0].dark, false)
+  check('mn.systemOverlayDark', systemLayers[1].dark, true)
+  check('mn.systemMask', systemLayers[1].trailingMaskFraction, 0.5)
+  check('mn.lightSingle', miniatureLayers('light').length, 1)
+  check('mn.lightDark', miniatureLayers('light')[0].dark, false)
+  check('mn.darkSingle', miniatureLayers('dark')[0].dark, true)
+  check('mn.darkMask', miniatureLayers('dark')[0].trailingMaskFraction, 0)
+
+  // ------------------------------------- EditorAppearanceToggleButton.swift
+  check('at.key', APPEARANCE_PREFERENCE_KEY, 'app.appearance')
+  check('at.default', APPEARANCE_DEFAULT_PREFERENCE, 'dark')
+  check('at.corner', APPEARANCE_TOGGLE_CORNER_RADIUS, 16)
+  const darkState = appearanceToggleState(true)
+  check('at.darkNext', darkState.nextPreference, 'light')
+  check('at.darkSymbol', darkState.symbolName, 'moon.stars.fill')
+  check('at.darkTitle', darkState.actionTitle, '切换为浅色外观')
+  check('at.darkValue', darkState.accessibilityValue, '深色')
+  const lightState = appearanceToggleState(false)
+  check('at.lightNext', lightState.nextPreference, 'dark')
+  check('at.lightSymbol', lightState.symbolName, 'sun.max.fill')
+  check('at.lightTitle', lightState.actionTitle, '切换为深色外观')
+  check('at.lightValue', lightState.accessibilityValue, '浅色')
+  check('at.label', lightState.accessibilityLabel, '界面外观')
+  check('at.identifier', lightState.accessibilityIdentifier, 'editor.appearance')
+  // 「跟随系统」不写回偏好：目标永远是具体浅/深
+  check('at.neverSystem', darkState.nextPreference !== 'system' && lightState.nextPreference !== 'system', true)
+  const fadeTransition = appearanceToggleTransition(true)
+  check('at.reduceTransition', fadeTransition.kind, 'opacity')
+  const scaledTransition = appearanceToggleTransition(false)
+  check('at.scaleIn', scaledTransition.insertionScale, 0.6)
+  check('at.scaleOut', scaledTransition.removalScale, 1.3)
+  check('at.animSpring', appearanceToggleAnimation(false).dampingFraction, 1)
+  check('at.animSpringResponse', appearanceToggleAnimation(false).response, 0.38)
+  check('at.animReduceKind', appearanceToggleAnimation(true).kind, 'easeOut')
+  check('at.animReduceDuration', appearanceToggleAnimation(true).duration, 0.18)
+
+}
+
+await runUiSmallPartsBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

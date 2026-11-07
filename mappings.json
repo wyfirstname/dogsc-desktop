@@ -102,7 +102,19 @@
     "Sources/DogSCApp/EditorPlaybackInitialFrameWaiter.swift": "src/renderer/src/core/EditorPlaybackInitialFrameWaiter.ts",
     "Sources/DogSCApp/EditorExportRequest.swift": "src/renderer/src/core/EditorExportRequest.ts",
     "Sources/DogSCApp/VideoExporter.swift#ExportAssetRole": "src/renderer/src/core/EditorExportRequest.ts",
-    "Sources/DogSCApp/EditorMediaSession.swift#EditorMediaFileVersion": "src/renderer/src/core/EditorExportRequest.ts"
+    "Sources/DogSCApp/EditorMediaSession.swift#EditorMediaFileVersion": "src/renderer/src/core/EditorExportRequest.ts",
+    "Sources/DogSCApp/RecorderAccessibility.swift": "src/renderer/src/core/RecorderAccessibility.ts",
+    "Sources/DogSCApp/EditorMagnetIcon.swift": "src/renderer/src/core/EditorMagnetIcon.ts",
+    "Sources/DogSCApp/AppIdentity.swift": "src/renderer/src/core/AppIdentity.ts",
+    "Sources/DogSCApp/AppWindowSurface.swift": "src/renderer/src/core/AppWindowSurface.ts",
+    "Sources/DogSCApp/EditorLinearFocusRotationHandle.swift": "src/renderer/src/core/EditorLinearFocusRotationHandle.ts",
+    "Sources/DogSCApp/RecorderViewStyle.swift": "src/renderer/src/core/RecorderViewStyle.ts",
+    "Sources/DogSCApp/SharedFrameCompositor.swift": "src/renderer/src/core/SharedFrameCompositor.ts",
+    "Sources/DogSCApp/RecorderIslandLayout.swift": "src/renderer/src/core/RecorderIslandLayout.ts",
+    "Sources/DogSCApp/RecorderSourceThumbnail.swift": "src/renderer/src/core/RecorderSourceThumbnail.ts",
+    "Sources/DogSCApp/CameraCaptureFormatSelector.swift": "src/renderer/src/core/CameraCaptureFormatSelector.ts",
+    "Sources/DogSCApp/SettingsAppearanceMiniature.swift": "src/renderer/src/core/SettingsAppearanceMiniature.ts",
+    "Sources/DogSCApp/EditorAppearanceToggleButton.swift": "src/renderer/src/core/EditorAppearanceToggleButton.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }

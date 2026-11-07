@@ -659,3 +659,78 @@ export {
   validateCurrentVersion,
   validateExistingLocalFile,
 } from '../src/renderer/src/core/EditorExportRequest'
+export {
+  RECORDER_ACCESSIBILITY_ID,
+  recorderPhaseAccessibilityID,
+} from '../src/renderer/src/core/RecorderAccessibility'
+export {
+  EDITOR_ICON_LINE_GRID,
+  EDITOR_MAGNET_ICON_ACCESSIBILITY_HIDDEN,
+  EDITOR_MAGNET_ICON_KIND,
+  EDITOR_MAGNET_ICON_SCALE,
+  editorMagnetIconGlyphSize,
+  editorMagnetIconLayout,
+} from '../src/renderer/src/core/EditorMagnetIcon'
+export {
+  APP_IDENTITY_FALLBACK_DISPLAY_NAME,
+  appDisplayName,
+} from '../src/renderer/src/core/AppIdentity'
+export {
+  WINDOW_SURFACE_CORNER_CURVE,
+  WINDOW_SURFACE_MASKS_TO_BOUNDS,
+  appWindowSurfaceStyle,
+  windowSurfaceCornerRadius,
+} from '../src/renderer/src/core/AppWindowSurface'
+export {
+  ROTATION_HANDLE_FONT_SIZE,
+  ROTATION_HANDLE_FONT_WEIGHT,
+  ROTATION_HANDLE_GLYPH_SIZE,
+  ROTATION_HANDLE_SHADOW,
+  ROTATION_HANDLE_SIZE,
+  ROTATION_HANDLE_SYMBOL,
+  rotationHandleGlyphRotation,
+  rotationHandleSurface,
+} from '../src/renderer/src/core/EditorLinearFocusRotationHandle'
+export {
+  RECORDER_VIEW_FALLBACK_HEX_COLOR,
+  colorChannelByte,
+  cssColorFromHexColor,
+  hexColorFromRgbComponents,
+  recorderViewStyleRoundTrip,
+} from '../src/renderer/src/core/RecorderViewStyle'
+export { compositeSharedFrame } from '../src/renderer/src/core/SharedFrameCompositor'
+export {
+  ISLAND_CANVAS_VERTICAL_SLACK,
+  ISLAND_CONTENT_BLUR,
+  compactIslandLayout,
+  islandCanvasHorizontalMargin,
+  morphIslandLayout,
+} from '../src/renderer/src/core/RecorderIslandLayout'
+export {
+  SOURCE_THUMBNAIL_MINIMUM_HEIGHT,
+  SOURCE_THUMBNAIL_SHOWS_CURSOR,
+  SOURCE_THUMBNAIL_WIDTH,
+  resolveSourceThumbnailTarget,
+  sourceThumbnailSize,
+} from '../src/renderer/src/core/RecorderSourceThumbnail'
+export {
+  CAMERA_FULL_HD_PIXELS,
+  CAMERA_FULL_HD_PIXEL_HEADROOM,
+  cameraFormatIsLandscape,
+  preferredCameraFormatIndex,
+} from '../src/renderer/src/core/CameraCaptureFormatSelector'
+export {
+  MINIATURE_CORNER_RADIUS,
+  MINIATURE_GEOMETRY,
+  MINIATURE_PALETTE,
+  miniatureContentRowCount,
+  miniatureLayers,
+} from '../src/renderer/src/core/SettingsAppearanceMiniature'
+export {
+  APPEARANCE_DEFAULT_PREFERENCE,
+  APPEARANCE_PREFERENCE_KEY,
+  APPEARANCE_TOGGLE_CORNER_RADIUS,
+  appearanceToggleAnimation,
+  appearanceToggleState,
+  appearanceToggleTransition,
+} from '../src/renderer/src/core/EditorAppearanceToggleButton'
