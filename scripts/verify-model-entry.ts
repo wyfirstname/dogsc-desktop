@@ -187,3 +187,90 @@ export {
   FRAME_SCREEN_DECORATION_NONE,
   compositionSizeShortEdge,
 } from '../src/renderer/src/core/FrameScene'
+
+// ---- 批次 8（RecorderCore 收官：ExportPolicy / 三个诊断 / ScreenMotionCreationStyle
+//      / ProjectValidator / AutoZoomPlanner / EditorTimeline）----
+export {
+  requiredProjectMedia,
+  exportVideoBitrate,
+  EXPORT_AUDIO_BITRATE,
+} from '../src/renderer/src/core/ExportPolicy'
+export {
+  makeRecordingPerformanceSample,
+  summaryFromSample,
+  summaryIncludingSample,
+  makeRecordingPerformanceSummary,
+  EMPTY_PERFORMANCE_SUMMARY,
+} from '../src/renderer/src/core/RecordingPerformanceDiagnostics'
+export {
+  makeAudioCaptureDiagnostics,
+  totalDroppedSampleBuffers,
+  appendedSampleBuffersPerSecond,
+} from '../src/renderer/src/core/AudioCaptureDiagnostics'
+export {
+  makeCameraCaptureDiagnostics,
+  decodeCameraCaptureDiagnostics,
+  encodeCameraCaptureDiagnostics,
+  systemDroppedFrames,
+  applicationDroppedFrames,
+  receivedFramesPerSecond,
+  appendedFramesPerSecond,
+} from '../src/renderer/src/core/CameraCaptureDiagnostics'
+export {
+  screenMotionCreationStyleFromClip,
+  makeScreenMotionCreationStyle,
+  screenMotionCreationStyleIsValid,
+  screenMotionClipFromStyle,
+} from '../src/renderer/src/core/ScreenMotionCreationStyle'
+export {
+  ProjectValidationError,
+  validateRecorderProject,
+  validateCanvasStyle,
+  validateCameraStyle,
+  validateAudioStyle,
+  validateCursorStyle,
+  validateMotionStyle,
+  validateZoomAnimationClip,
+  validateProjectTimeline,
+} from '../src/renderer/src/core/ProjectValidator'
+export {
+  makeAutoZoomAnimations,
+  makeAutoZoomAnimationsFromClicks,
+  repairingLegacyAutomaticAnimations,
+  makePerClickLegacyAnimations,
+  extendingAutomaticHoldsThroughPointerActivity,
+  mergingConnectedAutomaticEnvelopes,
+  orderedValidClicks,
+  pointerClicks,
+  spatialFocusGroups,
+  spatialFocusGroupFocus,
+  clippedZoomAnimations,
+  clippedZoomKeyframes,
+  makeAutoZoomKeyframes,
+  makeAutoZoomKeyframesFromClicks,
+} from '../src/renderer/src/core/AutoZoomPlanner'
+export {
+  EditorTimelineMath,
+  fitZoomAnimation,
+  manualZoomAnimation,
+  manualZoomRangeKeyframes,
+  clampedTime,
+  xPosition,
+  zoomSegmentsFromAnimations,
+  splitZoomAnimation,
+  zoomSequenceIsValid,
+  effectiveExitDuration,
+  exitNormalizations,
+  movingZoomAnimation,
+  resizingZoomAnimation,
+  zoomHitZone,
+  motionHitZone,
+  motionHitZoneOf,
+  fitMotionTiming,
+  fitMotionTimingOf,
+  motionReturnNormalizations,
+  motionReturnNormalizationsOf,
+  zoomSegmentsFromKeyframes,
+} from '../src/renderer/src/core/EditorTimeline'
+export { makeKeyframe, makePointerClick } from '../src/renderer/src/core/ZoomAnimation'
+export { makeTimelineZoomSegment, EMPTY_HIT_ZONE } from '../src/renderer/src/core/EditorTimeline'

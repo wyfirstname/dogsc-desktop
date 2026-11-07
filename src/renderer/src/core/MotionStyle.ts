@@ -10,6 +10,8 @@
  * 以便读取原项目 project.json 时语义一致。
  */
 
+import type { ScreenMotionCreationStyle } from './ScreenMotionCreationStyle'
+
 export type ScreenMotionStyle = '聚焦' | '平滑';
 
 export type CursorMotionStyle = '平滑' | '适中' | '快速' | '无';
@@ -33,8 +35,8 @@ export interface MotionStyle {
    * 仍可继承应用记住的放大倍数。
    */
   defaultZoomScale?: number | null;
-  /** Swift ScreenMotionCreationStyle? 的持久化 JSON；转写 ScreenMotionCreationStyle.swift 后收紧类型。 */
-  defaultScreenMotion?: unknown | null;
+  /** 新建动画时继承的屏幕 3D 样式（Swift ScreenMotionCreationStyle?）。 */
+  defaultScreenMotion?: ScreenMotionCreationStyle | null;
 }
 
 /** Swift 默认值逐项对照 MotionStyle.init 的缺省参数。 */

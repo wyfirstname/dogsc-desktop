@@ -39,6 +39,16 @@ export function makePoint(x: number, y: number): NormalizedPoint {
   return { x, y }
 }
 
+/** Swift struct PointerClick（ZoomAnimation.swift L21-30）。 */
+export interface PointerClick {
+  time: TimeInterval
+  location: NormalizedPoint
+}
+
+export function makePointerClick(time: TimeInterval, location: NormalizedPoint): PointerClick {
+  return { time, location }
+}
+
 /** 对应 Swift NormalizedPoint.constrained(to:)：夹取到 [inset, 1-inset]。 */
 export function constrainPoint(point: NormalizedPoint, safeInset: number): NormalizedPoint {
   const inset = Math.min(Math.max(safeInset, 0), 0.5)
@@ -361,6 +371,25 @@ export interface ZoomKeyframe {
   scale: number
   focus: NormalizedPoint
   origin: ZoomKeyframeOrigin
+}
+
+export interface ZoomKeyframeOptions {
+  id?: string
+  time: TimeInterval
+  scale: number
+  focus: NormalizedPoint
+  origin?: ZoomKeyframeOrigin
+}
+
+/** Swift ZoomKeyframe.init(id:time:scale:focus:origin:) L356-368。 */
+export function makeKeyframe(opts: ZoomKeyframeOptions): ZoomKeyframe {
+  return {
+    id: opts.id ?? cryptoRandomUUID(),
+    time: opts.time,
+    scale: opts.scale,
+    focus: opts.focus,
+    origin: opts.origin ?? 'automatic',
+  }
 }
 
 /**

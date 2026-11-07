@@ -1240,5 +1240,656 @@ function runFrameSceneBatch() {
 
 runFrameSceneBatch()
 
+// ---- 批次 8（RecorderCore 收官：ExportPolicy / 三个诊断 / ScreenMotionCreationStyle
+//      / ProjectValidator / AutoZoomPlanner / EditorTimeline）----
+function runRecorderCoreBatch() {
+  const {
+    requiredProjectMedia, exportVideoBitrate, EXPORT_AUDIO_BITRATE,
+    makeRecordingPerformanceSample, summaryFromSample, summaryIncludingSample,
+    makeRecordingPerformanceSummary,
+    makeAudioCaptureDiagnostics, totalDroppedSampleBuffers, appendedSampleBuffersPerSecond,
+    makeCameraCaptureDiagnostics, decodeCameraCaptureDiagnostics, encodeCameraCaptureDiagnostics,
+    systemDroppedFrames, applicationDroppedFrames, receivedFramesPerSecond, appendedFramesPerSecond,
+    screenMotionCreationStyleFromClip, makeScreenMotionCreationStyle,
+    screenMotionCreationStyleIsValid, screenMotionClipFromStyle,
+    ProjectValidationError, validateRecorderProject, validateCanvasStyle, validateCameraStyle,
+    validateAudioStyle, validateCursorStyle, validateMotionStyle, validateZoomAnimationClip,
+    validateProjectTimeline,
+    makeAutoZoomAnimations, makeAutoZoomAnimationsFromClicks, repairingLegacyAutomaticAnimations,
+    makePerClickLegacyAnimations, extendingAutomaticHoldsThroughPointerActivity,
+    mergingConnectedAutomaticEnvelopes, orderedValidClicks, pointerClicks,
+    spatialFocusGroups, spatialFocusGroupFocus, clippedZoomAnimations, clippedZoomKeyframes,
+    makeAutoZoomKeyframes, makeAutoZoomKeyframesFromClicks,
+    fitZoomAnimation, manualZoomAnimation, manualZoomRangeKeyframes, clampedTime, xPosition,
+    zoomSegmentsFromAnimations, splitZoomAnimation, zoomSequenceIsValid, effectiveExitDuration,
+    exitNormalizations, movingZoomAnimation, resizingZoomAnimation, zoomHitZone, motionHitZone,
+    fitMotionTiming, motionReturnNormalizations, zoomSegmentsFromKeyframes,
+    makeKeyframe, makePointerClick, makeTimelineZoomSegment, makeClip, makeTransitionTiming,
+  } = m
+
+  const tol = 1e-6
+  const baseProject = {
+    ...m.makeRecorderProject(),
+    canvas: m.makeCanvasStyle(),
+    camera: m.makeCameraStyle(),
+    audio: m.makeAudioStyle(),
+    cursorStyle: m.makeCursorStyle(),
+    motion: m.makeMotionStyle(),
+    openingSequence: m.makeOpeningSequence(),
+    timeline: m.makeProjectTimeline(),
+  }
+
+  // ================================================ ExportPolicy
+  check('ep.audioBitrate', EXPORT_AUDIO_BITRATE, 192000)
+  check('ep.bitrate1080', exportVideoBitrate(1920, 1080, 60), 20736000)
+  // 4K：像素数 ≥ 7M → 上限抬到 130 Mbps
+  check('ep.bitrate4k', exportVideoBitrate(3840, 2160, 60), 82944000)
+  // 1440p：上限 100 Mbps（82.9M/6 不触顶，但 1440p60 会）
+  check('ep.bitrate1440p60', exportVideoBitrate(2560, 1440, 60), 36864000)
+  // 触顶需要更高帧率：1440p120 → 73.7M 仍低于上限；4K120 → 165.9M 被 130M 截断
+  check('ep.bitrate4k120Cap', exportVideoBitrate(3840, 2160, 120), 130000000)
+  // 极小分辨率：12 Mbps 下限生效
+  check('ep.bitrateFloor', exportVideoBitrate(100, 100, 60), 12000000)
+  // frameRate 0 按 1 处理
+  check('ep.bitrateZeroFps', exportVideoBitrate(1920, 1080, 0), 12000000)
+
+  const required = requiredProjectMedia(baseProject)
+  check('ep.reqScreen', required.screenVideo, true)
+  check('ep.reqSystemAudio', required.systemAudio, true)
+  // media 为 null → 相机与麦克风都不需要
+  check('ep.reqCamera', required.cameraVideo, false)
+  check('ep.reqMic', required.microphoneAudio, false)
+  check('ep.reqBgImage', required.backgroundImage, false)
+  check('ep.reqBgVideo', required.backgroundVideo, false)
+
+  // 静音后系统声不再需要
+  const mutedProject = { ...baseProject, audio: m.makeAudioStyle({ isSystemMuted: true }) }
+  check('ep.reqMutedSystem', requiredProjectMedia(mutedProject).systemAudio, false)
+  // 相机隐藏 → 不需要相机视频
+  const hiddenCamera = { ...baseProject, camera: m.makeCameraStyle({ isHidden: true }) }
+  check('ep.reqCameraHidden', requiredProjectMedia(hiddenCamera).cameraVideo, false)
+
+  // ================================================ RecordingPerformanceDiagnostics
+  const sample1 = makeRecordingPerformanceSample({
+    elapsed: NaN,
+    processCPUPercent: -5,
+    systemCPUPercent: 120,
+    processResidentBytes: 1024,
+    thermalState: 'nominal',
+  })
+  check('perf.elapsedNaN', sample1.elapsed, 0)
+  check('perf.cpuNegative', sample1.processCPUPercent, 0)
+  check('perf.systemCpuClamped', sample1.systemCPUPercent, 100)
+  check('perf.metalNull', sample1.processMetalAllocatedBytes, null)
+
+  const sample2 = makeRecordingPerformanceSample({
+    elapsed: 2,
+    processCPUPercent: 55,
+    systemCPUPercent: 30,
+    processResidentBytes: 4096,
+    processMetalAllocatedBytes: 8192,
+    availableDiskBytes: 1000,
+    thermalState: 'serious',
+  })
+  const sample3 = makeRecordingPerformanceSample({
+    elapsed: 3,
+    processCPUPercent: 40,
+    systemCPUPercent: 20,
+    processResidentBytes: 2048,
+    processMetalAllocatedBytes: 16384,
+    availableDiskBytes: 500,
+    thermalState: 'fair',
+  })
+  const summary = makeRecordingPerformanceSummary([sample2, sample3])
+  check('perf.count', summary.sampleCount, 2)
+  check('perf.peakCpu', summary.peakProcessCPUPercent, 55)
+  check('perf.peakResident', summary.peakProcessResidentBytes, 4096)
+  check('perf.peakMetal', summary.peakProcessMetalAllocatedBytes, 16384)
+  check('perf.minDisk', summary.minimumAvailableDiskBytes, 500)
+  check('perf.worstThermal', summary.worstThermalState, 'serious')
+  check('perf.emptyCount', makeRecordingPerformanceSummary([]).sampleCount, 0)
+  check('perf.emptyThermal', makeRecordingPerformanceSummary([]).worstThermalState, 'unknown')
+
+  // unknown 严重度 -1：不会覆盖已观测到的 nominal
+  const withUnknown = summaryIncludingSample(summaryFromSample(sample1), {
+    ...sample1, thermalState: 'unknown',
+  })
+  check('perf.unknownKeepsWorst', withUnknown.worstThermalState, 'nominal')
+  check('perf.unknownCount', withUnknown.sampleCount, 2)
+
+  // ================================================ AudioCaptureDiagnostics
+  const audioDiag = makeAudioCaptureDiagnostics({
+    receivedSampleBuffers: 100,
+    appendedSampleBuffers: 90,
+    ingressDrops: -3,
+    writerBackpressureDrops: 4,
+    invalidTimestampDrops: 1,
+    elapsed: 2,
+    maximumSampleInterval: NaN,
+  })
+  check('ad.ingressClamped', audioDiag.ingressDrops, 0)
+  check('ad.maxIntervalNaN', audioDiag.maximumSampleInterval, 0)
+  check('ad.totalDropped', totalDroppedSampleBuffers(audioDiag), 5)
+  check('ad.perSecond', appendedSampleBuffersPerSecond(audioDiag), 45, tol)
+  check(
+    'ad.perSecondZero',
+    appendedSampleBuffersPerSecond(makeAudioCaptureDiagnostics({
+      receivedSampleBuffers: 10, appendedSampleBuffers: 10, elapsed: 0,
+    })),
+    0
+  )
+
+  // ================================================ CameraCaptureDiagnostics
+  const camDiag = makeCameraCaptureDiagnostics({
+    receivedFrames: 61,
+    appendedFrames: 31,
+    systemLateDrops: 2,
+    systemOutOfBufferDrops: 1,
+    systemDiscontinuityDrops: 0,
+    systemUnknownDrops: 3,
+    encoderBackpressureDrops: 5,
+    nonMonotonicTimestampDrops: 1,
+    normalizedFrames: 4,
+    formatChanges: 1,
+    initialWidth: 1920,
+    initialHeight: 1080,
+    finalWidth: 1280,
+    finalHeight: 720,
+    elapsed: 2,
+    maximumFrameInterval: 0.05,
+  })
+  check('cd.systemDropped', systemDroppedFrames(camDiag), 6)
+  check('cd.appDropped', applicationDroppedFrames(camDiag), 6)
+  // (N-1)/elapsed
+  check('cd.receivedFps', receivedFramesPerSecond(camDiag), 30, tol)
+  check('cd.appendedFps', appendedFramesPerSecond(camDiag), 15, tol)
+  // 单帧无法算区间
+  check(
+    'cd.singleFrameFps',
+    receivedFramesPerSecond({ ...camDiag, receivedFrames: 1 }),
+    0
+  )
+  // 旧清单缺字段 → 中性默认
+  const legacyDiag = decodeCameraCaptureDiagnostics({
+    receivedFrames: 10, appendedFrames: 9,
+    systemLateDrops: 0, systemOutOfBufferDrops: 0,
+    systemDiscontinuityDrops: 0, systemUnknownDrops: 0,
+    encoderBackpressureDrops: 0, nonMonotonicTimestampDrops: 0,
+    normalizedFrames: 0, formatChanges: 0,
+    elapsed: 1, maximumFrameInterval: 0.1,
+  })
+  check('cd.legacyInvalidSample', legacyDiag.invalidSampleDrops, 0)
+  check('cd.legacyInterruptions', legacyDiag.sessionInterruptionCount, 0)
+  check('cd.legacyPixelFormat', legacyDiag.initialPixelFormat, null)
+  // 编码：可空字段省略，非可空 0 保留
+  const encoded = encodeCameraCaptureDiagnostics(legacyDiag)
+  check('cd.encodeOmitNull', 'initialWidth' in encoded, false)
+  check('cd.encodeKeepZero', encoded.sessionInterruptionCount, 0)
+  check('cd.encodeInvalidSample', encoded.invalidSampleDrops, 0)
+
+  // ================================================ ScreenMotionCreationStyle
+  const motionTiming = makeTransitionTiming({
+    startTime: 2, duration: 3, leadInDuration: 1.2, returnDuration: 0.4,
+  })
+  const motionClip = {
+    id: 'mc1',
+    timing: motionTiming,
+    target: { position: { x: 0.3, y: 0.7 }, scale: 1.4, rotationX: 5, rotationY: -3, rotationZ: 2, perspective: 0.65 },
+    focusEffect: null,
+  }
+  const creationStyle = screenMotionCreationStyleFromClip(motionClip)
+  check('sms.leadIn', creationStyle.leadInDuration, 1.2, tol)
+  // 手授意图优先：preferredReturnDuration 为 null 时回落到已生效值 0.4（> 0）
+  check('sms.return', creationStyle.returnDuration, 0.4, tol)
+  check('sms.targetX', creationStyle.target.position.x, 0.3, tol)
+  check('sms.valid', screenMotionCreationStyleIsValid(creationStyle), true)
+  check('sms.invalidScale', screenMotionCreationStyleIsValid({
+    ...creationStyle, target: { ...creationStyle.target, scale: 0 },
+  }), false)
+  check('sms.invalidPosition', screenMotionCreationStyleIsValid({
+    ...creationStyle, target: { ...creationStyle.target, position: { x: 1.4, y: 0.5 } },
+  }), false)
+  check('sms.invalidLeadIn', screenMotionCreationStyleIsValid({
+    ...creationStyle, leadInDuration: 6,
+  }), false)
+  check('sms.invalidCurve', screenMotionCreationStyleIsValid({
+    ...creationStyle, customCurve: { x1: NaN, y1: 0, x2: 1, y2: 1 },
+  }), false)
+
+  // clip(timing:)：进入按整段截断，回落取 min(样式, 旧值)
+  const applied = screenMotionClipFromStyle(
+    { ...creationStyle, leadInDuration: 2.5, returnDuration: 0.9 },
+    makeTransitionTiming({ startTime: 0, duration: 1.0, leadInDuration: 0.5, returnDuration: 0.3 }),
+    'mc2'
+  )
+  check('sms.clipLeadInClamped', applied.timing.leadInDuration, 1.0, tol)
+  // min(0.9, 0.3) = 0.3 —— 样式不能把回落放大
+  check('sms.clipReturnMin', applied.timing.returnDuration, 0.3, tol)
+  check('sms.clipPreferredLeadIn', applied.timing.preferredLeadInDuration, 2.5, tol)
+  check('sms.clipPreferredReturn', applied.timing.preferredReturnDuration, 0.9, tol)
+  check('sms.clipOffset', applied.timing.leadInProgressOffset, 0)
+  check('sms.clipId', applied.id, 'mc2')
+
+  // ================================================ ProjectValidator
+  validateCanvasStyle(m.makeCanvasStyle())
+  passed++
+  validateCameraStyle(m.makeCameraStyle())
+  passed++
+  validateAudioStyle(m.makeAudioStyle())
+  passed++
+  validateCursorStyle(m.makeCursorStyle())
+  passed++
+  validateMotionStyle(m.makeMotionStyle())
+  passed++
+  validateRecorderProject(baseProject)
+  passed++
+
+  const expectKind = (name, fn, kind) => {
+    try {
+      fn()
+      failed++
+      console.error(`FAIL ${name}: expected throw ${kind}`)
+    } catch (error) {
+      if (error instanceof ProjectValidationError && error.kind === kind) {
+        passed++
+      } else {
+        failed++
+        console.error(`FAIL ${name}: got ${error && error.kind ? error.kind : error}`)
+      }
+    }
+  }
+  expectKind('pv.canvasPadding', () => validateCanvasStyle(m.makeCanvasStyle({ padding: 2000 })), 'invalidCanvas')
+  // make* 工厂本身会规范化（clamp crop / 截断 title），因此必须绕过工厂直接覆盖
+  expectKind('pv.canvasCrop', () => validateCanvasStyle({
+    ...m.makeCanvasStyle(), crop: { x: 0.5, y: 0, width: 0.8, height: 1 },
+  }), 'invalidCanvas')
+  expectKind('pv.canvasTitle', () => validateCanvasStyle({
+    ...m.makeCanvasStyle(), screenFrameTitle: 'x'.repeat(121),
+  }), 'invalidCanvas')
+  expectKind('pv.cameraSize', () => validateCameraStyle(m.makeCameraStyle({ size: 0 })), 'invalidCamera')
+  expectKind('pv.audioVolume', () => validateAudioStyle({ ...m.makeAudioStyle(), systemVolume: 1.5 }), 'invalidAudio')
+  // motionTiltStrength 合法域是 2...4
+  expectKind('pv.cursorTilt', () => validateCursorStyle({ ...m.makeCursorStyle(), motionTiltStrength: 5 }), 'invalidCursor')
+  expectKind('pv.cursorSize', () => validateCursorStyle({ ...m.makeCursorStyle(), size: 0.1 }), 'invalidCursor')
+  expectKind('pv.motionScale', () => validateMotionStyle(m.makeMotionStyle({ defaultZoomScale: 8 })), 'invalidMotion')
+  expectKind('pv.motionSpring', () => validateMotionStyle(
+    m.makeMotionStyle({ cursorSpringMass: 0 })
+  ), 'invalidMotion')
+  expectKind('pv.openingStagger', () => validateRecorderProject({
+    ...baseProject,
+    openingSequence: { ...m.makeOpeningSequence(), duration: 0.5, stagger: 1.0 },
+  }), 'invalidOpening')
+  expectKind('pv.openingOrder', () => validateRecorderProject({
+    ...baseProject,
+    openingSequence: { ...m.makeOpeningSequence(), elementOrder: ['屏幕'] },
+  }), 'invalidOpening')
+
+  // 重复 ID → duplicateZoomID
+  const dupClip = makeClip({ id: 'z1', startTime: 0, endTime: 1, scale: 1.6 })
+  expectKind('pv.duplicateZoom', () => validateProjectTimeline(
+    m.makeProjectTimeline({ zoomClips: [dupClip, { ...dupClip }] })
+  ), 'duplicateZoomID')
+  // 重叠（间隙落在回落窗口内）→ overlappingZoom
+  expectKind('pv.overlapZoom', () => validateProjectTimeline(
+    m.makeProjectTimeline({
+      zoomClips: [
+        makeClip({ id: 'a', startTime: 0, endTime: 2, scale: 1.6, exitDuration: 0.7 }),
+        makeClip({ id: 'b', startTime: 2.2, endTime: 4, scale: 1.6 }),
+      ],
+    })
+  ), 'overlappingZoom')
+  // 单个片段入口走同一套规则
+  expectKind('pv.zoomClip', () => validateZoomAnimationClip({
+    ...makeClip({ id: 'bad', startTime: 0, endTime: 1, scale: 1.6 }), scale: 0.5,
+  }), 'invalidZoom')
+
+  // ================================================ AutoZoomPlanner
+  const click = (time, x, y) => makePointerClick(time, { x, y })
+  const evMove = (time, x, y) => ({ time, location: { x, y }, kind: 'move', clickPhase: null, rotationRadians: 0, recordedCursorAssetID: null })
+
+  // 单点击：start = t - 0.7*0.18，end = t + 0.9
+  const single = makeAutoZoomAnimationsFromClicks([click(2, 0.5, 0.5)])
+  check('az.singleCount', single.length, 1)
+  check('az.singleStart', single[0].startTime, 2 - 0.126, tol)
+  check('az.singleEnd', single[0].endTime, 2.9, tol)
+  check('az.singleOrigin', single[0].origin, 'automatic')
+  check('az.singleExit', single[0].exitDuration, 0.7, tol)
+  check('az.singleScale', single[0].scale, 1.6, tol)
+  // focus 按 safeInset=0.12 夹取
+  const corner = makeAutoZoomAnimationsFromClicks([click(2, 0.02, 0.98)])
+  check('az.focusClampedX', corner[0].focus.x, 0.12, tol)
+  check('az.focusClampedY', corner[0].focus.y, 0.88, tol)
+
+  // 同区域两点击（时间近 + 空间近）→ 一个焦点组
+  const near = makeAutoZoomAnimationsFromClicks([click(2, 0.5, 0.5), click(2.3, 0.52, 0.51)])
+  check('az.nearCount', near.length, 1)
+  // 空间远（跨度 0.8 > visibleExtent*0.5=0.3125）→ 两个焦点组
+  const far = makeAutoZoomAnimationsFromClicks([click(2, 0.1, 0.5), click(2.3, 0.9, 0.5)])
+  check('az.farCount', far.length, 2)
+  // 时间远（> clickGroupGap 1.4）→ 两个时间组
+  const late = makeAutoZoomAnimationsFromClicks([click(2, 0.5, 0.5), click(5, 0.5, 0.5)])
+  check('az.timeGapCount', late.length, 2)
+
+  // 空间分组细节
+  const groups = spatialFocusGroups([click(1, 0.2, 0.2), click(2, 0.3, 0.3), click(3, 0.9, 0.9)], 0.5, 0.5)
+  check('az.groupCount', groups.length, 2)
+  check('az.groupFocus', spatialFocusGroupFocus(groups[0]).x, 0.25, tol)
+
+  // 乱序 / 非法时间
+  check('az.orderedSorted', orderedValidClicks([click(3, 0, 0), click(1, 0, 0)])[0].time, 1)
+  check('az.orderedFiltered', orderedValidClicks([click(-1, 0, 0), click(1, 0, 0)]).length, 1)
+  const alreadyOrdered = [click(1, 0, 0), click(2, 0, 0)]
+  check('az.orderedIdentity', orderedValidClicks(alreadyOrdered) === alreadyOrdered, true)
+
+  // pointerClicks 只认左右键
+  check('az.pointerClicks', pointerClicks([
+    evMove(1, 0.1, 0.1),
+    { ...evMove(2, 0.2, 0.2), kind: 'leftClick' },
+    { ...evMove(3, 0.3, 0.3), kind: 'rightClick' },
+  ]).length, 2)
+
+  // 指针活动延长保持：点击后连续移动 → endTime 被拉长
+  const extended = makeAutoZoomAnimations(
+    [evMove(1.9, 0.5, 0.5), { ...evMove(2, 0.5, 0.5), kind: 'leftClick' }, evMove(2.5, 0.55, 0.55), evMove(3.0, 0.6, 0.6)],
+  )
+  check('az.activityExtended', extended[0].endTime > 2.9, true)
+  // settleHold 0.55：3.0 + 0.55 = 3.55
+  check('az.activityEnd', extended[0].endTime, 3.55, tol)
+
+  // 折叠：首尾相接、同 scale / easing 的自动片段合一
+  const merged = mergingConnectedAutomaticEnvelopes([
+    makeClip({ id: 'm1', startTime: 0, endTime: 2, scale: 1.6, origin: 'automatic', easing: '弹簧', exitDuration: 0 }),
+    makeClip({ id: 'm2', startTime: 2, endTime: 4, scale: 1.6, origin: 'automatic', easing: '弹簧', exitDuration: 0.5 }),
+  ])
+  check('az.mergedCount', merged.length, 1)
+  check('az.mergedEnd', merged[0].endTime, 4, tol)
+  check('az.mergedExit', merged[0].exitDuration, 0.5, tol)
+  // 手动片段不折叠
+  check('az.mergedManual', mergingConnectedAutomaticEnvelopes([
+    makeClip({ id: 'm3', startTime: 0, endTime: 2, scale: 1.6, origin: 'automatic', exitDuration: 0 }),
+    makeClip({ id: 'm4', startTime: 2, endTime: 4, scale: 1.6, origin: 'manual' }),
+  ]).length, 2)
+
+  // 裁剪：末段夹到时长、退出收缩
+  const clipped = clippedZoomAnimations(
+    [makeClip({ id: 'c1', startTime: 0, endTime: 5, scale: 1.6, exitDuration: 0.7 })],
+    3
+  )
+  check('az.clipEnd', clipped[0].endTime, 3, tol)
+  check('az.clipExit', clipped[0].exitDuration, 0, tol)
+  check('az.clipBeyond', clippedZoomAnimations(
+    [makeClip({ id: 'c2', startTime: 10, endTime: 12, scale: 1.6 })], 3
+  ).length, 0)
+  check('az.clipInvalidDuration', clippedZoomAnimations([], 0).length, 0)
+
+  // 关键帧裁剪：在裁点补一个采样帧
+  const clippedFrames = clippedZoomKeyframes(
+    [makeKeyframe({ time: 0, scale: 1, focus: { x: 0.5, y: 0.5 } }),
+     makeKeyframe({ time: 5, scale: 1.6, focus: { x: 0.5, y: 0.5 } })],
+    3,
+    m.makeMotionStyle()
+  )
+  check('az.clipFramesTail', clippedFrames[clippedFrames.length - 1].time, 3, tol)
+  check('az.clipFramesCount', clippedFrames.length, 2)
+
+  // 旧版关键帧：单点击组 → 初始帧 + start/zoomed/release/return = 5
+  const legacyFrames = makeAutoZoomKeyframesFromClicks([click(2, 0.5, 0.5)])
+  check('az.legacyFrameCount', legacyFrames.length, 5)
+  check('az.legacyStart', legacyFrames[1].time, 2 - 0.42 * 0.18, tol)
+  check('az.legacyZoomed', legacyFrames[2].time, 2 - 0.42 * 0.18 + 0.42, tol)
+  // release = max(t + hold, zoomed + hold)；zoomed 更晚时以 zoomed 为准
+  check('az.legacyRelease', legacyFrames[3].time, 2 - 0.42 * 0.18 + 0.42 + 0.9, tol)
+  check('az.legacyReturnScale', legacyFrames[4].scale, 1)
+
+  // 一点击一片段的历史配方
+  const perClick = makePerClickLegacyAnimations([click(2, 0.5, 0.5)])
+  check('az.perClickCount', perClick.length, 1)
+  check('az.perClickStart', perClick[0].startTime, 2 - 0.42 * 0.18, tol)
+  check('az.perClickEnd', perClick[0].endTime, 2.9, tol)
+
+  // 修复入口：只认纯自动轨
+  const manualTrack = [makeClip({ id: 'x1', startTime: 0, endTime: 1, scale: 1.6, origin: 'manual' })]
+  check('az.repairSkipsManual', repairingLegacyAutomaticAnimations(manualTrack, []).length, 1)
+  check('az.repairEmpty', repairingLegacyAutomaticAnimations([], []).length, 0)
+  // 当前规划器输出的轨道被识别 → 折叠（结果仍为 1 段）
+  const currentTrack = makeAutoZoomAnimationsFromClicks([click(2, 0.5, 0.5)])
+  const repaired = repairingLegacyAutomaticAnimations(currentTrack, [], { easing: '弹簧' })
+  check('az.repairRecognized', repaired.length, 1)
+  check('az.repairEasing', repaired[0].easing, '弹簧')
+
+  // ================================================ EditorTimeline
+  check('et.clampedTime', clampedTime(50, 100, 10), 5, tol)
+  check('et.clampedTimeOutOfRange', clampedTime(200, 100, 10), 10, tol)
+  check('et.clampedTimeZeroWidth', clampedTime(50, 0, 10), 0)
+  check('et.xPosition', xPosition(5, 100, 10), 50, tol)
+  check('et.xPositionZeroDuration', xPosition(5, 100, 0), 0)
+
+  // 空轨道拟合
+  const fitted = fitZoomAnimation({ start: 1, end: 2, animations: [], duration: 10 })
+  check('et.fitStart', fitted.startTime, 1, tol)
+  check('et.fitEnd', fitted.endTime, 2, tol)
+  check('et.fitOrigin', fitted.origin, 'automatic')
+  check('et.fitExit', fitted.exitDuration, 0.7, tol)
+  check('et.fitPreferredEnter', fitted.preferredEnterDuration, 0.7, tol)
+  // 点击（start == end）：默认 1.5s
+  const clickFit = fitZoomAnimation({ start: 1, end: 1, animations: [], duration: 10 })
+  check('et.fitClickLength', clickFit.endTime - clickFit.startTime, 1.5, tol)
+  // 起点落入前段回落窗口「洞口」→ 吸到相接
+  const neighbourClip = makeClip({ id: 'n1', startTime: 0, endTime: 2, scale: 1.6, exitDuration: 0.7 })
+  const holeFit = fitZoomAnimation({
+    start: 2.3, end: 3.3, animations: [neighbourClip], duration: 10,
+  })
+  // 起点被吸到相接处（lowerTouch=2），长度不变 → 终点随之前移
+  check('et.fitHoleStart', holeFit.startTime, 2, tol)
+  check('et.fitHoleEnd', holeFit.endTime, 3, tol)
+  // 起点已让开回落窗口 → 保持原样
+  const clearFit = fitZoomAnimation({
+    start: 3, end: 4, animations: [neighbourClip], duration: 10,
+  })
+  check('et.fitClearStart', clearFit.startTime, 3, tol)
+  // 完全没有空隙 → null
+  const fullClip = makeClip({ id: 'n2', startTime: 0, endTime: 10, scale: 1.6 })
+  check('et.fitNoRoom', fitZoomAnimation({
+    start: 4, end: 5, animations: [fullClip], duration: 10,
+  }), null)
+  check('et.fitInvalidDuration', fitZoomAnimation({
+    start: 1, end: 2, animations: [], duration: 0,
+  }), null)
+
+  // 手动画笔
+  const manual = manualZoomAnimation({ start: 1, end: 3, duration: 10 })
+  check('et.manualOrigin', manual.origin, 'manual')
+  check('et.manualEnd', manual.endTime, 3, tol)
+  // 极短拖动 → 按点击处理，最短 0.24
+  const manualTiny = manualZoomAnimation({ start: 1, end: 1.01, duration: 10 })
+  check('et.manualTinyEnd', manualTiny.endTime, 1 + Math.min(1.5, Math.max(10 * 0.2, 0.6)), tol)
+  const manualFrames = manualZoomRangeKeyframes({ start: 1, end: 4, duration: 10 })
+  check('et.manualFramesCount', manualFrames.length, 4)
+  check('et.manualFramesOrigin', manualFrames[0].origin, 'manual')
+  // transition = min(0.28, 3*0.3) = 0.28
+  check('et.manualFramesIn', manualFrames[1].time, 1.28, tol)
+  check('et.manualFramesOut', manualFrames[2].time, 3.72, tol)
+
+  // 段表
+  const segs = zoomSegmentsFromAnimations(
+    [makeClip({ id: 's1', startTime: 1, endTime: 3, scale: 1.6 })], 10
+  )
+  check('et.segCount', segs.length, 1)
+  check('et.segRepresentative', segs[0].representativeKeyframeID, 's1')
+  // 超出时长的段被夹取
+  const segsClamped = zoomSegmentsFromAnimations(
+    [makeClip({ id: 's2', startTime: 1, endTime: 20, scale: 1.6 })], 10
+  )
+  check('et.segClampedEnd', segsClamped[0].endTime, 10, tol)
+  // 退化段（时长 ≤ 0）被丢弃
+  check('et.segDegenerate', zoomSegmentsFromAnimations(
+    [makeClip({ id: 's3', startTime: 1, endTime: 1, scale: 1.6 })], 10
+  ).length, 0)
+
+  // 拆分
+  const splitSource = makeClip({ id: 'sp', startTime: 0, endTime: 2, scale: 1.6 })
+  const halves = splitZoomAnimation(splitSource, 1)
+  check('et.splitLeftEnd', halves[0].endTime, 1, tol)
+  check('et.splitLeftExit', halves[0].exitDuration, 0, tol)
+  check('et.splitRightStart', halves[1].startTime, 1, tol)
+  check('et.splitRightNewID', halves[1].id !== splitSource.id, true)
+  // 右段至少 0.15 的交接时长
+  check('et.splitRightEnter', halves[1].enterDuration, 0.7, tol)
+  check('et.splitTooShort', splitZoomAnimation(splitSource, 0.05), null)
+
+  // 邻接合法性
+  const prevClip = makeClip({ id: 'p1', startTime: 0, endTime: 2, scale: 1.6, exitDuration: 0.7 })
+  check('et.adjTouching', zoomSequenceIsValid(prevClip, makeClip({ id: 'p2', startTime: 2, endTime: 3, scale: 1.6 })), true)
+  check('et.adjCleared', zoomSequenceIsValid(prevClip, makeClip({ id: 'p3', startTime: 2.7, endTime: 3, scale: 1.6 })), true)
+  check('et.adjInHole', zoomSequenceIsValid(prevClip, makeClip({ id: 'p4', startTime: 2.3, endTime: 3, scale: 1.6 })), false)
+  check('et.adjOverlap', zoomSequenceIsValid(prevClip, makeClip({ id: 'p5', startTime: 1.9, endTime: 3, scale: 1.6 })), false)
+  check('et.effectiveExit', effectiveExitDuration(prevClip, 1.2), 0.7, tol)
+  const zeroExit = makeClip({ id: 'p6', startTime: 0, endTime: 1, scale: 1.6, exitDuration: 0 })
+  check('et.effectiveExitDefault', effectiveExitDuration(zeroExit, 1.2), 1.2, tol)
+
+  // 移动：单片段自由平移
+  const moved = movingZoomAnimation(
+    makeClip({ id: 'mv', startTime: 1, endTime: 2, scale: 1.6 }), 3, [], 10
+  )
+  check('et.moveTo', moved.startTime, 3, tol)
+  check('et.moveKeepsDuration', moved.endTime - moved.startTime, 1, tol)
+  // 被前段回落窗口挡住 → 吸附到合法位置
+  const movedIntoHole = movingZoomAnimation(
+    makeClip({ id: 'mv2', startTime: 5, endTime: 6, scale: 1.6 }),
+    2.2,
+    [makeClip({ id: 'pp', startTime: 0, endTime: 2, scale: 1.6, exitDuration: 0.7 })],
+    10
+  )
+  check('et.moveSnapped', movedIntoHole.startTime, 2, tol)
+
+  // 调整右端
+  const resized = resizingZoomAnimation({
+    animation: makeClip({ id: 'rs', startTime: 1, endTime: 2, scale: 1.6 }),
+    proposedEnd: 5,
+    animations: [],
+    duration: 10,
+  })
+  check('et.resizeEnd', resized.endTime, 5, tol)
+  // 最短时长保护
+  const resizedTiny = resizingZoomAnimation({
+    animation: makeClip({ id: 'rs2', startTime: 1, endTime: 3, scale: 1.6 }),
+    proposedEnd: 1.02,
+    animations: [],
+    duration: 10,
+  })
+  check('et.resizeMinimum', resizedTiny.endTime, 1.16, tol)
+
+  // 命中测试
+  const hitSegs = [makeTimelineZoomSegment({
+    id: 'h1', startTime: 0, endTime: 5, scale: 1.6, origin: 'automatic', representativeKeyframeID: 'h1',
+  })]
+  check('et.hitEmptyOutsideBar', zoomHitZone({
+    x: 10, y: 2, segments: hitSegs, width: 100, duration: 10, selectedID: null, hoveredID: null,
+  }).kind, 'empty')
+  check('et.hitMove', zoomHitZone({
+    x: 10, y: 28, segments: hitSegs, width: 100, duration: 10, selectedID: null, hoveredID: null,
+  }).kind, 'move')
+  // 选中后靠近左端 → leading 手柄
+  const leadingHit = zoomHitZone({
+    x: 2, y: 28, segments: hitSegs, width: 100, duration: 10, selectedID: 'h1', hoveredID: null,
+  })
+  check('et.hitLeadingKind', leadingHit.kind, 'resize')
+  check('et.hitLeadingSide', leadingHit.leading, true)
+  // 靠近右端（段宽 50，右端 50）→ trailing 手柄
+  const trailingHit = zoomHitZone({
+    x: 48, y: 28, segments: hitSegs, width: 100, duration: 10, selectedID: null, hoveredID: 'h1',
+  })
+  check('et.hitTrailingSide', trailingHit.leading, false)
+  // 空白处（段外）→ empty
+  check('et.hitOutsideSegment', zoomHitZone({
+    x: 80, y: 28, segments: hitSegs, width: 100, duration: 10, selectedID: null, hoveredID: null,
+  }).kind, 'empty')
+
+  // 运动命中（tuple 版）
+  const motionItems = [{ id: 'mo1', timing: makeTransitionTiming({ startTime: 0, duration: 2 }) }]
+  check('et.motionHitMove', motionHitZone({
+    x: 10, y: 23, timings: motionItems, width: 100, duration: 10, selectedID: null, hoveredID: null,
+  }).kind, 'move')
+  // trackHeight 46 / barHeight 36 → bar 在 y ∈ [5, 41]
+  check('et.motionHitOutside', motionHitZone({
+    x: 10, y: 2, timings: motionItems, width: 100, duration: 10, selectedID: null, hoveredID: null,
+  }).kind, 'empty')
+
+  // 运动创建拟合
+  const fittedTiming = fitMotionTiming({
+    start: 1, end: 2, timings: [], duration: 10, returnDuration: 0.6,
+  })
+  check('et.fitMotionStart', fittedTiming.startTime, 1, tol)
+  check('et.fitMotionDuration', fittedTiming.duration, 1, tol)
+  // leadInDuration 默认整段
+  check('et.fitMotionLeadIn', fittedTiming.leadInDuration, 1, tol)
+  check('et.fitMotionReturn', fittedTiming.returnDuration, 0.6, tol)
+  const fittedMotionClick = fitMotionTiming({
+    start: 1, end: 1, timings: [], duration: 10, returnDuration: 0.6,
+  })
+  check('et.fitMotionClickLength', fittedMotionClick.duration, Math.min(1.2, Math.max(10 * 0.15, 0.5)), tol)
+  // 间隙不足 0.16 → null
+  check('et.fitMotionNoRoom', fitMotionTiming({
+    start: 1, end: 2, timings: [makeTransitionTiming({ startTime: 0, duration: 10 })],
+    duration: 10, returnDuration: 0.6,
+  }), null)
+
+  // 运动回落归一
+  const returnPatches = motionReturnNormalizations(
+    'r1',
+    [
+      { id: 'r1', timing: makeTransitionTiming({ startTime: 0, duration: 2, returnDuration: 0 }) },
+      { id: 'r2', timing: makeTransitionTiming({ startTime: 2.5, duration: 1, returnDuration: 0 }) },
+    ],
+    0.7
+  )
+  check('et.returnPatchCount', returnPatches.length, 1)
+  check('et.returnPatchId', returnPatches[0].id, 'r1')
+  // 剩余间隙 0.5 < 默认回落 0.7 → 封顶到 0.5
+  check('et.returnPatchDuration', returnPatches[0].timing.returnDuration, 0.5, tol)
+
+  // 缩放退出归一
+  const exitPatches = exitNormalizations(
+    'e1',
+    [
+      makeClip({ id: 'e1', startTime: 0, endTime: 2, scale: 1.6, exitDuration: 0 }),
+      makeClip({ id: 'e2', startTime: 2.5, endTime: 4, scale: 1.6 }),
+    ],
+    0.7
+  )
+  check('et.exitPatchCount', exitPatches.length, 1)
+  check('et.exitPatchDuration', exitPatches[0].exitDuration, 0.5, tol)
+
+  // 关键帧 → 段表
+  const kfSegs = zoomSegmentsFromKeyframes(
+    [
+      makeKeyframe({ time: 0, scale: 1, focus: { x: 0.5, y: 0.5 } }),
+      makeKeyframe({ time: 1, scale: 1.6, focus: { x: 0.5, y: 0.5 } }),
+      makeKeyframe({ time: 3, scale: 1.6, focus: { x: 0.5, y: 0.5 } }),
+      makeKeyframe({ time: 4, scale: 1, focus: { x: 0.5, y: 0.5 } }),
+    ],
+    10
+  )
+  check('et.kfSegCount', kfSegs.length, 1)
+  // 段起点取前一个关键帧（开始爬升处）
+  check('et.kfSegStart', kfSegs[0].startTime, 0, tol)
+  check('et.kfSegEnd', kfSegs[0].endTime, 4, tol)
+  check('et.kfSegScale', kfSegs[0].scale, 1.6, tol)
+  check('et.kfSegEasing', kfSegs[0].easing, '三次方缓动')
+  check('et.kfSegEnter', kfSegs[0].enterDuration, 0.55, tol)
+  // 手动关键帧 → 段 origin 升级为 manual
+  const manualKfSegs = zoomSegmentsFromKeyframes(
+    [
+      makeKeyframe({ time: 0, scale: 1, focus: { x: 0.5, y: 0.5 } }),
+      makeKeyframe({ time: 1, scale: 2, focus: { x: 0.5, y: 0.5 }, origin: 'manual' }),
+      makeKeyframe({ time: 2, scale: 1, focus: { x: 0.5, y: 0.5 } }),
+    ],
+    10
+  )
+  check('et.kfManualOrigin', manualKfSegs[0].origin, 'manual')
+}
+
+runRecorderCoreBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

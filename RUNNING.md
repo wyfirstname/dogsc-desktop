@@ -336,3 +336,18 @@ PointerTrack 等转写后实现。
   - `refreshingCursor()`：只刷新指针路径/形状/点击相位，保留缓存的视频与壁纸相位。
 - 依赖补齐：`ProjectTimeline.ts` 增加 `mosaicClips` / `stickerClips`（+`makeProjectTimeline` 缺省），`ProjectMediaModel.ts` 用 `decodeMosaicClip` / `decodeStickerClip` 解码；`ScreenMotionClip.focusEffect` 从 `unknown` 收紧为 `FocusEffect | null`。
 - verify-model 断言 292 → 416（+124）：内容填充缩放/可见源、光标布局与四种点击几何、聚焦有效性/相位/目标、贴图桥接与背景抑制、媒体切片边界与辅助时钟、场景图层顺序、开场淡入与稳定、贴图动画路径、打码过渡、屏幕框装饰、光标裁切（画布外返回 null）、refreshingCursor 相位保持。
+
+## 十四、RecorderCore 收官（8 文件 / 2,332 行）
+
+`Sources/RecorderCore/` 至此 **44/44 全部映射完毕**，纯逻辑层无剩余。
+
+- `ExportPolicy.ts`（68 行）：`RequiredProjectMedia` 按**后期状态**（静音/隐藏/背景源）而非录制开关判定导出所需文件；`exportVideoBitrate` 按像素数分三档上限（1080p 65M / 1440p 100M / 4K 130M），下限 12M，公式 `pixels × fps / 6`。
+- `RecordingPerformanceDiagnostics.ts`（156 行）：采样值非负/0~100 夹取；`RecordingPerformanceSummary` 滚动峰值（连续两次录制的摘要可累加，不必重扫 JSONL）；`unknown` 热状态严重度为 −1，不覆盖已观测值。
+- `AudioCaptureDiagnostics.ts`（57 行）：包驱动计数（非 PCM 帧）、六类丢弃求和、每秒钟数（`elapsed=0 → 0`）。
+- `CameraCaptureDiagnostics.ts`（207 行）：25 字段恢复清单；`decode` 对完整性闸门之前的旧清单补中性默认（不把诊断演进变成兼容断裂）；`received/appendedFramesPerSecond` 用 `N−1` 分母且 `N>1` 才计算。
+- `ScreenMotionCreationStyle.ts`（45 行）：从片段抽出可复用样式（回落取手授意图）；`isValid` 覆盖 13 个数值含贝塞尔控制点；`clip(timing:)` 的回落时长取 `min(样式, 旧值)`——样式不能放大回落。
+- `ProjectValidator.ts`（210 行）：**只校验不修复**的唯一边界。10 类域错误 + 中文文案；timeline 走 `ProjectTimelineEditing.validate` 并把 `duplicateClipID`/`overlappingClips` 翻译为带具体 id 的稳定错误；开场三条不变量（stagger 上限 + 无重复 + elementOrder 是全集排列）。
+- `AutoZoomPlanner.ts`（651 行）：点击聚类 → 空间焦点组（跨度阈值 `visibleExtent × 0.50 / 0.70`）→ 指针活动延长保持（idle 1.4s + settle 0.55s，**同时收缩回落避免 effectEndTime 越界**）→ 折叠相接自动包络；`repairingLegacyAutomaticAnimations` 用「与已知历史配方逐字段一致」识别未改动自动轨，四种历史配方全认。
+- `EditorTimeline.ts`（938 行）：创建拟合/手动/移动/调整共用「相接或让足回落窗口」不变量，洞口一律**吸附**到最近合法位；命中测试含有序快路径（二分）与无序 z 序回退；运动轨（`TransitionTiming`）与缩放轨（`ZoomAnimationClip`）双套但同规则；`zoomSegments(from:keyframes)` 段起点取爬升前那一帧。
+- 依赖补齐：`ZoomAnimation.ts` 新增 `PointerClick` / `makePointerClick`（Swift L21-30）、`makeKeyframe`（Swift L356-368）；`MotionStyle.defaultScreenMotion` 从 `unknown` 收紧为 `ScreenMotionCreationStyle | null`。
+- verify-model 断言 416 → 606（+190）：码率三档与上下限、诊断夹取与滚动峰值、旧清单解码、样式回落取小、10 类校验错误、点击聚类/空间分组/活动延长/包络折叠、创建拟合洞口吸附、命中测试手柄、运动回落归一、关键帧段表。
