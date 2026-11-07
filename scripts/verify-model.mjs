@@ -2479,5 +2479,553 @@ function runTimelineGeometryBatch() {
 
 runTimelineGeometryBatch()
 
+async function runMediaAnalysisBatch() {
+  const {
+    EMPTY_MEDIA_INVENTORY, MediaAnalysisError, MediaWaveformSession,
+    MEDIA_ANALYZER_DEFAULT_SAMPLE_COUNT, TimestampedWaveformAccumulator,
+    inventoryHasAudio, inventoryHasVideo, makeMediaAssetInventory,
+    mediaAnalysisErrorMessage, mediaInventoryEquals, mediaInventoryFromProbe,
+    waveformFrameBoundary,
+    CameraLetterboxCache, LETTERBOX_LUMA_B, LETTERBOX_LUMA_G, LETTERBOX_LUMA_R,
+    LETTERBOX_MINIMUM_DURATION, LETTERBOX_SAMPLE_FRACTIONS, analyzeCameraLetterbox,
+    cameraLetterboxMediaVersion, cameraLetterboxMediaVersionKey, centralDetailedBand,
+    conservativeBounds, contentBounds, coreImageCropRect, croppedDisplaySize,
+    croppedOriginTranslation, downsampleToLetterboxGrid, letterboxGridDimension,
+    letterboxLumaProfile, letterboxSampleTimes, medianArea, stableCrop,
+    CAMERA_TIMESTAMP_REPAIRED_SUFFIX, PROJECT_OPEN_WARNING, PROJECT_PACKAGE_ENTRY_FILE,
+    loadProjectOpenSnapshot, normalizeProjectPackagePath, originalCameraRecordingPath,
+    snapshotIsSaved, zoomClipArraysEqual,
+    LEGACY_CURSOR_SPRING, LEGACY_MOTION_UPGRADE_TOLERANCE, LEGACY_SCREEN_SPRING,
+    UPGRADED_CURSOR_SPRING, UPGRADED_SCREEN_SPRING, motionStyleEquals,
+    upgradeLegacyMotionDefaults,
+    bucketIndex, makeRecorderProject, makeCanvasStyle, makeMotionStyle,
+    makeProjectTimeline, makeProjectMediaManifest, makeProjectMediaReference,
+    makeStickerClip,
+  } = m
+
+  // ================================================ MediaAnalysis（Swift 327 行）
+  check('ma.defaultSampleCount', MEDIA_ANALYZER_DEFAULT_SAMPLE_COUNT, 160)
+  check('ma.emptyDuration', EMPTY_MEDIA_INVENTORY.duration, 0)
+  check('ma.emptyHasVideo', inventoryHasVideo(EMPTY_MEDIA_INVENTORY), false)
+  check('ma.emptyHasAudio', inventoryHasAudio(EMPTY_MEDIA_INVENTORY), false)
+  check('ma.videoFrameRateDefault', EMPTY_MEDIA_INVENTORY.videoFrameRate, null)
+
+  // bucketIndex：Swift L28-38
+  check('ma.bucketMid', bucketIndex({ start: 0, end: 10 }, 5, 160), 80)
+  check('ma.bucketStart', bucketIndex({ start: 0, end: 10 }, 0, 160), 0)
+  check('ma.bucketAtEnd', bucketIndex({ start: 0, end: 10 }, 10, 160), null)
+  check('ma.bucketBeforeStart', bucketIndex({ start: 2, end: 10 }, 1.9, 160), null)
+  check('ma.bucketZeroCount', bucketIndex({ start: 0, end: 10 }, 5, 0), null)
+  check('ma.bucketNaN', bucketIndex({ start: 0, end: 10 }, NaN, 160), null)
+
+  // 错误文案逐字照搬
+  check('ma.errMissing', mediaAnalysisErrorMessage('missingAudioTrack'), '媒体中没有可用的音频轨。')
+  check('ma.errCannotRead', mediaAnalysisErrorMessage('cannotReadAudio'), '无法创建音频读取器。')
+  check('ma.errFormat', mediaAnalysisErrorMessage('unsupportedAudioFormat'), '音频轨格式无法用于波形分析。')
+  check('ma.errRange', mediaAnalysisErrorMessage('invalidAudioTimeRange'), '音频轨的时间范围为空或无效。')
+  check('ma.errReader', mediaAnalysisErrorMessage('readerFailed', 'boom'), '音频分析失败：boom')
+  const maErr = new MediaAnalysisError('readerFailed', '磁盘坏道')
+  check('ma.errIsError', maErr instanceof Error, true)
+  check('ma.errKind', maErr.kind, 'readerFailed')
+  check('ma.errMessage', maErr.message, '音频分析失败：磁盘坏道')
+
+  // TimestampedWaveformAccumulator（L49-172）
+  const waveRange = { start: 0, end: 1 }
+  const acc = new TimestampedWaveformAccumulator(waveRange, 10)
+  check('ma.accCount', acc.sampleCount, 10)
+  check('ma.accZeroSampleClamped', new TimestampedWaveformAccumulator(waveRange, 0).sampleCount, 1)
+  acc.record(0.5, 0.35)
+  check('ma.accBucket3', acc.peaks[3], 0.5)
+  acc.record(0.2, 0.35)
+  check('ma.accKeepsMax', acc.peaks[3], 0.5)
+  acc.record(0.9, 0.32)
+  check('ma.accSameBucket', acc.peaks[3], 0.9)
+  acc.record(0.9, 1.0)
+  acc.record(-1, 0.05)
+  acc.record(NaN, 0.05)
+  check('ma.accGuardedTotal', acc.peaks.reduce((s, v) => s + v, 0), 0.9)
+  // normalizedSamples：噪声底 0.012 + pow(x, 0.95)
+  const expectedCurve = Math.pow((0.9 - 0.012) / (1 - 0.012), 0.95)
+  check('ma.accCurve', acc.normalizedSamples[3], expectedCurve, 1e-12)
+  check('ma.accSilence', acc.normalizedSamples[0], 0)
+  const accFloor = new TimestampedWaveformAccumulator(waveRange, 4)
+  accFloor.record(0.012, 0.1)
+  check('ma.accFloorZero', accFloor.normalizedSamples[0], 0)
+
+  // waveformFrameBoundary（L150-161）：容差 max(|raw|,1)*eps*16
+  check('ma.frameExact', waveformFrameBoundary(0.1, 0.1, 48000, 4800), 0)
+  check('ma.frameJustBelow', waveformFrameBoundary(0.1 + 4799.999999999 / 48000, 0.1, 48000, 4800), 4800)
+  check('ma.frameClampLow', waveformFrameBoundary(-5, 0.1, 48000, 4800), 0)
+  check('ma.frameClampHigh', waveformFrameBoundary(10, 0.1, 48000, 4800), 4800)
+  const toleranceAt4800 = Math.max(Math.abs(4800), 1) * Number.EPSILON * 16
+  check('ma.frameTolerance', toleranceAt4800, 4800 * 2.220446049250313e-16 * 16, 1e-18)
+
+  // recordInterleavedPCM（L78-148）：10 帧 / 10 桶 / 单声道
+  const pcmMono = new Int16Array(10)
+  for (let i = 0; i < 10; i++) pcmMono[i] = (i + 1) * 1000
+  const accPcm = new TimestampedWaveformAccumulator(waveRange, 10)
+  accPcm.recordInterleavedPCM(pcmMono, 1, 10, 0)
+  check('ma.pcmFirstBucket', accPcm.peaks[0], 1000 / 32768, 1e-12)
+  check('ma.pcmLastBucket', accPcm.peaks[9], 10000 / 32768, 1e-12)
+  check('ma.pcmBuckets', accPcm.peaks.filter((v) => v > 0).length, 10)
+
+  // 立体声：最大值跨声道取
+  const pcmStereo = new Int16Array(20)
+  for (let i = 0; i < 10; i++) {
+    pcmStereo[i * 2] = 1000 * (i + 1)
+    pcmStereo[i * 2 + 1] = -30000
+  }
+  const accStereo = new TimestampedWaveformAccumulator(waveRange, 10)
+  accStereo.recordInterleavedPCM(pcmStereo, 2, 10, 0)
+  check('ma.stereoMax', accStereo.peaks[0], 30000 / 32768, 1e-12)
+
+  // 守卫：channels=0 / sampleRate=0 / 空缓冲 / 非有限 presentationTime
+  const accGuard = new TimestampedWaveformAccumulator(waveRange, 10)
+  accGuard.recordInterleavedPCM(pcmMono, 0, 10, 0)
+  accGuard.recordInterleavedPCM(pcmMono, 1, 0, 0)
+  accGuard.recordInterleavedPCM(new Int16Array(0), 1, 10, 0)
+  accGuard.recordInterleavedPCM(pcmMono, 1, 10, NaN)
+  check('ma.guardsNoWrite', accGuard.peaks.reduce((s, v) => s + v, 0), 0)
+  // 缓冲完全落在时间区间之外
+  const accOut = new TimestampedWaveformAccumulator(waveRange, 10)
+  accOut.recordInterleavedPCM(pcmMono, 1, 10, 5)
+  check('ma.outOfRangeNoWrite', accOut.peaks.reduce((s, v) => s + v, 0), 0)
+  // 取消回调：bucket 0 与 64 各触发一次
+  const accCancel = new TimestampedWaveformAccumulator({ start: 0, end: 1 }, 200)
+  let cancelCalls = 0
+  accCancel.recordInterleavedPCM(new Int16Array(200), 1, 200, 0, {
+    checkCancellation: () => {
+      cancelCalls++
+    }
+  })
+  check('ma.cancelCalls', cancelCalls, 4) // 0,64,128,192
+
+  // MediaWaveformSession（L281-314 循环骨架）
+  const session = new MediaWaveformSession(waveRange, 10)
+  session.append(pcmMono, 1, 10, NaN)
+  session.append(new Int16Array(0), 1, 10, 0)
+  session.append(pcmMono, 1, 10, 0)
+  check('ma.sessionPeak', session.finish()[9], Math.pow((10000 / 32768 - 0.012) / (1 - 0.012), 0.95), 1e-12)
+
+  // mediaInventoryFromProbe（L212-229）
+  const invFull = mediaInventoryFromProbe({
+    assetDuration: 3,
+    videoTimeRange: { start: 0, end: 4 },
+    audioTimeRange: { start: 0, end: 6 },
+    videoWidth: 1920.4,
+    videoHeight: 1080.6,
+    videoFrameRate: 59.94
+  })
+  check('ma.invDurationMax', invFull.duration, 6)
+  check('ma.invWidthRounded', invFull.videoWidth, 1920)
+  check('ma.invHeightRounded', invFull.videoHeight, 1081)
+  check('ma.invFrameRate', invFull.videoFrameRate, 59.94)
+  const invNoVideo = mediaInventoryFromProbe({
+    assetDuration: NaN,
+    videoTimeRange: null,
+    audioTimeRange: { start: 0, end: 2.5 },
+    videoWidth: 800,
+    videoHeight: 600,
+    videoFrameRate: 30
+  })
+  check('ma.invNaNRange', invNoVideo.duration, 2.5)
+  check('ma.invNoVideoWidth', invNoVideo.videoWidth, null)
+  check('ma.invNoVideoRate', invNoVideo.videoFrameRate, null)
+  const invZeroSize = mediaInventoryFromProbe({
+    assetDuration: 1,
+    videoTimeRange: { start: 0, end: 1 },
+    audioTimeRange: null,
+    videoWidth: 0,
+    videoHeight: 720,
+    videoFrameRate: 0
+  })
+  check('ma.invZeroWidth', invZeroSize.videoWidth, null)
+  check('ma.invZeroRate', invZeroSize.videoFrameRate, null)
+  check('ma.invEquals', mediaInventoryEquals(invFull, { ...invFull }), true)
+  check(
+    'ma.invNotEquals',
+    mediaInventoryEquals(invFull, { ...invFull, duration: 7 }),
+    false
+  )
+  check(
+    'ma.invFactory',
+    mediaInventoryEquals(makeMediaAssetInventory({ duration: 0 }), EMPTY_MEDIA_INVENTORY),
+    true
+  )
+
+  // ================================================ CameraLetterboxAnalysis（Swift 335 行）
+  check('lb.lumaR', LETTERBOX_LUMA_R, 0.2126)
+  check('lb.lumaSum', LETTERBOX_LUMA_R + LETTERBOX_LUMA_G + LETTERBOX_LUMA_B, 1, 1e-12)
+  check('lb.minDuration', LETTERBOX_MINIMUM_DURATION, 0.2)
+  const grid1080 = letterboxGridDimension(1920, 1080)
+  check('lb.gridWidth', grid1080.gridWidth, 360)
+  check('lb.gridHeight', grid1080.gridHeight, 203) // round(1080/1920*360) = round(202.5)
+  const gridSmall = letterboxGridDimension(40, 40)
+  check('lb.gridSmallWidth', gridSmall.gridWidth, 40)
+  check('lb.gridSmallHeight', gridSmall.gridHeight, 40)
+  check('lb.gridInvalid', letterboxGridDimension(0, 10), null)
+
+  // conservativeBounds（L195-206）：确认有黑边的一侧内收一格
+  const spanFull = conservativeBounds({ first: 0, last: 9 }, 10)
+  check('lb.spanFullStart', spanFull.start, 0)
+  check('lb.spanFullEnd', spanFull.end, 1)
+  const spanTop = conservativeBounds({ first: 2, last: 9 }, 10)
+  check('lb.spanTopStart', spanTop.start, 0.3)
+  const spanBottom = conservativeBounds({ first: 0, last: 5 }, 10)
+  check('lb.spanBottomEnd', spanBottom.end, 0.5)
+
+  // centralDetailedBand（L221-265）
+  check('lb.bandTooShort', centralDetailedBand([0, 0, 0, 0, 0, 0, 0]), null)
+  check('lb.bandFlat', centralDetailedBand(new Array(20).fill(0)), null)
+  const detailGap = new Array(20).fill(0)
+  for (let i = 5; i <= 8; i++) detailGap[i] = 10
+  for (let i = 11; i <= 14; i++) detailGap[i] = 10
+  const bandGap = centralDetailedBand(detailGap)
+  check('lb.bandBridgedFirst', bandGap.first, 4)
+  check('lb.bandBridgedLast', bandGap.last, 15)
+
+  // contentBounds：合成 40x40，白色内容块 rows 10..29 / cols 5..34
+  const makeRaster = (width, height, paint) => {
+    const pixels = new Uint8ClampedArray(width * height * 4)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const o = (y * width + x) * 4
+        const value = paint(x, y) ? 255 : 0
+        pixels[o] = value
+        pixels[o + 1] = value
+        pixels[o + 2] = value
+        pixels[o + 3] = 255
+      }
+    }
+    return { width, height, pixels }
+  }
+  const insideBox = makeRaster(40, 40, (x, y) => y >= 10 && y <= 29 && x >= 5 && x <= 34)
+  const boxCrop = contentBounds(insideBox)
+  check('lb.boxX', boxCrop.x, 0.15) // (5+1)/40
+  check('lb.boxY', boxCrop.y, 0.275) // (10+1)/40
+  check('lb.boxWidth', boxCrop.width, 0.7) // 34/40 - 6/40
+  check('lb.boxHeight', boxCrop.height, 0.45) // 29/40 - 11/40
+  // 满幅内容：没有黑边 → 返回 null（调用方按原样使用素材）
+  check('lb.fullFrameNull', contentBounds(makeRaster(40, 40, () => true)), null)
+  // 全黑：无内容 → null
+  check('lb.blackNull', contentBounds(makeRaster(40, 40, () => false)), null)
+  check('lb.invalidImage', contentBounds({ width: 0, height: 0, pixels: new Uint8ClampedArray(0) }), null)
+
+  // 竖屏分支：20x80，纹理带在 rows 30..49（棋盘列）
+  const portraitTextured = makeRaster(20, 80, (x, y) => y >= 30 && y <= 49 && x % 2 === 1)
+  const portraitCrop = contentBounds(portraitTextured)
+  check('lb.portraitX', portraitCrop.x, 0)
+  // 纹理带 rows 30..49，radius=2 平滑后 active 覆盖 28..51
+  check('lb.portraitY', portraitCrop.y, 0.3625) // (28+1)/80
+  check('lb.portraitWidth', portraitCrop.width, 1)
+  check('lb.portraitHeight', portraitCrop.height, 0.275) // 51/80 - 29/80
+
+  // letterboxLumaProfile：行/列均值与行细节
+  const profileOfBox = letterboxLumaProfile(insideBox.pixels, 40, 40)
+  check('lb.profileRow', profileOfBox.rowLuma[10], 191.25) // 255*30/40
+  check('lb.profileCol', profileOfBox.colLuma[5], 127.5) // 255*20/40
+  // 内容块左右各一次 0→255 跳变：2*255/39
+  check('lb.profileDetail', profileOfBox.rowDetail[10], 510 / 39) // 13.0769…
+  const profileOfPortrait = letterboxLumaProfile(portraitTextured.pixels, 20, 80)
+  check('lb.portraitDetail', profileOfPortrait.rowDetail[30], 255)
+
+  // 下采样：2x2 → 1x1 等权平均
+  const tiny = makeRaster(2, 2, () => false)
+  for (let i = 0; i < 4; i++) {
+    tiny.pixels[i * 4] = 100
+    tiny.pixels[i * 4 + 3] = 255
+  }
+  const gridTiny = downsampleToLetterboxGrid(tiny, 1, 1)
+  check('lb.downsampleR', gridTiny[0], 100)
+
+  // stableCrop（L270-299）：离群帧不能带动全片取景
+  const stableBase = { x: 0.1, y: 0.2, width: 0.6, height: 0.5 }
+  const candidates = [
+    stableBase,
+    stableBase,
+    stableBase,
+    { ...stableBase },
+    { x: 0.9, y: 0.0, width: 0.1, height: 1 }
+  ]
+  const stable = stableCrop(candidates)
+  check('lb.stableX', stable.x, 0.1)
+  check('lb.stableY', stable.y, 0.2)
+  check('lb.stableWidth', stable.width, 0.6)
+  check('lb.stableHeight', stable.height, 0.5)
+  check('lb.stableEmpty', stableCrop([]), null)
+  // 等量簇时取中位面积更小的那个
+  const tie = stableCrop([
+    { x: 0, y: 0, width: 1, height: 0.5 },
+    { x: 0, y: 0, width: 1, height: 0.5 },
+    { x: 0.4, y: 0, width: 0.3, height: 0.2 },
+    { x: 0.4, y: 0, width: 0.3, height: 0.2 }
+  ])
+  check('lb.stableTieHeight', tie.height, 0.2)
+  check('lb.medianAreaEmpty', medianArea([]) === Infinity, true)
+  // Swift `areas[areas.count / 2]`：偶数个取上中位数 → 0.5
+  check('lb.medianArea', medianArea([{ width: 1, height: 0.5 }, { width: 1, height: 0.1 }]), 0.5)
+
+  // Core Image y 轴翻转（L318-328）
+  const ciRect = coreImageCropRect(
+    { x: 0, y: 0, width: 100, height: 200 },
+    { x: 0.1, y: 0.25, width: 0.5, height: 0.5 }
+  )
+  check('lb.ciX', ciRect.x, 10)
+  check('lb.ciY', ciRect.y, 50) // 200*(1-0.25-0.5)
+  check('lb.ciWidth', ciRect.width, 50)
+  check('lb.ciHeight', ciRect.height, 100)
+  const ciMoved = croppedOriginTranslation(
+    { x: 0, y: 0, width: 100, height: 200 },
+    { x: 0.1, y: 0.25, width: 0.5, height: 0.5 }
+  )
+  check('lb.ciTranslateX', ciMoved.x, -10)
+  check('lb.ciTranslateY', ciMoved.y, -50)
+  const displaySize = croppedDisplaySize({ width: 1000, height: 800 }, { x: 0, y: 0, width: 0.5, height: 0.25 })
+  check('lb.displayWidth', displaySize.width, 500)
+  check('lb.displayHeight', displaySize.height, 200)
+  check('lb.displayNullCrop', croppedDisplaySize({ width: 10, height: 20 }, null).width, 10)
+  check('lb.displayNullSize', croppedDisplaySize(null, { x: 0, y: 0, width: 1, height: 1 }), null)
+
+  // 采样时间点（L84-95）：0.1 … 0.9
+  check('lb.fractionCount', LETTERBOX_SAMPLE_FRACTIONS.length, 9)
+  check('lb.fractionLast', LETTERBOX_SAMPLE_FRACTIONS[8], 0.9)
+  check('lb.sampleMid', letterboxSampleTimes(10)[4], 5)
+  // 时长不足 0.2s 直接放弃
+  let sampleCalls = 0
+  const shortResult = await analyzeCameraLetterbox(0.1, () => {
+    sampleCalls++
+    return null
+  })
+  check('lb.shortNull', shortResult, null)
+  check('lb.shortNoSample', sampleCalls, 0)
+  const sampled = await analyzeCameraLetterbox(10, (time) => (time >= 1 && time <= 9 ? insideBox : null))
+  check('lb.sampledY', sampled.y, 0.275)
+  const cancelled = await analyzeCameraLetterbox(
+    10,
+    () => insideBox,
+    { isCancelled: () => true }
+  )
+  check('lb.cancelledNull', cancelled, null)
+
+  // 缓存：同版本只分析一次、nil 结果也缓存、超容量按插入顺序淘汰（L27-48）
+  const lbCache = new CameraLetterboxCache(2)
+  let analyzeCalls = 0
+  const versionA = cameraLetterboxMediaVersion('/a.mov', { size: 10n })
+  const versionA2 = cameraLetterboxMediaVersion('/a.mov', { size: 10n })
+  const versionB = cameraLetterboxMediaVersion('/a.mov', { size: 11n })
+  const versionC = cameraLetterboxMediaVersion('/a.mov', { size: 12n })
+  check('lb.versionKeyEqual', cameraLetterboxMediaVersionKey(versionA), cameraLetterboxMediaVersionKey(versionA2))
+  await lbCache.value(versionA, async () => {
+    analyzeCalls++
+    return null
+  })
+  await lbCache.value(versionA2, async () => {
+    analyzeCalls++
+    return null
+  })
+  check('lb.cacheSingleFlight', analyzeCalls, 1)
+  check('lb.cacheSize', lbCache.size, 1)
+  await lbCache.value(versionB, async () => null)
+  await lbCache.value(versionC, async () => null)
+  check('lb.cacheEvicted', lbCache.size, 2)
+  lbCache.clear()
+  check('lb.cacheCleared', lbCache.size, 0)
+
+  // ================================================ LegacyMotionDefaultsUpgrade
+  check('lm.tolerance', LEGACY_MOTION_UPGRADE_TOLERANCE, 0.000001)
+  const legacyMotion = makeMotionStyle({
+    screenSpringMass: 1,
+    screenSpringStiffness: 180,
+    screenSpringDamping: 24,
+    cursorSpringMass: 1,
+    cursorSpringStiffness: 260,
+    cursorSpringDamping: 30,
+    defaultZoomEasing: '三次方缓动',
+    defaultZoomTransitionDuration: 0.55
+  })
+  const upgradedMotion = upgradeLegacyMotionDefaults(legacyMotion)
+  check('lm.screenMass', upgradedMotion.screenSpringMass, UPGRADED_SCREEN_SPRING.mass)
+  check('lm.screenStiffness', upgradedMotion.screenSpringStiffness, 210)
+  check('lm.screenDamping', upgradedMotion.screenSpringDamping, 42)
+  check('lm.cursorMass', upgradedMotion.cursorSpringMass, UPGRADED_CURSOR_SPRING.mass)
+  check('lm.cursorStiffness', upgradedMotion.cursorSpringStiffness, 450)
+  check('lm.cursorDamping', upgradedMotion.cursorSpringDamping, 66)
+  check('lm.easing', upgradedMotion.defaultZoomEasing, '弹簧')
+  check('lm.duration', upgradedMotion.defaultZoomTransitionDuration, 0.7)
+  check('lm.originalPreserved', legacyMotion.screenSpringMass, LEGACY_SCREEN_SPRING.mass)
+  check('lm.changed', motionStyleEquals(legacyMotion, upgradedMotion), false)
+  // 用户手写值保持权威
+  const authored = makeMotionStyle({
+    screenSpringMass: 1,
+    screenSpringStiffness: 190,
+    screenSpringDamping: 24,
+    defaultZoomEasing: '三次方缓动',
+    defaultZoomTransitionDuration: 0.55
+  })
+  const authoredUpgrade = upgradeLegacyMotionDefaults(authored)
+  check('lm.authoredScreenMass', authoredUpgrade.screenSpringMass, 1)
+  check('lm.authoredEasingStillUpgrades', authoredUpgrade.defaultZoomEasing, '弹簧')
+  // 上一代弹簧默认 0.6s 只改时长
+  const nearSpring = makeMotionStyle({ defaultZoomEasing: '弹簧', defaultZoomTransitionDuration: 0.6 })
+  check('lm.springDuration', upgradeLegacyMotionDefaults(nearSpring).defaultZoomTransitionDuration, 0.7)
+  const userSpring = makeMotionStyle({ defaultZoomEasing: '弹簧', defaultZoomTransitionDuration: 0.9 })
+  check('lm.userSpringDuration', upgradeLegacyMotionDefaults(userSpring).defaultZoomTransitionDuration, 0.9)
+
+  // ================================================ ProjectOpening（Swift 219 行）
+  check('po.entryFile', PROJECT_PACKAGE_ENTRY_FILE, 'project.json')
+  check('po.normalizeInner', normalizeProjectPackagePath('/a/b/project.json'), '/a/b')
+  check('po.normalizeDir', normalizeProjectPackagePath('/a/b'), '/a/b')
+  check('po.normalizeTrailingSlash', normalizeProjectPackagePath('/a/b/'), '/a/b')
+  check('po.normalizeWindows', normalizeProjectPackagePath('C:\\a\\b\\project.json'), 'C:\\a\\b')
+  check('po.suffix', CAMERA_TIMESTAMP_REPAIRED_SUFFIX, '-timestamp-repaired.mov')
+  check('po.warnRelocated', PROJECT_OPEN_WARNING.relocatedMedia(3), '已在项目包内安全重新定位 3 项素材。')
+  check('po.warnStickers', PROJECT_OPEN_WARNING.missingStickers(2), '有 2 项贴图素材不存在或路径无效。')
+  check('po.warnPointer', PROJECT_OPEN_WARNING.brokenPointerEvents('X'), '鼠标事件轨损坏：X')
+
+  const repairedResolver = {
+    resolve: (relativePath) => (relativePath === 'media/cam.mov' ? '/P/media/cam.mov' : null)
+  }
+  check(
+    'po.originalCameraMigrated',
+    originalCameraRecordingPath('media/cam-timestamp-repaired.mov', repairedResolver, {}),
+    'media/cam.mov'
+  )
+  check('po.originalCameraNotProxy', originalCameraRecordingPath('media/cam.mov', repairedResolver, {}), null)
+  check(
+    'po.originalCameraMissing',
+    originalCameraRecordingPath('media/other-timestamp-repaired.mov', repairedResolver, {}),
+    null
+  )
+
+  // zoomClipArraysEqual：Swift 数组值语义
+  check('po.clipsEqual', zoomClipArraysEqual([], []), true)
+  check('po.clipsLength', zoomClipArraysEqual([{ id: 'a' }], []), false)
+  check('po.clipsValue', zoomClipArraysEqual([{ id: 'a' }], [{ id: 'b' }]), false)
+
+  // 完整加载流程
+  const makeOpenProject = (overrides = {}) =>
+    makeRecorderProject({
+      canvas: {
+        ...makeCanvasStyle(),
+        backgroundSource: { kind: 'projectImage', relativePath: 'assets/bg.png' },
+        ...(overrides.canvas ?? {})
+      },
+      media:
+        overrides.media !== undefined
+          ? overrides.media
+          : makeProjectMediaManifest({
+              screen: makeProjectMediaReference({ relativePath: 'media/screen.mov' }),
+              camera: makeProjectMediaReference({
+                relativePath: 'media/cam-timestamp-repaired.mov',
+                sourceTimeScale: 1.5,
+                sourceEndTime: 9
+              }),
+              pointerEvents: makeProjectMediaReference({ relativePath: 'events/pointer.json' })
+            }),
+      timeline: makeProjectTimeline({
+        stickerClips: [makeStickerClip({ relativePath: 'assets/sticker.png' })]
+      }),
+      motion: makeMotionStyle({
+        screenSpringMass: 1,
+        screenSpringStiffness: 180,
+        screenSpringDamping: 24
+      }),
+      ...(overrides.project ?? {})
+    })
+
+  const openProject = makeOpenProject()
+  const resolverA = {
+    isRecoverableProject: () => true,
+    isWorkingProject: () => false,
+    loadProject: (normalizedPath) => ({
+      project: openProject,
+      session: { root: normalizedPath },
+      recoveredFromPreviousRevision: true
+    }),
+    resolve: (relativePath) =>
+      relativePath === 'media/screen.mov' || relativePath === 'media/cam.mov'
+        ? `/P/${relativePath}`
+        : null,
+    relocatedRelativePath: () => null,
+    fileExists: () => false,
+    loadPointerEvents: () => {
+      throw new Error('事件文件损坏')
+    }
+  }
+  const snapshotA = loadProjectOpenSnapshot('/P/project.json', resolverA)
+  check('po.snapshotPath', snapshotA.normalizedPath, '/P')
+  check('po.snapshotInterrupted', snapshotA.wasInterrupted, true)
+  check('po.snapshotScreen', snapshotA.recordingURL, '/P/media/screen.mov')
+  check('po.snapshotCameraMigrated', snapshotA.cameraRecordingURL, '/P/media/cam.mov')
+  check('po.snapshotCameraPath', openProject.media.camera.relativePath, 'media/cam.mov')
+  check('po.snapshotCameraScale', openProject.media.camera.sourceTimeScale, null)
+  check('po.snapshotCameraEnd', openProject.media.camera.sourceEndTime, null)
+  check('po.snapshotMicrophone', snapshotA.microphoneRecordingURL, null)
+  check('po.snapshotEventsEmpty', snapshotA.pointerEvents.length, 0)
+  check('po.snapshotWarningCount', snapshotA.warnings.length, 4)
+  check('po.snapshotWarn0', snapshotA.warnings[0], PROJECT_OPEN_WARNING.recoveredFromPreviousRevision)
+  check('po.snapshotWarn1', snapshotA.warnings[1], PROJECT_OPEN_WARNING.missingBackgroundMedia)
+  check('po.snapshotWarn2', snapshotA.warnings[2], PROJECT_OPEN_WARNING.missingStickers(1))
+  check('po.snapshotWarn3', snapshotA.warnings[3], PROJECT_OPEN_WARNING.brokenPointerEvents('事件文件损坏'))
+  check('po.snapshotMotionUpgraded', openProject.motion.screenSpringMass, 2.4)
+  check('po.snapshotSaved', snapshotIsSaved(snapshotA, resolverA), true)
+  check('po.snapshotWorking', snapshotIsSaved(snapshotA, { isWorkingProject: () => true }), false)
+
+  // 重定位分支：素材在包内被移动过
+  const relocProject = makeOpenProject({
+    canvas: { backgroundSource: makeCanvasStyle().backgroundSource },
+    media: makeProjectMediaManifest({
+      screen: makeProjectMediaReference({ relativePath: 'media/screen.mov' }),
+      camera: makeProjectMediaReference({ relativePath: 'camera-moved.mov' })
+    }),
+    project: { timeline: makeProjectTimeline({ stickerClips: [] }) }
+  })
+  const resolverB = {
+    isRecoverableProject: () => false,
+    isWorkingProject: () => false,
+    loadProject: (normalizedPath) => ({
+      project: relocProject,
+      session: { root: normalizedPath },
+      recoveredFromPreviousRevision: false
+    }),
+    resolve: (relativePath) =>
+      relativePath === 'media/screen.mov' || relativePath === 'media/cam.mov'
+        ? `/P/${relativePath}`
+        : null,
+    relocatedRelativePath: (path, session, directories) =>
+      path === 'camera-moved.mov' && directories.includes('media') ? 'media/cam.mov' : null,
+    fileExists: () => true,
+    loadPointerEvents: () => []
+  }
+  const snapshotB = loadProjectOpenSnapshot('/P', resolverB)
+  check('po.relocatedPath', relocProject.media.camera.relativePath, 'media/cam.mov')
+  check('po.relocatedWarnings', snapshotB.warnings.length, 1)
+  check('po.relocatedWarning', snapshotB.warnings[0], PROJECT_OPEN_WARNING.relocatedMedia(1))
+  check('po.relocatedCameraURL', snapshotB.cameraRecordingURL, '/P/media/cam.mov')
+
+  // 系统背景缺失
+  const systemBgProject = makeOpenProject({
+    canvas: { backgroundSource: { kind: 'systemImage', absolutePath: '/System/bg.heic' } },
+    project: { timeline: makeProjectTimeline({ stickerClips: [] }) }
+  })
+  const resolverC = {
+    ...resolverB,
+    loadProject: (normalizedPath) => ({
+      project: systemBgProject,
+      session: { root: normalizedPath },
+      recoveredFromPreviousRevision: false
+    }),
+    fileExists: () => false,
+    loadPointerEvents: () => []
+  }
+  const snapshotC = loadProjectOpenSnapshot('/P', resolverC)
+  check('po.systemBgWarn', snapshotC.warnings.includes(PROJECT_OPEN_WARNING.missingSystemBackground), true)
+  check('po.systemBgNoProjectWarn', snapshotC.warnings.includes(PROJECT_OPEN_WARNING.missingBackgroundMedia), false)
+
+}
+
+
+await runMediaAnalysisBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

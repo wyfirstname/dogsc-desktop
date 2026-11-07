@@ -58,6 +58,26 @@ export function lerp(r: MediaTimeRange, t: number): number {
   return r.start + (r.end - r.start) * Math.min(Math.max(t, 0), 1)
 }
 
+/**
+ * 把呈现时间映射到桶序号（Swift `MediaTimeRange.bucketIndex`，L28-38）。
+ *
+ * 原实现：
+ *   guard bucketCount > 0, timestamp.isFinite,
+ *         timestamp >= start, timestamp < end else { return nil }
+ *   let normalized = (timestamp - start) / duration
+ *   return min(max(Int(normalized * Double(bucketCount)), 0), bucketCount - 1)
+ *
+ * 注意：`Int()` 向零截断，而 normalized 恒 >= 0，等价于 floor。
+ */
+export function bucketIndex(r: MediaTimeRange, timestamp: number, bucketCount: number): number | null {
+  if (!(bucketCount > 0)) return null
+  if (!Number.isFinite(timestamp)) return null
+  if (timestamp < r.start || timestamp >= r.end) return null
+  const d = r.end - r.start
+  const normalized = (timestamp - r.start) / d
+  return Math.min(Math.max(Math.trunc(normalized * bucketCount), 0), bucketCount - 1)
+}
+
 /** 时间格式化 00:00.00（与原版播放器显示一致） */
 export function formatClock(t: number): string {
   const s = Math.max(0, t)

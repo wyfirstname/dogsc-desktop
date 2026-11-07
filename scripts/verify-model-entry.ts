@@ -339,3 +339,62 @@ export {
   gestureIntentEquals,
   EditorTimelineGestureOwnership,
 } from '../src/renderer/src/core/EditorTimelineInteraction'
+
+// ---------------------------------------------------------------- 批次 10：媒体探测 / 黑边检测 / 工程打开
+export {
+  EMPTY_MEDIA_INVENTORY,
+  MediaAnalysisError,
+  MediaWaveformSession,
+  MEDIA_ANALYZER_DEFAULT_SAMPLE_COUNT,
+  TimestampedWaveformAccumulator,
+  inventoryHasAudio,
+  inventoryHasVideo,
+  makeMediaAssetInventory,
+  mediaAnalysisErrorMessage,
+  mediaInventoryEquals,
+  mediaInventoryFromProbe,
+  waveformFrameBoundary,
+} from '../src/renderer/src/core/MediaAnalysis'
+export {
+  CameraLetterboxCache,
+  LETTERBOX_LUMA_B,
+  LETTERBOX_LUMA_G,
+  LETTERBOX_LUMA_R,
+  LETTERBOX_MINIMUM_DURATION,
+  LETTERBOX_SAMPLE_FRACTIONS,
+  analyzeCameraLetterbox,
+  cameraLetterboxMediaVersion,
+  cameraLetterboxMediaVersionKey,
+  centralDetailedBand,
+  conservativeBounds,
+  contentBounds,
+  coreImageCropRect,
+  croppedDisplaySize,
+  croppedOriginTranslation,
+  downsampleToLetterboxGrid,
+  letterboxGridDimension,
+  letterboxLumaProfile,
+  letterboxSampleTimes,
+  medianArea,
+  stableCrop,
+} from '../src/renderer/src/core/CameraLetterboxAnalysis'
+export {
+  CAMERA_TIMESTAMP_REPAIRED_SUFFIX,
+  PROJECT_OPEN_WARNING,
+  PROJECT_PACKAGE_ENTRY_FILE,
+  loadProjectOpenSnapshot,
+  normalizeProjectPackagePath,
+  originalCameraRecordingPath,
+  snapshotIsSaved,
+  zoomClipArraysEqual,
+} from '../src/renderer/src/core/ProjectOpening'
+export {
+  LEGACY_CURSOR_SPRING,
+  LEGACY_MOTION_UPGRADE_TOLERANCE,
+  LEGACY_SCREEN_SPRING,
+  UPGRADED_CURSOR_SPRING,
+  UPGRADED_SCREEN_SPRING,
+  motionStyleEquals,
+  upgradeLegacyMotionDefaults,
+} from '../src/renderer/src/core/LegacyMotionDefaultsUpgrade'
+export { bucketIndex } from '../src/renderer/src/core/MediaTimeRange'

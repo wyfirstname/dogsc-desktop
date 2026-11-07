@@ -371,3 +371,33 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
   - 选择策略：片段身份来自持久化源序列而非异步媒体计划；被删片段的选择回退**中性画布**（时间选择不得隐含空间操作）；`SelectionReveal` 播放头已在片段内则不动。
   - 手势：`GestureIntent` 一次 mouse-down 锁一个语义目标，`Ownership.begin` 跨意图抢占一律失败 —— 空白创建手势再也抢不走片段上的按下。
 - verify-model 断言 606 → 791（+185）。
+
+## 十六、媒体探测 / 黑边检测 / 工程打开（4 文件 / 1,100 行）
+
+进入 `Sources/DogSCApp/` 后第一批「非 SwiftUI 视图」文件：它们是打开工程与
+喂给编辑器数据的前置环节，主体是纯算术与决策，Electron 侧由主进程提供原始
+数据、渲染层保留计算。
+
+- `core/MediaAnalysis.ts`（Swift 327 行）
+  - `MediaAssetInventory`：时长取 `max(容器时长, 视频轨终点, 音频轨终点)`，容器时长非有限或 ≤0 按 0 处理；宽高/帧率**只在视频轨真的存在时间区间时**才采信，宽高取整、帧率必须有限且 >0。
+  - `TimestampedWaveformAccumulator`：`record(peak:)` 走 `bucketIndex` 单调映射取最大；`recordInterleavedPCM` 是性能关键 —— 旧写法把每个解码帧反算呈现时间再除整轨时长，几分钟 48kHz 录音要做几千万次同样的映射；桶边界线性，所以**按桶算一次帧区间直接扫 Int16**，对全部声道取最大与「逐帧取声道最大再取桶最大」数学等价。右开边界用半个源帧压回最后一个被触达的桶（不依赖固定 epsilon）。
+  - `waveformFrameBoundary`：`ceil(raw − max(|raw|,1)×ulpOfOne×16)`，让精确 PCM 边界被表示成 4799.999999999 / 4800.000000001 时映射一致。
+  - `normalizedSamples`：噪声底 0.012，抬升后 `pow(elevated, 0.95)` —— **静音必须为 0**，UI 不得自造最低绿色条。
+  - `MediaAnalyzer.inspect/waveform` 的 AVFoundation 部分改为主进程 ffprobe/ffmpeg，纯算术留在 `mediaInventoryFromProbe` 与 `MediaWaveformSession`。
+- `core/CameraLetterboxAnalysis.ts`（Swift 335 行）
+  - 网格：`min(width, 360)` 宽 + 等比高度；原注释记录了踩坑（90×160 时一格≈12 源像素，边界插值在 PIP 底部留整条黑缝）。
+  - 竖屏优先走 `centralDetailedBand`：行细节 `rowDetail` 做 radius=2 平滑、阈值 `max(2.2, 中位数×0.45)`、允许间隙 `max(1.2%, 2)`，取**离中心最近**（并列取更长）的连续纹理带；带高必须落在 20%~80%，否则视为整帧损坏。亮留白与绿色错帧纹理极低，自然被排除。
+  - 回退路径：行/列平均亮度阈值 8.0，两轴任一检出即可（行/列均值会互相稀释），黑边至少占某一维 3%。
+  - `conservativeBounds`：**确认有黑边的一侧内收一整格** —— 下采样后首/末行是黑边与内容的插值混合行，宁可少不到 3 个源像素，也不能让解码缩放把混合行拉成可见黑缝。
+  - `stableCrop`：0.065 容差聚类，取最大簇中位数（等量时取中位面积更小的），**不能取并集** —— 一帧亮绿色错帧就能把全片裁切区扩到损坏区。
+  - `coreImageCropRect`：`NormalizedCrop` 左上角原点、Core Image 左下角原点，`y = 1 − crop.y − crop.height`；非对称黑边不翻转会裁错一边并在 PIP 顶部留缝。
+  - 缓存：`CameraLetterboxCache` 容量 8，**进行中与 nil 结果都缓存**（sync-point 编辑只改时钟不改像素）。
+- `core/ProjectOpening.ts`（Swift 219 行）
+  - 载入顺序即用户可见顺序：归一化包路径（`project.json` → 父目录）→ 中断标记 → 加载 → 五类相对素材重定位（media / events / assets 三个允许目录）→ 解析三条录制 URL → 依序产 9 种警告 → 读事件轨（可失败降级为空 + 警告）→ 遗留修复。
+  - `-timestamp-repaired.mov` 回迁：自动生成的时间戳代理没有恢复真实口型同步，不能悄悄留作工程素材源；只在原始 `.mov` 能解析到时迁回，并清空 `sourceTimeScale` / `sourceEndTime`。
+  - 遗留修复：`repairingLegacyAutomaticAnimations` 重分组 + `LegacyMotionDefaultsUpgrade` 升级 + `repairingPersistedRippleTransitions`；重分组把 easing 按旧默认重写过时，把 `automatic` 片段同步到新默认，**不触碰用户手写的其它 easing**。
+  - 贴图缺失按**路径集合**计数（同一文件被多次引用只报一次）。
+- `core/LegacyMotionDefaultsUpgrade.ts`（Swift AppModel.swift L99-139）
+  - 只升级未被改动过的旧预设：屏幕弹簧 1/180/24 → 2.4/210/42、光标弹簧 1/260/30 → 2.8/450/66、`三次方缓动 0.55s` → `弹簧 0.7s`；`弹簧 0.6s` 仅改时长为 0.7s（不动用户手写时长）。任一参数对不上就整块保持原样。
+- 依赖补齐：`MediaTimeRange.ts` 增加 `bucketIndex`（Swift L28-38）。
+- verify-model 断言 791 → 959（+168）：桶映射边界、波形最小值/曲率/噪声底、帧边界容差与夹取、单声道/立体声 PCM 扫描、取消回调节律、探测结果三路取 max 与有效性闸门、网格尺寸、纹理带间隙桥接、合成位图的包围盒与内收一格、竖屏分支、离群帧聚类、Core Image y 翻转、缓存单飞与淘汰、9 种打开警告的顺序与文案、时间戳代理回迁、遗留运镜升级。
