@@ -453,3 +453,15 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
 - 采样：`max(宽度/3, 24)` 步；播放头只在 `[startTime, startTime + curveDuration]` 内才画；参考线固定 1/2/3/4/6×；阶段名只在跨度 > 30pt 时显示，窄面板下自动隐去避免叠字。
 - 缓存键含轨道身份、片段 id、运动样式、步数、绘图区与 total —— 采样已解析轨道是最贵的一步，片段与邻接未变就不重采样。
 - verify-model 断言 1287 → 1366（+79）：常量、绘图区最小 1pt、坐标映射与对数往返、0.9 下限、三节点位置、命中半径与取近、六种拖拽夹取、采样步数与曲线端点、播放头三态、参考线、阶段标签可见性、缓存键五字段比对。
+
+## 二十一、旋钮 / 遮罩 / 播放观察者等 8 个交互支撑件（8 文件 / 438 行）
+
+- `core/EditorKnobDrag.ts`（55 行）：角度以 **12 点为 0、顺时针为正**（`atan2(x, -y)`），每步只取**最短有向差**（>180 减 360、<−180 加 360）—— 跨底部接缝与按 Shift 都不会把之前的位移重新解释成反向。离圆心 <6pt 时角度无意义，锚点清空、等离开死区再重新锚定，绝不跳半圈。滚轮只在**垂直为主**时生效，单次夹到 ±0.08 再乘精细倍率 0.2。
+- `core/EditorMotionCurveStyle.ts`（27 行）：顺滑/利落/柔和 的标题、SF Symbol 名与说明文案逐字照搬。
+- `core/EditorCanvasSleepPresentation.ts`（46 行）：只拥有休眠遮罩动画；0.26s easeInOut，reduce motion 时长为 0。**只有最新一次过渡的回调有效**（revision 比对）—— 同一次淡入淡出中的第二次失焦会替换 completion，但必须等这次结束。
+- `core/RecorderPanelTransition.ts`（57 行）：录制窗口透明度唯一所有者。reduce motion 时用 0.10s 而非 0.18s；被取消的淡出可以晚到，但**只有最新一次可见性请求**才有权 orderOut（revision + wantsVisible 双条件）。
+- `core/EditorPlaybackTimelineObserver.ts`（63 行）：弱引用观察者表 + **一次 tick 一个事务**。原注释记录实测：每个观察者各自包 CATransaction 时，每次提交都是顶层提交，会把整个 AppKit 显示周期跑一遍，占主线程约 44%；外层包一个事务后它们变成嵌套提交，窗口每 tick 只提交一次。
+- `core/EditorTimelineCameraSync.ts`（58 行）：同步点轨中心线 41pt、振幅 14pt，偏移归一化夹到 ±1；标签恒带符号（`+12 ms` / `-12 ms`）；拖动草稿优先于已提交锚点；删除锚点后按源时间映射回输出时间试听，被删锚点若正选中则清空选择。
+- `core/EditorTextInputHitTesting.ts`（60 行）：两条判据 —— 活动 field editor 可能被重挂到输入框之外，命中它自身可见区就直接算「点到了文本输入」；否则从命中节点沿父链找可编辑 NSTextField/NSTextView。锚点视图 `hitTest` 恒返回 nil，永不拦截鼠标。
+- `core/EditorPlaybackInitialFrameWaiter.ts`（72 行）：一次性首帧桥接。`requestNotificationOfMediaDataChange` 在没有 pull delegate 时无效，所以必须先装 delegate；结果只定一次（超时/取消/通知都收敛到同一条 `finish`），定完立刻摘 delegate、清计时器 —— 不必用 8ms 轮询把编辑器叫醒。
+- verify-model 断言 1366 → 1499（+133）：旋钮角度四象限与死区、步进/精细/夹取、接缝最短路径、跨圆心重锚定、滚轮五类守卫、三套文案、遮罩 revision 竞态四态、面板 show/hide 幂等与过期回调、观察者事务单次提交与过期清理、同步点 y/label/草稿/删除决策、文本输入命中两条判据、首帧等待的成功/超时/取消/缓存四种结局。

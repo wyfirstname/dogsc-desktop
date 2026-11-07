@@ -580,3 +580,60 @@ export {
   envelopeX,
   envelopeY,
 } from '../src/renderer/src/core/EditorZoomEnvelope'
+
+// ---------------------------------------------------------------- 批次 15：旋钮 / 休眠遮罩 / 播放观察者
+export {
+  EditorKnobDragState,
+  KNOB_DEAD_ZONE_RADIUS,
+  KNOB_FINE_MULTIPLIER,
+  KNOB_START_ANGLE,
+  KNOB_SWEEP_ANGLE,
+  KNOB_WHEEL_DIVISOR,
+  KNOB_WHEEL_MAXIMUM_DELTA,
+  KNOB_WHEEL_PRECISE_DIVISOR,
+  clampKnobFraction,
+  knobAngle,
+  knobNeedleAngle,
+} from '../src/renderer/src/core/EditorKnobDrag'
+export {
+  editorMotionCurveDetail,
+  editorMotionCurveOption,
+  editorMotionCurveSymbol,
+  editorMotionCurveTitle,
+} from '../src/renderer/src/core/EditorMotionCurveStyle'
+export {
+  CANVAS_SLEEP_FADE_DURATION,
+  EditorCanvasSleepPresentation,
+  rafFadeAnimator,
+} from '../src/renderer/src/core/EditorCanvasSleepPresentation'
+export {
+  PANEL_FADE_DURATION,
+  PANEL_FADE_DURATION_REDUCED_MOTION,
+  RecorderPanelTransition,
+  panelTransitionDuration,
+} from '../src/renderer/src/core/RecorderPanelTransition'
+export {
+  EditorPlaybackTimelineObserverHub,
+  makeEditorPlaybackTimelineSnapshot,
+} from '../src/renderer/src/core/EditorPlaybackTimelineObserver'
+export {
+  CAMERA_SYNC_DISMISSAL,
+  CAMERA_SYNC_MINIMUM_DISPLAY_RANGE,
+  CAMERA_SYNC_TRACK_AMPLITUDE,
+  CAMERA_SYNC_TRACK_CENTER_Y,
+  cameraSyncDisplayRange,
+  cameraSyncOffsetLabel,
+  cameraSyncY,
+  presentedCameraSyncAnchor,
+  removeCameraSyncAnchor,
+} from '../src/renderer/src/core/EditorTimelineCameraSync'
+export {
+  rectContains,
+  rectIntersection,
+  targetsTextInput,
+  textInputRegionContains,
+} from '../src/renderer/src/core/EditorTextInputHitTesting'
+export {
+  INITIAL_FRAME_DEFAULT_ADVANCE_INTERVAL,
+  InitialFrameMediaDataWaiter,
+} from '../src/renderer/src/core/EditorPlaybackInitialFrameWaiter'

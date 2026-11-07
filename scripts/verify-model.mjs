@@ -4174,5 +4174,413 @@ async function runZoomEnvelopeBatch() {
 
 await runZoomEnvelopeBatch()
 
+async function runEditorInteractionSupportBatch() {
+  const {
+    EditorKnobDragState, KNOB_DEAD_ZONE_RADIUS, KNOB_FINE_MULTIPLIER, KNOB_START_ANGLE,
+    KNOB_SWEEP_ANGLE, clampKnobFraction, knobAngle, knobNeedleAngle,
+    editorMotionCurveDetail, editorMotionCurveOption, editorMotionCurveSymbol,
+    editorMotionCurveTitle,
+    CANVAS_SLEEP_FADE_DURATION, EditorCanvasSleepPresentation,
+    PANEL_FADE_DURATION, RecorderPanelTransition, panelTransitionDuration,
+    EditorPlaybackTimelineObserverHub, makeEditorPlaybackTimelineSnapshot,
+    CAMERA_SYNC_DISMISSAL, CAMERA_SYNC_TRACK_AMPLITUDE, CAMERA_SYNC_TRACK_CENTER_Y,
+    CAMERA_SYNC_MINIMUM_DISPLAY_RANGE, cameraSyncDisplayRange, cameraSyncOffsetLabel,
+    cameraSyncY, presentedCameraSyncAnchor, removeCameraSyncAnchor,
+    rectContains, rectIntersection, targetsTextInput, textInputRegionContains,
+    INITIAL_FRAME_DEFAULT_ADVANCE_INTERVAL, InitialFrameMediaDataWaiter,
+  } = m
+
+  // ================================================ EditorKnobDrag（Swift 55 行）
+  check('kn.sweep', KNOB_SWEEP_ANGLE, 270)
+  check('kn.start', KNOB_START_ANGLE, -135)
+  check('kn.deadZone', KNOB_DEAD_ZONE_RADIUS, 6)
+  check('kn.fine', KNOB_FINE_MULTIPLIER, 0.2)
+  check('kn.clampNaN', clampKnobFraction(NaN), 0)
+  check('kn.clampLow', clampKnobFraction(-1), 0)
+  check('kn.clampHigh', clampKnobFraction(2), 1)
+  check('kn.needleStart', knobNeedleAngle(0), -135)
+  check('kn.needleMid', knobNeedleAngle(0.5), 0)
+  check('kn.needleEnd', knobNeedleAngle(1), 135)
+  const knobCenter = { x: 0, y: 0 }
+  check('kn.angleUp', knobAngle({ x: 0, y: -10 }, knobCenter), 0)
+  check('kn.angleRight', knobAngle({ x: 10, y: 0 }, knobCenter), 90)
+  check('kn.angleDown', knobAngle({ x: 0, y: 10 }, knobCenter), 180)
+  check('kn.angleLeft', knobAngle({ x: -10, y: 0 }, knobCenter), -90)
+  check('kn.angleDeadZone', knobAngle({ x: 2, y: 2 }, knobCenter), null)
+  check('kn.angleNaN', knobAngle({ x: NaN, y: 0 }, knobCenter), null)
+  // 顺时针拖动：每 90° 走 90/270 = 1/3
+  const knob = new EditorKnobDragState(0, { x: 0, y: -10 }, knobCenter)
+  check('kn.initialFraction', knob.fraction, 0)
+  check('kn.rotateQuarter', knob.update({ x: 10, y: 0 }, false), 1 / 3, 1e-9)
+  check('kn.rotateHalf', knob.update({ x: 0, y: 10 }, false), 2 / 3, 1e-9)
+  // 精细模式慢 5 倍
+  const fineKnob = new EditorKnobDragState(0, { x: 0, y: -10 }, knobCenter)
+  check('kn.fineQuarter', fineKnob.update({ x: 10, y: 0 }, true), (1 / 3) * 0.2, 1e-9)
+  // 跨底缝：+179° → -179° 只走 +2°，不会被解释成 -358°
+  const seamKnob = new EditorKnobDragState(0.5, { x: 0.1745, y: 9.998 }, knobCenter)
+  const seamStart = knobAngle({ x: 0.1745, y: 9.998 }, knobCenter)
+  check('kn.seamStartAngle', Math.round(seamStart), 179)
+  const seamResult = seamKnob.update({ x: -0.1745, y: 9.998 }, false)
+  check('kn.seamShortestPath', seamResult, 0.5 + 2 / 270, 1e-6)
+  // 经过圆心：锚点清空，不跳半圈
+  const centerKnob = new EditorKnobDragState(0.5, { x: 0, y: -10 }, knobCenter)
+  check('kn.centerKeepsValue', centerKnob.update({ x: 1, y: 1 }, false), 0.5)
+  check('kn.afterCenterNoJump', centerKnob.update({ x: 0, y: 10 }, false), 0.5)
+  // 离开死区后的第一步只重新锚定（上一条），之后才恢复正常步进
+  check('kn.afterCenterReanchored', centerKnob.update({ x: 10, y: 0 }, false), 0.5 - 90 / 270, 1e-9)
+  // 夹取到 [0,1]
+  const fullKnob = new EditorKnobDragState(0.95, { x: 0, y: -10 }, knobCenter)
+  check('kn.clampedAtOne', fullKnob.update({ x: 10, y: 0 }, false), 1)
+  // 滚轮
+  check(
+    'kn.wheelNormal',
+    EditorKnobDragState.wheelDelta({ vertical: 10, horizontal: 0, precise: false, inverted: false, fine: false }),
+    0.08
+  )
+  check(
+    'kn.wheelPrecise',
+    EditorKnobDragState.wheelDelta({ vertical: 60, horizontal: 0, precise: true, inverted: false, fine: false }),
+    0.08
+  )
+  check(
+    'kn.wheelInverted',
+    EditorKnobDragState.wheelDelta({ vertical: 10, horizontal: 0, precise: false, inverted: true, fine: false }),
+    -0.08
+  )
+  check(
+    'kn.wheelFine',
+    EditorKnobDragState.wheelDelta({ vertical: 5, horizontal: 0, precise: false, inverted: false, fine: true }),
+    0.08 * 0.2 // 0.1 先夹到 0.08，再乘精细倍率
+  )
+  check(
+    'kn.wheelHorizontalDominant',
+    EditorKnobDragState.wheelDelta({ vertical: 1, horizontal: 5, precise: false, inverted: false, fine: false }),
+    null
+  )
+  check(
+    'kn.wheelTooSmall',
+    EditorKnobDragState.wheelDelta({ vertical: 0.00005, horizontal: 0, precise: false, inverted: false, fine: false }),
+    null
+  )
+  check(
+    'kn.wheelNaN',
+    EditorKnobDragState.wheelDelta({ vertical: NaN, horizontal: 0, precise: false, inverted: false, fine: false }),
+    null
+  )
+
+  // ================================================ EditorMotionCurveStyle（Swift 27 行）
+  check('mc.smoothTitle', editorMotionCurveTitle('smooth'), '顺滑')
+  check('mc.swiftTitle', editorMotionCurveTitle('swift'), '利落')
+  check('mc.gentleTitle', editorMotionCurveTitle('gentle'), '柔和')
+  check('mc.smoothSymbol', editorMotionCurveSymbol('smooth'), 'waveform.path')
+  check('mc.swiftSymbol', editorMotionCurveSymbol('swift'), 'bolt.fill')
+  check('mc.gentleSymbol', editorMotionCurveSymbol('gentle'), 'wind')
+  check('mc.smoothDetail', editorMotionCurveDetail('smooth'), '均衡加减速，适合大多数元素。')
+  check('mc.swiftDetail', editorMotionCurveDetail('swift'), '快速进入并干净收尾，节奏更明确。')
+  check('mc.gentleDetail', editorMotionCurveDetail('gentle'), '起落更慢，适合较大的画面和样机。')
+  check('mc.option', editorMotionCurveOption('swift').title, '利落')
+
+  // ================================================ EditorCanvasSleepPresentation（Swift 46 行）
+  check('cs.fadeDuration', CANVAS_SLEEP_FADE_DURATION, 0.26)
+  const fadeCalls = []
+  const fakeAnimator = {
+    animate: (from, to, duration, completion) => {
+      fadeCalls.push({ from, to, duration, completion })
+      return () => {}
+    }
+  }
+  const sleep = new EditorCanvasSleepPresentation(fakeAnimator)
+  check('cs.initialOpacity', sleep.opacity, 0)
+  let sleepCompletions = 0
+  sleep.setCovered(true, false, () => {
+    sleepCompletions++
+  })
+  check('cs.coverTarget', sleep.opacity, 1)
+  check('cs.coverDuration', fadeCalls[0].duration, 0.26)
+  check('cs.coverAnimating', sleep.animating, true)
+  check('cs.coverPendingCompletion', sleepCompletions, 0)
+  fadeCalls[0].completion()
+  check('cs.coverCompletionRan', sleepCompletions, 1)
+  check('cs.coverStopped', sleep.animating, false)
+  // reduce motion → 时长为 0
+  const sleepReduced = new EditorCanvasSleepPresentation(fakeAnimator)
+  sleepReduced.setCovered(true, true, () => {})
+  check('cs.reducedMotionDuration', fadeCalls[fadeCalls.length - 1].duration, 0)
+  // 同目标重复请求：不重启动画，但会替换 completion；未在动画中则立即完成
+  const sleepIdle = new EditorCanvasSleepPresentation(fakeAnimator)
+  let idleCompletions = 0
+  sleepIdle.setCovered(false, false, () => {
+    idleCompletions++
+  })
+  check('cs.sameTargetImmediate', idleCompletions, 1)
+  const sleepBusy = new EditorCanvasSleepPresentation(fakeAnimator)
+  let busyFirst = 0
+  let busySecond = 0
+  const beforeCount = fadeCalls.length
+  sleepBusy.setCovered(true, false, () => {
+    busyFirst++
+  })
+  const busyFade = fadeCalls[fadeCalls.length - 1]
+  sleepBusy.setCovered(true, false, () => {
+    busySecond++
+  })
+  check('cs.sameTargetNoRestart', fadeCalls.length - beforeCount, 1)
+  busyFade.completion()
+  check('cs.sameTargetFirstReplaced', busyFirst, 0)
+  check('cs.sameTargetSecondRuns', busySecond, 1)
+  // invalidate 作废在途 completion
+  const sleepInvalidated = new EditorCanvasSleepPresentation(fakeAnimator)
+  sleepInvalidated.setCovered(true, false, () => {
+    sleepCompletions++
+  })
+  const invalidatedFade = fadeCalls[fadeCalls.length - 1]
+  const completionsBefore = sleepCompletions
+  sleepInvalidated.invalidate()
+  invalidatedFade.completion()
+  check('cs.invalidateDropsCompletion', sleepCompletions, completionsBefore)
+  check('cs.invalidateStops', sleepInvalidated.animating, false)
+
+  // ================================================ RecorderPanelTransition（Swift 57 行）
+  check('pt.fadeDuration', PANEL_FADE_DURATION, 0.18)
+  check('pt.fadeReduced', panelTransitionDuration(true, true), 0.1)
+  check('pt.fadeNormal', panelTransitionDuration(true, false), 0.18)
+  check('pt.fadeDisabled', panelTransitionDuration(false, false), 0)
+  const makePanelWindow = () => {
+    const state = { visible: false, alpha: 1, pointer: true, orderOutCount: 0 }
+    return {
+      state,
+      get isVisible() {
+        return state.visible
+      },
+      setAlpha(value) {
+        state.alpha = value
+      },
+      orderFront() {
+        state.visible = true
+      },
+      orderOut() {
+        state.visible = false
+        state.orderOutCount++
+      },
+      setPointerInteractionEnabled(enabled) {
+        state.pointer = enabled
+      }
+    }
+  }
+  const panelAnimations = []
+  const panelTransition = new RecorderPanelTransition({
+    animate: (target, duration, completion) => {
+      panelAnimations.push({ target, duration, completion })
+    }
+  })
+  const panelWindow = makePanelWindow()
+  panelTransition.show(panelWindow, true)
+  check('pt.showVisible', panelWindow.state.visible, true)
+  check('pt.showPointer', panelWindow.state.pointer, true)
+  check('pt.showAlphaZeroFirst', panelWindow.state.alpha, 0)
+  check('pt.showAnimationTarget', panelAnimations[0].target, 1)
+  check('pt.showRevision', panelTransition.currentRevision, 1)
+  // 已可见再 show → 空操作
+  const animCountBefore = panelAnimations.length
+  panelTransition.show(panelWindow, true)
+  check('pt.showIdempotent', panelAnimations.length, animCountBefore)
+  // hide 动画：完成前不送走窗口
+  panelTransition.hide(panelWindow, true)
+  check('pt.hidePointerOff', panelWindow.state.pointer, false)
+  check('pt.hideStillVisible', panelWindow.state.visible, true)
+  panelAnimations[panelAnimations.length - 1].completion()
+  check('pt.hideOrderedOut', panelWindow.state.visible, false)
+  check('pt.hideAlphaReset', panelWindow.state.alpha, 1)
+  // 淡出被 show 抢走：过期回调不送窗口
+  panelTransition.show(panelWindow, false)
+  const staleFadeIndex = panelAnimations.length
+  panelTransition.hide(panelWindow, true)
+  const retiring = panelAnimations[panelAnimations.length - 1]
+  panelTransition.show(panelWindow, false)
+  const visibleAfterReshow = panelWindow.state.visible
+  retiring.completion()
+  check('pt.staleFadeIgnored', panelWindow.state.visible, visibleAfterReshow)
+  check('pt.staleFadeWasCancelled', staleFadeIndex > 0, true)
+  // 非动画 hide 直接送走
+  const quickWindow = makePanelWindow()
+  const quickTransition = new RecorderPanelTransition({ animate: () => {} })
+  quickTransition.show(quickWindow, false)
+  quickTransition.hide(quickWindow, false)
+  check('pt.immediateHide', quickWindow.state.visible, false)
+  check('pt.immediateAlpha', quickWindow.state.alpha, 1)
+  // 已隐藏且非动画 → 仍然走一遍（guard 只在 animated 时生效）
+  check('pt.hideGuardOnlyWhenAnimated', quickWindow.state.orderOutCount >= 1, true)
+
+  // ================================================ EditorPlaybackTimelineObserver（Swift 63 行）
+  const snapshotDefault = makeEditorPlaybackTimelineSnapshot({ outputTime: 0, duration: 10, isPlaying: false })
+  check('ob.defaultReveal', snapshotDefault.allowsViewportReveal, true)
+  const batchLog = []
+  const hub = new EditorPlaybackTimelineObserverHub({
+    begin: () => batchLog.push('begin'),
+    end: () => batchLog.push('end')
+  })
+  const received = []
+  const observerA = {
+    editorPlaybackTimelineDidUpdate: (snapshot) => received.push(`A:${snapshot.outputTime}`)
+  }
+  const observerB = {
+    editorPlaybackTimelineDidUpdate: (snapshot) => received.push(`B:${snapshot.outputTime}`)
+  }
+  hub.add(observerA, snapshotDefault)
+  hub.add(observerB, snapshotDefault)
+  check('ob.addImmediatePush', received.length, 2)
+  check('ob.count', hub.observerCount, 2)
+  received.length = 0
+  hub.publish(makeEditorPlaybackTimelineSnapshot({ outputTime: 1, duration: 10, isPlaying: true }))
+  check('ob.publishBoth', received.join(','), 'A:1,B:1')
+  check('ob.singleTransaction', batchLog.join(','), 'begin,end')
+  // 重复 add 不重复注册
+  hub.add(observerA, snapshotDefault)
+  check('ob.addDedupes', hub.observerCount, 2)
+  // 移除
+  hub.remove(observerB)
+  check('ob.removed', hub.observerCount, 1)
+  // 过期（弱引用被回收）自动清理
+  const hubWithRefs = new EditorPlaybackTimelineObserverHub({ begin: () => {}, end: () => {} })
+  let observerAlive = true
+  hubWithRefs.add(observerA, snapshotDefault, () => ({
+    deref: () => (observerAlive ? observerA : null)
+  }))
+  observerAlive = false
+  const beforeCleanup = received.length
+  hubWithRefs.publish(snapshotDefault)
+  check('ob.expiredSkipped', received.length, beforeCleanup)
+  check('ob.expiredPruned', hubWithRefs.observerCount, 0)
+
+  // ================================================ EditorTimelineCameraSync（Swift 58 行）
+  check('csx.centerY', CAMERA_SYNC_TRACK_CENTER_Y, 41)
+  check('csx.amplitude', CAMERA_SYNC_TRACK_AMPLITUDE, 14)
+  check('csx.zeroOffset', cameraSyncY(0, 2), 41)
+  check('csx.fullPositive', cameraSyncY(2, 2), 27)
+  check('csx.fullNegative', cameraSyncY(-2, 2), 55)
+  check('csx.clampedPositive', cameraSyncY(9, 2), 27)
+  check('csx.halfOffset', cameraSyncY(1, 2), 34)
+  check('csx.zeroRangeFloor', cameraSyncY(0, 0), 41)
+  check('csx.labelPositive', cameraSyncOffsetLabel(0.012), '+12 ms')
+  check('csx.labelNegative', cameraSyncOffsetLabel(-0.012), '-12 ms')
+  check('csx.labelZero', cameraSyncOffsetLabel(0), '+0 ms')
+  check('csx.labelHalfMs', cameraSyncOffsetLabel(0.0005), '+1 ms')
+  const anchors = [
+    { id: 'a1', sourceTime: 1, offset: 0.01 },
+    { id: 'a2', sourceTime: 2, offset: -0.02 }
+  ]
+  check('csx.presentedCommitted', presentedCameraSyncAnchor('a1', anchors, null).offset, 0.01)
+  check(
+    'csx.presentedDraft',
+    presentedCameraSyncAnchor('a1', anchors, { originalID: 'a1', draft: { id: 'a1', sourceTime: 1, offset: 0.05 } }).offset,
+    0.05
+  )
+  check('csx.presentedMissing', presentedCameraSyncAnchor('a9', anchors, null), null)
+  const removal = removeCameraSyncAnchor('a1', anchors, 'a1', (sourceTime) => sourceTime + 100)
+  check('csx.removalRemaining', removal.anchors.length, 1)
+  check('csx.removalClearsSelection', removal.clearsSelection, true)
+  check('csx.removalAudition', removal.auditionOutputTime, 101)
+  const removalUnselected = removeCameraSyncAnchor('a2', anchors, 'a1', () => null)
+  check('csx.removalKeepsSelection', removalUnselected.clearsSelection, false)
+  check('csx.removalNoAudition', removalUnselected.auditionOutputTime, null)
+  check('csx.dismissalCancelsAudition', CAMERA_SYNC_DISMISSAL.cancelAudition, true)
+
+  // ================================================ EditorTextInputHitTesting（Swift 60 行）
+  check('tx.rectContains', rectContains({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5 }), true)
+  check('tx.rectOutside', rectContains({ x: 0, y: 0, width: 10, height: 10 }, { x: 11, y: 5 }), false)
+  check('tx.intersection', rectIntersection({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 }).width, 5)
+  check('tx.intersectionNone', rectIntersection({ x: 0, y: 0, width: 1, height: 1 }, { x: 5, y: 5, width: 1, height: 1 }), null)
+  // 区域命中：窗口必须一致；命中区取 bounds ∩ visibleRect
+  const region = { bounds: { x: 0, y: 0, width: 100, height: 20 }, visibleRect: { x: 0, y: 0, width: 50, height: 20 } }
+  check('tx.regionInside', textInputRegionContains(region, { windowID: 1, locationInWindow: { x: 10, y: 10 } }, 1), true)
+  check('tx.regionOutsideVisible', textInputRegionContains(region, { windowID: 1, locationInWindow: { x: 80, y: 10 } }, 1), false)
+  check('tx.regionOtherWindow', textInputRegionContains(region, { windowID: 2, locationInWindow: { x: 10, y: 10 } }, 1), false)
+  check('tx.regionNoWindow', textInputRegionContains(region, { windowID: 1, locationInWindow: { x: 10, y: 10 } }, null), false)
+  // 命中链
+  const plainView = { isEditableTextField: false, isEditableTextView: false, parent: null }
+  const editableField = { isEditableTextField: true, isEditableTextView: false, parent: plainView }
+  check('tx.fieldEditorWins', targetsTextInput({ pointInWindow: { x: 5, y: 5 }, fieldEditorBounds: { x: 0, y: 0, width: 10, height: 10 }, hitCandidate: null }), true)
+  check('tx.chainTextField', targetsTextInput({ pointInWindow: { x: 50, y: 50 }, fieldEditorBounds: null, hitCandidate: editableField }), true)
+  check('tx.chainPlain', targetsTextInput({ pointInWindow: { x: 50, y: 50 }, fieldEditorBounds: null, hitCandidate: plainView }), false)
+  check('tx.chainMissing', targetsTextInput({ pointInWindow: { x: 50, y: 50 }, fieldEditorBounds: null, hitCandidate: null }), false)
+  check(
+    'tx.chainTextView',
+    targetsTextInput({
+      pointInWindow: { x: 1, y: 1 },
+      fieldEditorBounds: null,
+      hitCandidate: { isEditableTextField: false, isEditableTextView: true, parent: null }
+    }),
+    true
+  )
+
+  // ================================================ EditorPlaybackInitialFrameWaiter（Swift 72 行）
+  check('fw.defaultAdvance', INITIAL_FRAME_DEFAULT_ADVANCE_INTERVAL, 0.005)
+  const makeOutputPort = () => {
+    const state = { delegate: null, requested: null, delegateClears: 0 }
+    return {
+      state,
+      setDelegate(callback) {
+        state.delegate = callback
+        if (callback == null) state.delegateClears++
+      },
+      requestNotificationOfMediaDataChange(interval) {
+        state.requested = interval
+      }
+    }
+  }
+  const pendingTimeouts = []
+  const outputA = makeOutputPort()
+  const waiterA = new InitialFrameMediaDataWaiter({
+    output: outputA,
+    scheduleTimeout: (seconds, callback) => {
+      pendingTimeouts.push({ seconds, callback })
+      return () => {
+        pendingTimeouts.pop()
+      }
+    }
+  })
+  const waitA = waiterA.wait(1.5, 0.01)
+  check('fw.requestedInterval', outputA.state.requested, 0.01)
+  check('fw.delegateInstalled', typeof outputA.state.delegate, 'function')
+  check('fw.timeoutScheduled', pendingTimeouts[pendingTimeouts.length - 1].seconds, 1.5)
+  outputA.state.delegate()
+  check('fw.resolvedTrue', await waitA, true)
+  check('fw.delegateCleared', outputA.state.delegateClears, 1)
+  check('fw.cachedValue', waiterA.value, true)
+  // 已解析后再 wait：直接返回缓存值，不再请求
+  outputA.state.requested = null
+  check('fw.cachedWait', await waiterA.wait(1), true)
+  check('fw.noSecondRequest', outputA.state.requested, null)
+  // 超时 → false
+  const outputB = makeOutputPort()
+  const timeoutsB = []
+  const waiterB = new InitialFrameMediaDataWaiter({
+    output: outputB,
+    scheduleTimeout: (seconds, callback) => {
+      timeoutsB.push(callback)
+      return () => {}
+    }
+  })
+  const waitB = waiterB.wait(0.1)
+  timeoutsB[0]()
+  check('fw.timeoutFalse', await waitB, false)
+  check('fw.timeoutClearsDelegate', outputB.state.delegateClears, 1)
+  // 取消 → false
+  const outputC = makeOutputPort()
+  const cancellers = []
+  const waiterC = new InitialFrameMediaDataWaiter({
+    output: outputC,
+    scheduleTimeout: () => () => {},
+    registerCancellation: (cancel) => cancellers.push(cancel)
+  })
+  const waitC = waiterC.wait(1)
+  cancellers[0]()
+  check('fw.cancelledFalse', await waitC, false)
+  check('fw.cancelClearsDelegate', outputC.state.delegateClears, 1)
+
+}
+
+await runEditorInteractionSupportBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
