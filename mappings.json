@@ -46,7 +46,13 @@
     "Sources/RecorderCore/CameraMotion.swift": "src/renderer/src/core/CameraMotion.ts",
     "Sources/RecorderCore/PointerTrack.swift": "src/renderer/src/core/PointerTrack.ts",
     "Sources/RecorderCore/ProjectPointerTrack.swift": "src/renderer/src/core/ProjectPointerTrack.ts",
-    "Sources/RecorderCore/CompositionScene.swift": "src/renderer/src/core/CompositionScene.ts"
+    "Sources/RecorderCore/CompositionScene.swift": "src/renderer/src/core/CompositionScene.ts",
+    "Sources/RecorderCore/CameraContentFill.swift": "src/renderer/src/core/CameraContentFill.ts",
+    "Sources/RecorderCore/CursorRenderGeometry.swift": "src/renderer/src/core/CursorRenderGeometry.ts",
+    "Sources/RecorderCore/FocusEffect.swift": "src/renderer/src/core/FocusEffect.ts",
+    "Sources/RecorderCore/StickerTransition.swift": "src/renderer/src/core/StickerTransition.ts",
+    "Sources/RecorderCore/TimelineMediaPlan.swift": "src/renderer/src/core/TimelineMediaPlan.ts",
+    "Sources/RecorderCore/FrameScene.swift": "src/renderer/src/core/FrameScene.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }

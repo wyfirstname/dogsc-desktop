@@ -17,6 +17,8 @@ import type {
   TimeInterval,
 } from './ZoomAnimation'
 import type { CameraMotionClip } from './CameraMotion'
+import type { FocusEffect } from './FocusEffect'
+import type { MosaicClip, StickerClip } from './OverlayTimeline'
 import { ZOOM_BEZIER } from './ZoomAnimation'
 
 // ---------------------------------------------------------------- RecordingSegment
@@ -218,7 +220,7 @@ export interface ScreenMotionClip {
   target: ScreenMotionTarget
   /** 组合布局预设插入的跨轨道配对 ID；拖动/缩放一侧时另一侧跟随。 */
   groupID?: string | null
-  focusEffect?: unknown | null
+  focusEffect?: FocusEffect | null
 }
 
 // ---------------------------------------------------------------- OverlayTiming
@@ -287,6 +289,10 @@ export interface ProjectTimeline {
    * 可选：既有构造点暂不强制携带，消费侧用 `?? []`。
    */
   cameraMotionClips?: CameraMotionClip[]
+  /** 打码/隐私遮挡层（Swift ProjectTimeline.mosaicClips）。 */
+  mosaicClips?: MosaicClip[]
+  /** 贴图覆盖层（Swift ProjectTimeline.stickerClips）。 */
+  stickerClips?: StickerClip[]
 }
 
 export function makeProjectTimeline(
@@ -298,6 +304,8 @@ export function makeProjectTimeline(
     zoomClips: overrides.zoomClips ?? [],
     screenMotionClips: overrides.screenMotionClips ?? [],
     cameraMotionClips: overrides.cameraMotionClips ?? [],
+    mosaicClips: overrides.mosaicClips ?? [],
+    stickerClips: overrides.stickerClips ?? [],
   }
 }
 

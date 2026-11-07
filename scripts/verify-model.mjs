@@ -815,5 +815,430 @@ function runCompositionSceneBatch() {
 
 runCompositionSceneBatch()
 
+function runFrameSceneBatch() {
+  const {
+    cameraContentFillLayout, cameraContentFillDestinationPoint, cameraContentFillMirrorAxisX,
+    CAMERA_CONTENT_FILL_EDGE_OVERSCAN_SCALE,
+    cursorRenderLayout, cursorClickGeometry, makeCursorAssetMetrics,
+    CURSOR_CANONICAL_HEIGHT, CURSOR_CANONICAL_SHORT_EDGE,
+    makeFocusEffect, focusEffectScene, focusEffectIsValid, normalizedAngle,
+    focusEffectClearHalfWidth, focusEffectFeatherWidth,
+    StickerTransitionTrack, FrameStickerBackdropScene,
+    TimelineMediaPlan, ProjectTimelineMediaPlan, inferredSourceTimeScale, isSameBoundary,
+    FrameSceneEvaluator, openingSample, openingRect, stickerAnimationTransform, smootherStep,
+    overlayEffectProgress, screenDecoration, screenChromeKindFor, makeFrameMosaicScene,
+    frameCursorScene, stickerScenes, FRAME_COLOR_SDR_DESKTOP, compositionSizeShortEdge,
+    HexColor, makeZoomTrack,
+    makeCanvasStyle, makeCameraStyle, makeRecorderProject, makeOpeningSequence,
+    makeProjectTimeline, makeMosaicClip, makeStickerClip, makeOverlayTiming,
+    makeMotionStyle, makeCursorStyle, TimelineMap, makeTransitionTiming,
+  } = m
+
+  // ---- CameraContentFill（Swift L12-67）
+  const fill = cameraContentFillLayout(100, 100, { x: 0, y: 0, width: 200, height: 100 })
+  check('ccf.overscan', CAMERA_CONTENT_FILL_EDGE_OVERSCAN_SCALE, 1.01)
+  check('ccf.scale', fill.scale, 2 * 1.01)
+  check('ccf.destW', fill.destination.width, 200 * 1.01)
+  check('ccf.visibleW', Math.round(fill.visibleSource.width * 1000) / 1000, 99.01)
+  check('ccf.visibleH', Math.round(fill.visibleSource.height * 1000) / 1000, 49.505)
+  check('ccf.mirrorAxis', cameraContentFillMirrorAxisX(fill), 100)
+  const mirrored = cameraContentFillDestinationPoint(fill, { x: 50, y: 50 }, false)
+  check('ccf.pointX', Math.round(mirrored.x * 100) / 100, 100)
+  check('ccf.badTarget', cameraContentFillLayout(100, 100, { x: 0, y: 0, width: 0, height: 10 }), null)
+  check('ccf.zoomClamp', Math.round(cameraContentFillLayout(100, 100, { x: 0, y: 0, width: 100, height: 100 }, { x: 0.5, y: 0.5 }, 9).scale * 1000) / 1000, 4.04)
+
+  // ---- CursorRenderGeometry（Swift L145-357）
+  const metrics = makeCursorAssetMetrics({
+    hotspot: { x: 0, y: 0 },
+    intrinsicSize: { width: 32, height: 32 },
+    clickColor: HexColor.white,
+  })
+  const layout = cursorRenderLayout({ x: 500, y: 400 }, 1080, 1, metrics)
+  check('cur.canonical', CURSOR_CANONICAL_HEIGHT, 44)
+  check('cur.shortEdge', CURSOR_CANONICAL_SHORT_EDGE, 1080)
+  check('cur.height', layout.size.height, 44)
+  check('cur.originX', layout.origin.x, 500)
+  check('cur.clickD', layout.clickDiameter, 44 * 1.45)
+  check('cur.lineWidth', layout.clickLineWidth, 44 * 0.08)
+  check('cur.refHeight', layout.clickEffectHeight, 44)
+  const centered = cursorRenderLayout(
+    { x: 500, y: 400 },
+    1080,
+    1,
+    makeCursorAssetMetrics({
+      hotspot: { x: 0.5, y: 0.5 },
+      intrinsicSize: { width: 32, height: 32 },
+      clickColor: HexColor.white,
+    })
+  )
+  check('cur.hotspotX', centered.origin.x, 478)
+  check('cur.hotspotY', centered.origin.y, 378)
+  check('cur.4k', cursorRenderLayout({ x: 0, y: 0 }, 2160, 1, metrics).size.height, 88)
+  check('cur.badEdge', cursorRenderLayout({ x: 0, y: 0 }, 0, 1, metrics), null)
+
+  const ripple0 = cursorClickGeometry('ripple', 0, 44)
+  check('cur.rippleD', ripple0.primaryDiameter, 44 * 0.45)
+  check('cur.rippleFoot', ripple0.maxFootprintDiameter, 44 * 2.2)
+  check('cur.rippleDot', ripple0.secondaryIsFilled, true)
+  const ripple1 = cursorClickGeometry('ripple', 0.5, 44)
+  check('cur.rippleDotGone', ripple1.secondaryDiameter, 0)
+  check('cur.glowFilled', cursorClickGeometry('glow', 0.5, 44).primaryIsFilled, true)
+  check('cur.pulseInner', cursorClickGeometry('pulse', 0.275, 44).secondaryDiameter > 44 * 0.25, true)
+  check('cur.burstAccent', cursorClickGeometry('burst', 0, 44).accentOffset, 44 * 0.28)
+  check('cur.noneFx', cursorClickGeometry('none', 0.5, 44), null)
+  check('cur.badHeight', cursorClickGeometry('ripple', 0.5, 0), null)
+  check('cur.scaleClamp', cursorClickGeometry('ripple', 0, 44, 1, 9).maxFootprintDiameter, 44 * 3 * 2.2)
+
+  // ---- FocusEffect（Swift L31-117）
+  check('fe.angleNeg', normalizedAngle(-10), 350)
+  check('fe.angleWrap', normalizedAngle(370), 10)
+  check('fe.valid', focusEffectIsValid(makeFocusEffect()), true)
+  check('fe.invalidSize', focusEffectIsValid({ ...makeFocusEffect(), size: 0.05 }), false)
+  check('fe.invalidAngle', focusEffectIsValid({ ...makeFocusEffect(), angleDegrees: 400 }), false)
+  check('fe.half', focusEffectClearHalfWidth(makeFocusEffect(), 1000), 225)
+  check('fe.feather', focusEffectFeatherWidth(makeFocusEffect(), 1000), 200)
+  const linearEffect = makeFocusEffect({ linear: true })
+  check('fe.linearDimming', linearEffect.dimming, 0)
+  check('fe.linearSize', linearEffect.size, 0.32)
+  check('fe.noTracks', focusEffectScene({
+    zoom: null, screen: null, zoomFocus: { x: 0.5, y: 0.5 },
+    crop: { x: 0, y: 0, width: 1, height: 1 }, pointer: null,
+    time: 1, motion: makeMotionStyle(),
+  }), null)
+
+  const focusClip = {
+    id: 'fe-1',
+    timing: makeTransitionTiming({ startTime: 0, duration: 2 }),
+    target: { position: { x: 0.5, y: 0.5 }, scale: 1, rotationX: 0, rotationY: 0, rotationZ: 0, perspective: 0 },
+    focusEffect: makeFocusEffect({ blur: 0.6, dimming: 0.2 }),
+  }
+  const focusMid = focusEffectScene({
+    zoom: null, screen: focusClip, zoomFocus: { x: 0.5, y: 0.5 },
+    crop: { x: 0, y: 0, width: 1, height: 1 }, pointer: null,
+    time: 0.5, motion: makeMotionStyle(),
+  })
+  check('fe.anchorX', focusMid.center.x, 0.5)
+  check('fe.enterPartial', focusMid.progress > 0 && focusMid.progress < 1, true)
+  const focusAfter = focusEffectScene({
+    zoom: null, screen: focusClip, zoomFocus: { x: 0.5, y: 0.5 },
+    crop: { x: 0, y: 0, width: 1, height: 1 }, pointer: null,
+    time: 3, motion: makeMotionStyle(),
+  })
+  check('fe.holds', focusAfter.progress, 1)
+  // shape 为 nil 的 3D 聚焦按线性/固定目标解释（Swift L67-72），target 被覆盖
+  const implicitLinear = focusEffectScene({
+    zoom: null,
+    screen: { ...focusClip, focusEffect: makeFocusEffect({ blur: 0.6, target: 'pointer' }) },
+    zoomFocus: { x: 0.5, y: 0.5 },
+    crop: { x: 0, y: 0, width: 1, height: 1 },
+    pointer: { x: 0.2, y: 0.8 },
+    time: 1, motion: makeMotionStyle(),
+  })
+  check('fe.implicitFixed', implicitLinear.center.y, 0.5)
+  // 显式给出 shape 时指针目标生效
+  const pointerFocus = focusEffectScene({
+    zoom: null,
+    screen: {
+      ...focusClip,
+      focusEffect: makeFocusEffect({ shape: 'radial', blur: 0.6, target: 'pointer' }),
+    },
+    zoomFocus: { x: 0.5, y: 0.5 },
+    crop: { x: 0, y: 0, width: 1, height: 1 },
+    pointer: { x: 0.2, y: 0.8 },
+    time: 1, motion: makeMotionStyle(),
+  })
+  check('fe.pointerTarget', pointerFocus.center.y, 0.8)
+
+  // ---- StickerTransition（Swift L6-265）
+  const stickerA = makeStickerClip({
+    id: 'a', timing: makeOverlayTiming(0, 2), animation: 'pop', layerIndex: 0, hidesScreen: true,
+  })
+  const stickerB = makeStickerClip({
+    id: 'b', timing: makeOverlayTiming(2, 2), animation: 'pop', layerIndex: 1,
+  })
+  const stickerTrack = new StickerTransitionTrack([stickerA, stickerB])
+  const stickerAt05 = stickerTrack.sample(0.5)
+  check('st.visible', stickerAt05.stickers.length, 1)
+  // hasJoinedEntry 只看「入场侧已接入」的贴图（Swift L214-216）
+  check('st.joinedIncoming', stickerTrack.hasJoinedEntry('b'), true)
+  check('st.joinedOutgoing', stickerTrack.hasJoinedEntry('a'), false)
+  check('st.backdropSuppress', stickerAt05.backdrop.screenSuppression > 0, true)
+  check('st.emptyAfter', stickerTrack.sample(5).stickers.length, 0)
+  check('st.suppressEntry', stickerTrack.sample(0.05, true).stickers[0].visibility >= 0, true)
+  const backdropFromClip = FrameStickerBackdropScene.fromClip(stickerA, 0.5)
+  check('st.backdropBlurSuppressed', backdropFromClip.screenBlur, 0)
+  const merged = backdropFromClip.interpolated(new FrameStickerBackdropScene(), 0.5)
+  check('st.interpolate', merged.screenSuppression, 0.25)
+
+  // ---- TimelineMediaPlan（Swift L5-231）
+  const map10 = new TimelineMap({ kind: 'fullRecording' }, 10)
+  const primaryPlan = TimelineMediaPlan.fromPrimary(map10)
+  check('tmp.slices', primaryPlan.slices.length, 1)
+  check('tmp.contains', primaryPlan.contains(5), true)
+  check('tmp.notContainsEnd', primaryPlan.contains(10), false)
+  check('tmp.sourceAt', primaryPlan.sourceTimeAt(2), 2)
+  check('tmp.playable', primaryPlan.playableDuration, 10)
+  check('tmp.boundary', isSameBoundary(1, 1 + 1e-12), true)
+  const projPlan = ProjectTimelineMediaPlan.build({ kind: 'fullRecording' }, null, { start: 0, end: 10 })
+  check('tmp.projDuration', projPlan.outputDuration, 10)
+  check('tmp.projNoCamera', projPlan.camera, null)
+  check('tmp.projPointer', projPlan.pointer.segments.length, 1)
+  check('tmp.inferredScale', inferredSourceTimeScale({
+    relativePath: 'cam', startOffset: 0, sourceStartTime: 0,
+    sourceTimeScale: null, sourceEndTime: null, syncAnchors: [],
+  }, { start: 0, end: 10 }, 10), 1)
+
+  // ---- FrameScene 基础场景（Swift L541-833）
+  const motion = makeMotionStyle()
+  const baseCanvas = makeCanvasStyle({ screenFrame: 'none' })
+  const baseProject = makeRecorderProject({
+    canvas: baseCanvas,
+    camera: makeCameraStyle({ isHidden: true }),
+    motion,
+    cursorStyle: makeCursorStyle(),
+    openingSequence: makeOpeningSequence(),
+    timeline: makeProjectTimeline(),
+  })
+  const scene = FrameSceneEvaluator.scene({
+    project: baseProject,
+    time: 0,
+    outputDuration: 10,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.time', scene.time, 0)
+  check('fs.order', scene.layerOrder.join(','), 'background,screen')
+  check('fs.noCamera', scene.camera, null)
+  check('fs.noCursor', scene.cursor, null)
+  check('fs.colorSpace', scene.color.outputSpace, 'sRGB')
+  check('fs.shortEdge', compositionSizeShortEdge(scene.canvasSize), 1080)
+  check('fs.fitsCanvas', scene.screen.finalRect.width <= 1920, true)
+  check('fs.opacity', scene.screen.opacity, 1)
+  check('fs.blurZero', scene.background.blurRadius, 0)
+  check('fs.projection', typeof scene.screen.projectedQuad.topLeft.x, 'number')
+  check('fs.noDecoration', scene.screen.decoration.type, 'none')
+  check('fs.noMosaic', scene.screen.mosaics.length, 0)
+
+  // 时间被夹取到 [0, outputDuration]
+  const latePlan = FrameSceneEvaluator.renderPlan({
+    project: baseProject,
+    presentationTime: -5,
+    outputDuration: 10,
+    frameRate: 0,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.planClampTime', latePlan.presentationTime, 0)
+  check('fs.planRate', latePlan.frameRate, 1)
+  check('fs.planDuration', latePlan.outputDuration, 10)
+
+  // ---- 打码 + spotlight 层
+  const mosaicProject = makeRecorderProject({
+    canvas: baseCanvas,
+    camera: makeCameraStyle({ isHidden: true }),
+    motion,
+    cursorStyle: makeCursorStyle(),
+    openingSequence: makeOpeningSequence(),
+    timeline: makeProjectTimeline({
+      mosaicClips: [makeMosaicClip({ timing: makeOverlayTiming(0, 5), style: 'spotlight' })],
+    }),
+  })
+  const mosaicScene = FrameSceneEvaluator.scene({
+    project: mosaicProject,
+    time: 1,
+    outputDuration: 10,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.mosaicCount', mosaicScene.screen.mosaics.length, 1)
+  check('fs.spotlightLayer', mosaicScene.layerOrder.includes('spotlight'), true)
+  check('fs.mosaicIdle', mosaicScene.screen.mosaics[0].intensity, 0.55)
+  const mosaicOut = FrameSceneEvaluator.scene({
+    project: mosaicProject,
+    time: 8,
+    outputDuration: 10,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.mosaicExpired', mosaicOut.screen.mosaics.length, 0)
+
+  // ---- 贴图层
+  const stickerProject = makeRecorderProject({
+    canvas: baseCanvas,
+    camera: makeCameraStyle({ isHidden: true }),
+    motion,
+    cursorStyle: makeCursorStyle(),
+    openingSequence: makeOpeningSequence(),
+    timeline: makeProjectTimeline({
+      stickerClips: [makeStickerClip({ timing: makeOverlayTiming(0, 5), animation: 'fade' })],
+    }),
+  })
+  const stickerScene = FrameSceneEvaluator.scene({
+    project: stickerProject,
+    time: 2,
+    outputDuration: 10,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.stickerCount', stickerScene.stickers.length, 1)
+  check('fs.stickerLayer', stickerScene.layerOrder.includes('stickers'), true)
+  check('fs.stickerWidthClamp', stickerScene.stickers[0].width <= 2, true)
+  check('fs.stickerBackdrop', stickerScene.stickerBackdrop.screenSuppression, 0)
+
+  // ---- 开场序列（Swift L954-1078）
+  check('fs.openingIdentity', openingSample('屏幕', makeOpeningSequence(), ['屏幕'], 0.5, 1920, 1080).opacity, 1)
+  const openingProject = makeRecorderProject({
+    canvas: baseCanvas,
+    camera: makeCameraStyle({ isHidden: true }),
+    motion,
+    cursorStyle: makeCursorStyle(),
+    openingSequence: makeOpeningSequence({ isEnabled: true, duration: 2, preset: '聚拢', stagger: 0.16 }),
+    timeline: makeProjectTimeline(),
+  })
+  const openingSceneStart = FrameSceneEvaluator.scene({
+    project: openingProject,
+    time: 0,
+    outputDuration: 10,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.openingFadeIn', openingSceneStart.screen.opacity < 0.05, true)
+  const openingSceneDone = FrameSceneEvaluator.scene({
+    project: openingProject,
+    time: 5,
+    outputDuration: 10,
+    canvasSize: { width: 1920, height: 1080 },
+    sourceAspectRatio: 16 / 9,
+  })
+  check('fs.openingSettled', openingSceneDone.screen.opacity, 1)
+  const shrink = openingRect(
+    { x: 100, y: 100, width: 200, height: 100 },
+    { opacity: 1, scale: 0.5, offset: { x: 10, y: 0 }, rotationX: 0, rotationY: 0, perspective: 0, remaining: 1 }
+  )
+  check('fs.openingRectW', shrink.width, 100)
+  check('fs.openingRectCX', shrink.x + shrink.width / 2, 210)
+
+  // ---- 贴图动画路径（Swift L882-932）
+  check('fs.smootherStep', smootherStep(0.5), 0.5)
+  check('fs.smootherLow', smootherStep(-1), 0)
+  check('fs.smootherHigh', smootherStep(2), 1)
+  check('fs.slideLeft', stickerAnimationTransform('slideLeft', 0, { x: 0.5, y: 0.5 }, 0.4).offset.x, -1.35)
+  check('fs.slideLeftEnd', stickerAnimationTransform('slideLeft', 1, { x: 0.5, y: 0.5 }, 0.4).offset.x, 0)
+  check('fs.popStart', stickerAnimationTransform('pop', 0, { x: 0.5, y: 0.5 }, 0.4).scale, 0.72)
+  check('fs.popEnd', stickerAnimationTransform('pop', 1, { x: 0.5, y: 0.5 }, 0.4).scale, 1)
+  check('fs.fadeStill', stickerAnimationTransform('fade', 0, { x: 0.5, y: 0.5 }, 0.4).scale, 1)
+  check('fs.wideTravel', Math.round(stickerAnimationTransform('slideLeft', 0, { x: 0.5, y: 0.5 }, 3).offset.x * 100) / 100, -2.06)
+
+  // ---- 打码过渡进度（Swift L1089-1119）
+  check('fs.overlayLinear', overlayEffectProgress({ startTime: 0, duration: 2 }, 'linear', 0.3, 0.3, 0.15), 0.5)
+  check('fs.overlaySmooth', overlayEffectProgress({ startTime: 0, duration: 2 }, 'smooth', 0.3, 0.3, 0.15), 0.5)
+  check('fs.overlayNone', overlayEffectProgress({ startTime: 0, duration: 2 }, 'none', 0.3, 0.3, 0.15), 1)
+  check('fs.overlayZero', overlayEffectProgress({ startTime: 0, duration: 0 }, 'smooth', 0.3, 0.3, 0.1), 0)
+
+  // ---- 屏幕框装饰（Swift L1121-1230）
+  const geometry = {
+    fittedRect: { x: 100, y: 100, width: 1720, height: 880 },
+    baseRect: { x: 100, y: 100, width: 1720, height: 880 },
+    finalRect: { x: 100, y: 100, width: 1720, height: 880 },
+    manualScale: 1,
+    manualOffset: { x: 0, y: 0 },
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    perspective: 0,
+    projectionAnchor: { x: 0.5, y: 0.5 },
+    baseCornerRadius: 24,
+    baseBorderWidth: 0,
+    finalCornerRadius: 24,
+    finalBorderWidth: 0,
+    zoom: { scale: 1, focus: { x: 0.5, y: 0.5 }, framingProgress: 0, targetScale: 1 },
+    viewport: { scale: 1 },
+  }
+  const decoNone = screenDecoration({
+    style: 'none', frameScale: 1, toolbarScale: 1,
+    outerCornerRadius: null, contentCornerRadius: null, title: '', browserAddress: '',
+    geometry, styleScale: 1,
+  })
+  check('fs.decoNone', decoNone.type, 'none')
+  const decoWindow = screenDecoration({
+    style: 'windowLight', frameScale: 1, toolbarScale: 0.9,
+    outerCornerRadius: null, contentCornerRadius: null, title: 'DogSC', browserAddress: '',
+    geometry, styleScale: 1,
+  })
+  check('fs.decoChrome', decoWindow.type, 'chrome')
+  check('fs.decoKind', decoWindow.chrome.kind, 'window')
+  check('fs.decoToolbarH', decoWindow.chrome.toolbarRect.height > 0, true)
+  check('fs.decoOuterW', decoWindow.chrome.outerRect.width, 1720)
+  check('fs.decoTitle', decoWindow.chrome.title, 'DogSC')
+  check('fs.decoRadiusClamp', decoWindow.chrome.outerCornerRadius <= 160, true)
+  check('fs.kindPhoneWide', screenChromeKindFor('devicePhone', { x: 0, y: 0, width: 900, height: 500 }), 'devicePhoneLandscape')
+  check('fs.kindPhoneTall', screenChromeKindFor('devicePhone', { x: 0, y: 0, width: 500, height: 900 }), 'devicePhonePortrait')
+  check('fs.kindBrowser', screenChromeKindFor('browserDark', { x: 0, y: 0, width: 500, height: 900 }), 'browser')
+
+  // ---- 光标场景（Swift L1232-1282）
+  const cursorMetrics = makeCursorAssetMetrics({
+    hotspot: { x: 0, y: 0 },
+    intrinsicSize: { width: 32, height: 32 },
+    clickColor: HexColor.white,
+  })
+  const cursorScene = frameCursorScene({
+    sample: {
+      location: { x: 0.5, y: 0.5 },
+      isClicking: false,
+      clickPhase: null,
+      rotationRadians: 0,
+      recordedCursorAssetID: null,
+    },
+    project: baseProject,
+    metrics: cursorMetrics,
+    metricsByAssetID: {},
+    screen: scene.screen,
+    canvasSize: { width: 1920, height: 1080 },
+  })
+  check('fs.cursorAsset', cursorScene.assetID, 'system.arrow')
+  check('fs.cursorAttach', cursorScene.attachment, 'screen')
+  check('fs.cursorLocalX', cursorScene.normalizedScreenPosition.x, 0.5)
+  check('fs.cursorShadow', cursorScene.shadow !== null, true)
+  check('fs.cursorNoMetrics', frameCursorScene({
+    sample: {
+      location: { x: 0.5, y: 0.5 }, isClicking: false, clickPhase: null,
+      rotationRadians: 0, recordedCursorAssetID: null,
+    },
+    project: baseProject,
+    metrics: null,
+    metricsByAssetID: {},
+    screen: scene.screen,
+    canvasSize: { width: 1920, height: 1080 },
+  }), null)
+  check('fs.cursorOutside', frameCursorScene({
+    sample: {
+      location: { x: 1.5, y: 0.5 }, isClicking: false, clickPhase: null,
+      rotationRadians: 0, recordedCursorAssetID: null,
+    },
+    project: baseProject,
+    metrics: cursorMetrics,
+    metricsByAssetID: {},
+    screen: scene.screen,
+    canvasSize: { width: 1920, height: 1080 },
+  }), null)
+
+  // ---- refreshingCursor（Swift L449-487）：只刷新光标，保留视频帧相位
+  const zoomTrack = makeZoomTrack(baseProject.timeline.zoomClips, 10)
+  const refreshed = FrameSceneEvaluator.refreshingCursor({
+    plan: latePlan,
+    presentationTime: 1,
+    project: baseProject,
+    pointerTrack: null,
+    cursorMetrics: null,
+    zoomTrack,
+  })
+  check('fs.refreshTime', refreshed.presentationTime, 1)
+  check('fs.refreshSceneTime', refreshed.scene.time, 0)
+  check('fs.refreshNoCursor', refreshed.scene.cursor, null)
+  check('fs.refreshOrder', refreshed.scene.layerOrder.join(','), 'background,screen')
+}
+
+runFrameSceneBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

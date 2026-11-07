@@ -130,3 +130,60 @@ export {
   projectedQuad,
   SCREEN_DECORATION_ZERO,
 } from '../src/renderer/src/core/CompositionScene'
+
+// ---- 批次 7（FrameScene 及依赖层：CameraContentFill / CursorRenderGeometry /
+//      FocusEffect / StickerTransition / TimelineMediaPlan / FrameScene）----
+export {
+  cameraContentFillLayout,
+  cameraContentFillDestinationPoint,
+  cameraContentFillMirrorAxisX,
+  CAMERA_CONTENT_FILL_EDGE_OVERSCAN_SCALE,
+} from '../src/renderer/src/core/CameraContentFill'
+export {
+  cursorRenderLayout,
+  cursorClickGeometry,
+  makeCursorAssetMetrics,
+  CURSOR_CANONICAL_HEIGHT,
+  CURSOR_CANONICAL_SHORT_EDGE,
+} from '../src/renderer/src/core/CursorRenderGeometry'
+export {
+  makeFocusEffect,
+  focusEffectScene,
+  focusEffectProgress,
+  focusEffectIsValid,
+  focusEffectClearHalfWidth,
+  focusEffectFeatherWidth,
+  normalizedAngle,
+  decodeFocusEffect,
+} from '../src/renderer/src/core/FocusEffect'
+export {
+  StickerTransitionTrack,
+  FrameStickerBackdropScene,
+} from '../src/renderer/src/core/StickerTransition'
+export {
+  TimelineMediaPlan,
+  ProjectTimelineMediaPlan,
+  inferredSourceTimeScale,
+  sliceSourceTime,
+  isSameBoundary,
+} from '../src/renderer/src/core/TimelineMediaPlan'
+export { HexColor } from '../src/renderer/src/core/HexColor'
+export { makeTrack as makeZoomTrack, activeClipAt } from '../src/renderer/src/core/ZoomAnimation'
+export {
+  FrameSceneEvaluator,
+  openingSample,
+  openingRect,
+  stickerAnimationTransform,
+  overlayEffectProgress,
+  screenDecoration,
+  screenChromeKindFor,
+  makeFrameMosaicScene,
+  makeFrameBackgroundScene,
+  makeFrameShadow,
+  frameScreenProjectionRect,
+  frameCursorScene,
+  stickerScenes,
+  FRAME_COLOR_SDR_DESKTOP,
+  FRAME_SCREEN_DECORATION_NONE,
+  compositionSizeShortEdge,
+} from '../src/renderer/src/core/FrameScene'

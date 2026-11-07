@@ -44,6 +44,7 @@ import { makeMotionStyle } from './MotionStyle'
 import { makeExportSettings, decodeExportSettings, type ExportSettings } from './ExportSettings'
 import { makeRecordingMarker, type RecordingMarker } from './RecordingMarker'
 import { makeCameraMotionClip, type CameraMotionClip } from './CameraMotion'
+import { decodeMosaicClip, decodeStickerClip } from './OverlayTimeline'
 
 export type TimeInterval = number
 
@@ -351,6 +352,12 @@ export function decodeRecorderProject(raw: unknown): RecorderProject {
         ? (rawTimeline.cameraMotionClips as CameraMotionClip[]).map((c) =>
             makeCameraMotionClip(c as unknown as Parameters<typeof makeCameraMotionClip>[0])
           )
+        : [],
+      mosaicClips: Array.isArray(rawTimeline.mosaicClips)
+        ? rawTimeline.mosaicClips.map((c) => decodeMosaicClip(c))
+        : [],
+      stickerClips: Array.isArray(rawTimeline.stickerClips)
+        ? rawTimeline.stickerClips.map((c) => decodeStickerClip(c))
         : [],
     })
   } else {

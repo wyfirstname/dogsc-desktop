@@ -320,3 +320,19 @@ PointerTrack 等转写后实现。
 - `TimelineMap.ts` 补齐 Swift TimelineMap.mapPointerEventSegments（L439-500）：按片段分组映射指针事件到输出时钟，起点无精确事件时注入 move 位置种子；导出 `TimelineMappedPointerSegment` / `firstEventIndexAtOrAfter`。
 - verify-model 断言 218 → 259（+41）：smootherStep/连续运动判定/单调切向/线性插值/可见性解耦/点击相位/弹簧收敛/预热缓存/乱序规范化/门面/二分切片/raw 插值/段表/剪辑桥接/种子注入。
 - MotionStyle 中文 rawValue 对照：smooth→'平滑'、medium→'适中'、rapid→'快速'、none→'无'；CursorStyle.clickEffectStyle.duration → cursorClickEffectDuration()。
+
+## 十三、FrameScene 批次（含五个依赖层）
+
+本批是「一帧画面」的完整契约：预览与导出都只读 `FrameRenderPlan`，不再各自解释工程。
+
+- `src/renderer/src/core/CameraContentFill.ts`（Swift 110 行）：`cameraContentFillLayout` 的 aspect-fill × 1.01 overscan（抹一像素接缝）、焦点裁剪、`contentScale` 夹取 1~4；`destinationPoint` 在目标孔径中心做水平镜像，避免绕全局原点翻转的平移跳变。
+- `src/renderer/src/core/CursorRenderGeometry.ts`（Swift 358 行）：`CursorAssetMetrics`（热点归一化 + `scaleReferenceHeight`）、`cursorRenderLayout`（1080 短边 44px 基准，线宽 2px@1080）、`cursorClickGeometry` 五种反馈几何（ripple/glow/pulse/burst 的全部直径/线宽/透明度/辉光曲线）。
+- `src/renderer/src/core/FocusEffect.ts`（Swift 118 行）：`FocusEffect` 完整字段与 `isValid` 校验、`focusEffectScene`（3D 运镜聚焦独占优先级 + 缺 shape 时按线性/固定/不压暗解释 + `pointer`/`animation`/`fixed` 三种目标）、`focusEffectProgress` 进入/保持/回落三相位。ZoomAnimation.ts 的 `FocusEffect` 桩已替换为对本文件的 re-export。
+- `src/renderer/src/core/StickerTransition.ts`（Swift 266 行）：`FrameStickerBackdropScene`（四项取最大合并 + 线性插值）、`StickerTransitionTrack`（端点分组、极短贴图不连自身首尾、相邻接力预算 `min(exit)/min(enter)`、短重叠背景桥接只在共享处理不为零时生效）。
+- `src/renderer/src/core/TimelineMediaPlan.ts`（Swift 375 行）：`TimelineMediaPlan.fromPrimary/fromAuxiliary`（剪切边界复用主片段时长以避免微孔丢相机帧、同步锚点曲线校正、可用区间夹取）、`ProjectTimelineMediaPlan.build`（主/系统声/相机/麦克风/指针五条时钟）、`inferredSourceTimeScale`。
+- `src/renderer/src/core/FrameScene.ts`（Swift 1284 行）：`FrameScene` 全量结构（ColorContract / Shadow / Background / Screen / Chrome / Mosaic / Camera / Cursor / Sticker / Backdrop / LayerRole / RenderPlan）+ `FrameSceneEvaluator` 三入口 ——
+  - `scene()`：zoom 轨道解析 → 指针评估（含剪辑重锚）→ 自动运镜焦点与继承焦点 → `compositionSceneEvaluate` → 开场序列（`openingSample` 逐元素缩放/位移/3D 姿态 + overshoot 夹取 1.04）→ 屏幕阴影/装饰/投影四角 → 打码过渡进度 → 相机（内容填充、镜像焦点、开场缩放）→ 光标 → 贴图（+ 开场偏移/缩放/透明度叠加）→ 图层顺序（spotlight 在 base 之上、camera 仅在可见时、stickers 最后）。
+  - `renderPlan()`：时间夹取 + `cameraTimeline.contains` 归属判定（避免 ulps 矛盾丢一帧相机）。
+  - `refreshingCursor()`：只刷新指针路径/形状/点击相位，保留缓存的视频与壁纸相位。
+- 依赖补齐：`ProjectTimeline.ts` 增加 `mosaicClips` / `stickerClips`（+`makeProjectTimeline` 缺省），`ProjectMediaModel.ts` 用 `decodeMosaicClip` / `decodeStickerClip` 解码；`ScreenMotionClip.focusEffect` 从 `unknown` 收紧为 `FocusEffect | null`。
+- verify-model 断言 292 → 416（+124）：内容填充缩放/可见源、光标布局与四种点击几何、聚焦有效性/相位/目标、贴图桥接与背景抑制、媒体切片边界与辅助时钟、场景图层顺序、开场淡入与稳定、贴图动画路径、打码过渡、屏幕框装饰、光标裁切（画布外返回 null）、refreshingCursor 相位保持。

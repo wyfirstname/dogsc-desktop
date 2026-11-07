@@ -24,6 +24,7 @@
 import { MotionStyle, makeMotionStyle } from './MotionStyle'
 import { resolveZoomTransitions } from './ZoomTransitionResolution'
 import { zoomAnimationsNeedRepair } from './TimelineTrackOrdering'
+import type { FocusEffect } from './FocusEffect'
 
 export type TimeInterval = number
 
@@ -230,10 +231,11 @@ export interface CompositionRect {
   height: number
 }
 
-/** Swift: FocusEffect —— 焦点虚化效果，待转写后替换。 */
-export interface FocusEffect {
-  [key: string]: unknown
-}
+/**
+ * Swift: FocusEffect —— 已转写至 FocusEffect.ts（FocusEffect.ts 反向依赖本文件的
+ * easedProgress / ZOOM_BEZIER，因此只用 `import type` 保持编译期擦除）。
+ */
+export type { FocusEffect } from './FocusEffect'
 
 // ---------------------------------------------------------------- Clip
 
