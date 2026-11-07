@@ -5363,5 +5363,239 @@ async function runUiSmallPartsBatch() {
 
 await runUiSmallPartsBatch()
 
+async function runOnboardingAndChromeBatch() {
+  // ======================== 引导高亮 / 支持面板 / 采集过滤 / 字体（6 文件 / 289 行）
+  const {
+    TOUR_HIGHLIGHT_RECORDER_INPUTS, TOUR_HIGHLIGHT_RECORDER_SOURCES, flipTourHighlightY,
+    tourHighlightCornerRadii, tourHighlightInsetRect, tourHighlightRounded, tourHighlightSegments,
+    SUPPORT_APPRECIATION_IMAGE_RESOURCE, SUPPORT_IMAGE_CONTENT_MODE, SUPPORT_SHEET_ACCESSIBILITY,
+    SUPPORT_SHEET_FOOTER, SUPPORT_SHEET_METRICS, SUPPORT_SHEET_MISSING_IMAGE_TEXT,
+    SUPPORT_SHEET_TITLE, supportImageState,
+    CAMERA_SESSION_NOTIFICATION, CAMERA_SESSION_UNKNOWN_ERROR_CODE,
+    CAMERA_SESSION_UNKNOWN_ERROR_MESSAGE, CameraCaptureSessionEventMonitor,
+    cameraSessionEventForNotification, cameraSessionRuntimeErrorEvent,
+    DOCK_BUNDLE_IDENTIFIER, FINDER_BUNDLE_IDENTIFIER, captureSurfaceFilterPlan,
+    finderDesktopWindowIDs,
+    SAVE_ACTION_ROW_HEIGHT, SAVE_ACTION_DISABLED_OPACITY, SAVE_ACTION_PRESSED_SCALE,
+    SAVE_ACTION_PRESS_ANIMATION_DURATION, SAVE_ACTION_CORNER_RADIUS, SAVE_TOGGLE_ROW_HEIGHT,
+    SAVE_TOGGLE_ROW_LAYOUT, saveActionRowLayout, saveActionTrailing,
+    APP_TYPOGRAPHY_FAMILY, APP_TYPOGRAPHY_FONT_FILES, APP_TYPOGRAPHY_RESOURCE_DIRECTORY,
+    APP_TIMECODE_FONT_FAMILY, appRegularTextFontFamily, appTextStyleFont, appTextStyleSize,
+    appTypographyFace, appUIFont,
+  } = m
+
+  // ---------------------------------------- FirstUseTourHighlight.swift
+  check('th.sourcesSegments', TOUR_HIGHLIGHT_RECORDER_SOURCES.segments, 4)
+  check('th.sourcesSpacing', TOUR_HIGHLIGHT_RECORDER_SOURCES.spacing, 2)
+  check('th.sourcesInset', TOUR_HIGHLIGHT_RECORDER_SOURCES.inset, 2)
+  check('th.sourcesContinuous', TOUR_HIGHLIGHT_RECORDER_SOURCES.continuous, false)
+  check('th.inputsSegments', TOUR_HIGHLIGHT_RECORDER_INPUTS.segments, 3)
+  check('th.inputsSpacing', TOUR_HIGHLIGHT_RECORDER_INPUTS.spacing, 0)
+  const roundedAll = tourHighlightRounded(12)
+  check('th.roundedRadius', roundedAll.radius, 12)
+  check('th.roundedContinuous', roundedAll.continuous, true)
+  check('th.roundedSegments', roundedAll.segments, 1)
+  check('th.roundedInset', roundedAll.inset, 0)
+  const radiiAll = tourHighlightCornerRadii(20, 'all')
+  check('th.allTopLeading', radiiAll.topLeading, 20)
+  check('th.allBottomTrailing', radiiAll.bottomTrailing, 20)
+  const radiiTop = tourHighlightCornerRadii(20, 'top')
+  check('th.topTopLeading', radiiTop.topLeading, 20)
+  check('th.topBottomLeading', radiiTop.bottomLeading, 0)
+  const radiiBottom = tourHighlightCornerRadii(20, 'bottom')
+  check('th.bottomTopLeading', radiiBottom.topLeading, 0)
+  check('th.bottomBottomTrailing', radiiBottom.bottomTrailing, 20)
+  const tourBounds = { minX: 0, minY: 0, width: 100, height: 50 }
+  const insetRect = tourHighlightInsetRect(tourBounds, 2)
+  check('th.insetX', insetRect.minX, 2)
+  check('th.insetWidth', insetRect.width, 96)
+  check('th.insetHeight', insetRect.height, 46)
+  const sourceSegments = tourHighlightSegments(TOUR_HIGHLIGHT_RECORDER_SOURCES, tourBounds)
+  check('th.segmentCount', sourceSegments.length, 4)
+  check('th.segmentWidth', sourceSegments[0].width, 22.5)
+  check('th.segmentFirstX', sourceSegments[0].x, 2)
+  check('th.segmentSecondX', sourceSegments[1].x, 26.5)
+  check('th.segmentLastX', sourceSegments[3].x, 75.5)
+  check('th.segmentHeight', sourceSegments[0].height, 46)
+  check('th.segmentRadius', sourceSegments[0].cornerRadii.topLeading, 20)
+  const singleSegment = tourHighlightSegments(tourHighlightRounded(8), tourBounds)
+  check('th.singleCount', singleSegment.length, 1)
+  check('th.singleWidth', singleSegment[0].width, 100)
+  check('th.flipY', flipTourHighlightY(10, tourBounds), 40)
+
+  // ----------------------------------------------- AppSupportSheet.swift
+  check('sp.subdirectory', SUPPORT_APPRECIATION_IMAGE_RESOURCE.subdirectory, 'Support')
+  check('sp.extension', SUPPORT_APPRECIATION_IMAGE_RESOURCE.extension, 'jpg')
+  check('sp.title', SUPPORT_SHEET_TITLE, '请我喝杯咖啡')
+  check('sp.footer', SUPPORT_SHEET_FOOTER, '免费开源 · 自愿支持')
+  check('sp.missingText', SUPPORT_SHEET_MISSING_IMAGE_TEXT, '赞赏码暂时无法显示')
+  check('sp.width', SUPPORT_SHEET_METRICS.width, 448)
+  check('sp.padding', SUPPORT_SHEET_METRICS.padding, 24)
+  check('sp.imageSize', SUPPORT_SHEET_METRICS.imageSize, 400)
+  check('sp.imageRadius', SUPPORT_SHEET_METRICS.imageCornerRadius, 8)
+  check('sp.borderWidth', SUPPORT_SHEET_METRICS.imageBorderWidth, 0.75)
+  check('sp.closeSize', SUPPORT_SHEET_METRICS.closeButtonSize, 28)
+  check('sp.closeLabel', SUPPORT_SHEET_ACCESSIBILITY.closeLabel, '关闭赞赏码')
+  check('sp.imageHint', SUPPORT_SHEET_ACCESSIBILITY.imageHint, '使用手机扫描图片中的赞赏码')
+  check('sp.contentMode', SUPPORT_IMAGE_CONTENT_MODE, 'contain')
+  const missingState = supportImageState(null)
+  check('sp.missingKind', missingState.kind, 'missing')
+  check('sp.missingSize', missingState.size, 400)
+  check('sp.missingTextState', missingState.text, '赞赏码暂时无法显示')
+  const readyState = supportImageState('F:/res/Support/AppreciationCode.jpg')
+  check('sp.readyKind', readyState.kind, 'ready')
+  check('sp.readySize', readyState.size, 400)
+
+  // ------------------------------- CameraCaptureSessionEventMonitor.swift
+  check('cm.unknownMessage', CAMERA_SESSION_UNKNOWN_ERROR_MESSAGE, '摄像头会话发生未知运行错误')
+  check('cm.unknownCode', CAMERA_SESSION_UNKNOWN_ERROR_CODE, -11800)
+  check('cm.runtimeName', CAMERA_SESSION_NOTIFICATION.runtimeError, 'AVCaptureSessionRuntimeErrorNotification')
+  const synthesized = cameraSessionRuntimeErrorEvent(null)
+  check('cm.synthKind', synthesized.kind, 'runtimeError')
+  check('cm.synthMessage', synthesized.message, '摄像头会话发生未知运行错误')
+  check('cm.synthCode', synthesized.code, -11800)
+  const blankError = cameraSessionRuntimeErrorEvent({ message: '   ' })
+  check('cm.blankMessageSynthesized', blankError.message, '摄像头会话发生未知运行错误')
+  const realError = cameraSessionRuntimeErrorEvent({ message: '设备已断开', code: 42 })
+  check('cm.realMessage', realError.message, '设备已断开')
+  check('cm.realCode', realError.code, 42)
+  check(
+    'cm.notifyInterrupted',
+    cameraSessionEventForNotification(CAMERA_SESSION_NOTIFICATION.wasInterrupted).kind,
+    'interrupted'
+  )
+  check(
+    'cm.notifyEnded',
+    cameraSessionEventForNotification(CAMERA_SESSION_NOTIFICATION.interruptionEnded).kind,
+    'interruptionEnded'
+  )
+  check('cm.notifyUnknown', cameraSessionEventForNotification('SomethingElse'), null)
+  const cameraEvents = []
+  const cameraMonitor = new CameraCaptureSessionEventMonitor((event) => cameraEvents.push(event))
+  const unsubscribers = []
+  cameraMonitor.observe(CAMERA_SESSION_NOTIFICATION.wasInterrupted, (callback) => {
+    unsubscribers.push(() => callback(null))
+    return () => {
+      const index = unsubscribers.length
+      unsubscribers.length = Math.max(0, index - 1)
+    }
+  })
+  check('cm.observerCount', cameraMonitor.observerCount, 1)
+  cameraMonitor.dispose()
+  check('cm.disposed', cameraMonitor.isDisposed, true)
+  check('cm.disposedCount', cameraMonitor.observerCount, 0)
+
+  // ------------------------------------------- CaptureSurfaceFilter.swift
+  check('cf.dockBundle', DOCK_BUNDLE_IDENTIFIER, 'com.apple.dock')
+  check('cf.finderBundle', FINDER_BUNDLE_IDENTIFIER, 'com.apple.finder')
+  const ownApps = [
+    { processID: 100, bundleIdentifier: 'com.dogsc.app' },
+    { processID: 100, bundleIdentifier: 'com.dogsc.helper' },
+  ]
+  const otherApps = [
+    { processID: 200, bundleIdentifier: 'com.apple.dock' },
+    { processID: 300, bundleIdentifier: 'com.apple.finder' },
+  ]
+  const filterWindows = [
+    { windowID: 5, ownerProcessID: 100 },
+    { windowID: 6, ownerProcessID: 100 },
+    { windowID: 7, ownerProcessID: 300 },
+    { windowID: 8, ownerProcessID: 300 },
+  ]
+  const filterInput = (overrides = {}) => ({
+    configuration: { hidesDock: true, hidesDesktopFiles: true },
+    applications: [...ownApps, ...otherApps],
+    windows: filterWindows,
+    ownProcessID: 100,
+    editorWindowIDs: [5],
+    finderDesktopWindowIDs: [8],
+    ...overrides,
+  })
+  const fullPlan = captureSurfaceFilterPlan(filterInput())
+  check('cf.excludedCount', fullPlan.excludedApplications.length, 3)
+  check('cf.excludedOwn', fullPlan.excludedApplications.filter((a) => a.processID === 100).length, 2)
+  check('cf.excludedDock', fullPlan.excludedApplications.some((a) => a.bundleIdentifier === 'com.apple.dock'), true)
+  check('cf.exceptingWindows', fullPlan.exceptingWindowIDs.join(','), '5,8')
+  check('cf.editorWindows', fullPlan.editorWindowIDs.join(','), '5')
+  const leanPlan = captureSurfaceFilterPlan(
+    filterInput({ configuration: { hidesDock: false, hidesDesktopFiles: false } })
+  )
+  check('cf.leanExcluded', leanPlan.excludedApplications.length, 2)
+  check('cf.leanExcepting', leanPlan.exceptingWindowIDs.join(','), '5')
+  const desktopWindows = [
+    { ownerProcessID: 300, ownerBundleIdentifier: 'com.apple.finder', layer: -1, windowNumber: 8 },
+    { ownerProcessID: 300, ownerBundleIdentifier: 'com.apple.finder', layer: 0, windowNumber: 9 },
+    { ownerProcessID: 200, ownerBundleIdentifier: 'com.apple.dock', layer: -1, windowNumber: 10 },
+  ]
+  check('cf.desktopIDs', finderDesktopWindowIDs(desktopWindows).join(','), '8')
+
+  // ----------------------------------------- RecorderSaveActions.swift
+  check('sa.rowHeight', SAVE_ACTION_ROW_HEIGHT, 36)
+  check('sa.toggleHeight', SAVE_TOGGLE_ROW_HEIGHT, 34)
+  check('sa.pressedScale', SAVE_ACTION_PRESSED_SCALE, 0.98)
+  check('sa.pressDuration', SAVE_ACTION_PRESS_ANIMATION_DURATION, 0.13)
+  check('sa.disabledOpacity', SAVE_ACTION_DISABLED_OPACITY, 0.4)
+  check('sa.cornerRadius', SAVE_ACTION_CORNER_RADIUS, 9)
+  check('sa.toggleTint', SAVE_TOGGLE_ROW_LAYOUT.tint, 'mint')
+  check('sa.toggleControlSize', SAVE_TOGGLE_ROW_LAYOUT.controlSize, 'small')
+  check('sa.trailingDetail', saveActionTrailing('12 MB', true), 'detail')
+  check('sa.trailingDetailEmpty', saveActionTrailing('', true), 'chevron')
+  check('sa.trailingChevron', saveActionTrailing(null, true), 'chevron')
+  check('sa.trailingNone', saveActionTrailing(null, false), 'none')
+  const pressedLayout = saveActionRowLayout({
+    title: '保存到文件',
+    symbol: 'square.and.arrow.down',
+    detail: null,
+    enabled: true,
+    showsChevron: true,
+    pressed: true,
+  })
+  check('sa.pressedScaleApplied', pressedLayout.scale, 0.98)
+  check('sa.enabledOpacity', pressedLayout.opacity, 1)
+  check('sa.animationKind', pressedLayout.pressedAnimation.kind, 'easeOut')
+  check('sa.animationDuration', pressedLayout.pressedAnimation.duration, 0.13)
+  check('sa.idleScale', saveActionRowLayout({ title: 't', symbol: 's', detail: null, enabled: true, showsChevron: false, pressed: false }).scale, 1)
+  check(
+    'sa.disabledDim',
+    saveActionRowLayout({ title: 't', symbol: 's', detail: null, enabled: false, showsChevron: false, pressed: false }).opacity,
+    0.4
+  )
+
+  // ------------------------------------------------ AppTypography.swift
+  check('ty.family', APP_TYPOGRAPHY_FAMILY, 'AlibabaPuHuiTi_3')
+  check('ty.resourceDir', APP_TYPOGRAPHY_RESOURCE_DIRECTORY, 'Fonts')
+  check('ty.fileCount', APP_TYPOGRAPHY_FONT_FILES.length, 3)
+  check('ty.firstFile', APP_TYPOGRAPHY_FONT_FILES[0].file, 'AlibabaPuHuiTi-3-55-Regular.otf')
+  check('ty.firstFace', APP_TYPOGRAPHY_FONT_FILES[0].face, '55_Regular')
+  check('ty.regularFace', appTypographyFace('regular'), '55_Regular')
+  check('ty.lightFace', appTypographyFace('light'), '55_Regular')
+  check('ty.mediumFace', appTypographyFace('medium'), '65_Medium')
+  check('ty.semiboldFace', appTypographyFace('semibold'), '75_SemiBold')
+  check('ty.boldFace', appTypographyFace('bold'), '75_SemiBold')
+  check('ty.blackFace', appTypographyFace('black'), '75_SemiBold')
+  check('ty.sizeTitle2', appTextStyleSize('title2'), 18)
+  check('ty.sizeHeadline', appTextStyleSize('headline'), 13)
+  check('ty.sizeCaption2', appTextStyleSize('caption2'), 10)
+  check('ty.sizeUnknown', appTextStyleSize('nope'), 13)
+  const bodyFont = appUIFont(13)
+  check('ty.bodyFamily', bodyFont.family, 'AlibabaPuHuiTi_3_55_Regular')
+  check('ty.bodyCustom', bodyFont.custom, true)
+  check('ty.monoUsesSystem', appUIFont(13, 'regular', 'monospaced').family, 'system-ui')
+  check('ty.monoNotCustom', appUIFont(13, 'regular', 'monospaced').custom, false)
+  check('ty.unregisteredFallsBack', appUIFont(13, 'regular', 'default', false).family, 'system-ui')
+  const headlineFont = appTextStyleFont('headline')
+  check('ty.headlineWeight', headlineFont.weight, 'semibold')
+  check('ty.headlineSize', headlineFont.size, 13)
+  check('ty.headlineFamily', headlineFont.family, 'AlibabaPuHuiTi_3_75_SemiBold')
+  check('ty.captionWeight', appTextStyleFont('caption2').weight, 'regular')
+  check('ty.explicitWeightWins', appTextStyleFont('headline', 'regular').weight, 'regular')
+  check('ty.measureFamily', appRegularTextFontFamily(), 'AlibabaPuHuiTi_3_55_Regular')
+  check('ty.measureFamilyFallback', appRegularTextFontFamily(false), 'system-ui')
+  check('ty.timecodeIsSystemMono', APP_TIMECODE_FONT_FAMILY.includes('ui-monospace'), true)
+
+}
+
+await runOnboardingAndChromeBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

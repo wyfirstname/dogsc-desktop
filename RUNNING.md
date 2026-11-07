@@ -510,3 +510,13 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
 - `core/SettingsAppearanceMiniature.ts`（35 行）：缩略图是按几何画的小界面而非截图。「跟随系统」叠两层（浅底 + 深色右半遮罩），一层展示两种结果。
 - `core/EditorAppearanceToggleButton.ts`（36 行）：工作区边缘只放一个动作，三态偏好留在设置。点击目标是**具体**浅/深 —— 由生效配色而非存储偏好推出，否则「跟随系统」下点一下像没反应。reduce motion 时过渡退化为纯透明度，动画回落到 0.18s 缓出（不是无动画）。
 - verify-model 断言 1599 → 1740（+141）：标识符逐字与阶段映射、磁铁图标 `min×1.15` 与框架/字形分离、显示名四种兜底、圆角夹取四态、旋转手柄两套色值与「只转字形」、通道四舍五入/夹取/NaN、颜色往返两次不漂移、合成器零尺寸短路与背景复用调用序列、胶囊 peak/留白/只增不减、缩略图三种宽高比与源选择三态、格式选择六种组合（含并列与非法下标）、缩略图三层叠放与几何常量、切换按钮两向文案/无障碍三件套/过渡与动画回落。
+
+## 二十四、引导高亮 / 支持面板 / 采集过滤 / 字体（6 文件 / 289 行）
+
+- `core/FirstUseTourHighlight.ts`（41 行）：高亮框走与录制源表面同一条形状路径。段宽 `(宽 − (段数−1)×间距)/段数` —— 间距只出现在段**之间**，两端不预留；`corners: .top/.bottom` 让共用卡片只有外侧两角是圆的。AppKit 的调光层原点在左下，路径必须`y' = minY + maxY − y` 翻转，否则 `.top` 的圆角会跑到下边。
+- `core/AppSupportSheet.ts`（53 行）：赞赏码**原样显示**（`scaledToFit` 不裁切 —— 裁掉一角就扫不出来），400×400、圆角 8、0.75pt 发丝边；图片缺失时用同尺寸占位文案，弹窗高度不跳动。
+- `core/CameraCaptureSessionEventMonitor.ts`（54 行）：AVCaptureSession 的失败通道只有通知，没有返回值。这里把它收成三态事件（runtimeError / interrupted / interruptionEnded）；**通知里没带错误也必须造一条**「未知运行错误」——吞掉事件等于让录制继续跑在死摄像头上，最后产出轨道错位的成片。`dispose()` 取代 deinit（Windows 无确定析构时机），并且幂等。
+- `core/CaptureSurfaceFilter.ts`（54 行）：`excludingApplications`（排除整 App）与 `exceptingWindows`（从被排除的 App 里单独放回窗口）是两套语义，编辑器窗口与 Finder 桌面图标共用例外通道 —— 所以两者可以共存。编辑器窗口的条件是**两条**（自身进程 **且** 在编辑器集合）；Finder 桌面只认 `layer < 0` 的窗口，否则连访达窗口一起藏掉。
+- `core/RecorderSaveActions.ts`（62 行）：动作行 36pt / 图标 18 / 间距 10 / 左右 8，按下 0.98 + `easeOut 0.13`，禁用时整体 0.4；视觉层关掉命中与无障碍，整行只由原生首点目标承担。有说明文案时**不再画箭头**（detail 优先于 chevron），否则右侧同时出现「12 MB」和「›」像两级菜单。开关行 34pt（比动作行低 2pt）。
+- `core/AppTypography.ts`（64 行）：随包只有三个字面（55/65/75），因此 semibold/bold/heavy/black **全部落到 75_SemiBold**、light/thin 落到 55 —— 上游取舍照搬。等宽（时码）永远系统字体：写进成片的文字不能被替换字体影响。语义字号表 26/22/18/16/13/12/11/10，`.headline` 默认 semibold。量宽固定用 55_Regular。
+- verify-model 断言 1740 → 1859（+119）：段划分（宽/首末 x/高度/角半径）、三档 corners、inset 与单段、Y 翻转；面板全部尺寸与三种图片态；会话三类事件 + 空白错误合成 + 未知通知返回 null + 观察者挂载/释放；过滤计划在两种配置下的排除/例外集合、Finder 桌面 `layer<0`；保存行几何与 detail/chevron 四态；字体字面映射九种字重、语义字号、等宽与未注册回退、headline 默认字重。

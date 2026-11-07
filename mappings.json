@@ -114,7 +114,13 @@
     "Sources/DogSCApp/RecorderSourceThumbnail.swift": "src/renderer/src/core/RecorderSourceThumbnail.ts",
     "Sources/DogSCApp/CameraCaptureFormatSelector.swift": "src/renderer/src/core/CameraCaptureFormatSelector.ts",
     "Sources/DogSCApp/SettingsAppearanceMiniature.swift": "src/renderer/src/core/SettingsAppearanceMiniature.ts",
-    "Sources/DogSCApp/EditorAppearanceToggleButton.swift": "src/renderer/src/core/EditorAppearanceToggleButton.ts"
+    "Sources/DogSCApp/EditorAppearanceToggleButton.swift": "src/renderer/src/core/EditorAppearanceToggleButton.ts",
+    "Sources/DogSCApp/FirstUseTourHighlight.swift": "src/renderer/src/core/FirstUseTourHighlight.ts",
+    "Sources/DogSCApp/AppSupportSheet.swift": "src/renderer/src/core/AppSupportSheet.ts",
+    "Sources/DogSCApp/CameraCaptureSessionEventMonitor.swift": "src/renderer/src/core/CameraCaptureSessionEventMonitor.ts",
+    "Sources/DogSCApp/CaptureSurfaceFilter.swift": "src/renderer/src/core/CaptureSurfaceFilter.ts",
+    "Sources/DogSCApp/RecorderSaveActions.swift": "src/renderer/src/core/RecorderSaveActions.ts",
+    "Sources/DogSCApp/AppTypography.swift": "src/renderer/src/core/AppTypography.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }

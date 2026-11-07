@@ -734,3 +734,59 @@ export {
   appearanceToggleState,
   appearanceToggleTransition,
 } from '../src/renderer/src/core/EditorAppearanceToggleButton'
+export {
+  TOUR_HIGHLIGHT_RECORDER_INPUTS,
+  TOUR_HIGHLIGHT_RECORDER_SOURCES,
+  flipTourHighlightY,
+  tourHighlightCornerRadii,
+  tourHighlightInsetRect,
+  tourHighlightRounded,
+  tourHighlightSegments,
+} from '../src/renderer/src/core/FirstUseTourHighlight'
+export {
+  SUPPORT_APPRECIATION_IMAGE_RESOURCE,
+  SUPPORT_IMAGE_CONTENT_MODE,
+  SUPPORT_SHEET_ACCESSIBILITY,
+  SUPPORT_SHEET_FOOTER,
+  SUPPORT_SHEET_METRICS,
+  SUPPORT_SHEET_MISSING_IMAGE_TEXT,
+  SUPPORT_SHEET_TITLE,
+  supportImageState,
+} from '../src/renderer/src/core/AppSupportSheet'
+export {
+  CAMERA_SESSION_NOTIFICATION,
+  CAMERA_SESSION_UNKNOWN_ERROR_CODE,
+  CAMERA_SESSION_UNKNOWN_ERROR_MESSAGE,
+  CameraCaptureSessionEventMonitor,
+  cameraSessionEventForNotification,
+  cameraSessionRuntimeErrorEvent,
+} from '../src/renderer/src/core/CameraCaptureSessionEventMonitor'
+export {
+  DOCK_BUNDLE_IDENTIFIER,
+  FINDER_BUNDLE_IDENTIFIER,
+  captureSurfaceFilterPlan,
+  finderDesktopWindowIDs,
+} from '../src/renderer/src/core/CaptureSurfaceFilter'
+export {
+  SAVE_ACTION_CORNER_RADIUS,
+  SAVE_ACTION_DISABLED_OPACITY,
+  SAVE_ACTION_PRESS_ANIMATION_DURATION,
+  SAVE_ACTION_PRESSED_SCALE,
+  SAVE_ACTION_ROW_HEIGHT,
+  SAVE_TOGGLE_ROW_HEIGHT,
+  SAVE_TOGGLE_ROW_LAYOUT,
+  saveActionRowLayout,
+  saveActionTrailing,
+} from '../src/renderer/src/core/RecorderSaveActions'
+export {
+  APP_TEXT_STYLE_SIZE,
+  APP_TIMECODE_FONT_FAMILY,
+  APP_TYPOGRAPHY_FAMILY,
+  APP_TYPOGRAPHY_FONT_FILES,
+  APP_TYPOGRAPHY_RESOURCE_DIRECTORY,
+  appRegularTextFontFamily,
+  appTextStyleFont,
+  appTextStyleSize,
+  appTypographyFace,
+  appUIFont,
+} from '../src/renderer/src/core/AppTypography'
