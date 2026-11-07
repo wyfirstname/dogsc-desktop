@@ -4582,5 +4582,502 @@ async function runEditorInteractionSupportBatch() {
 
 await runEditorInteractionSupportBatch()
 
+
+async function runEditorExportRequestBatch() {
+  // ============================================ EditorExportRequest（Swift 431 行）
+  const {
+    EXPORT_OUTPUT_KINDS, exportOutputFileExtension, exportAssetRoleDisplayName,
+    editorMediaFileVersion, editorMediaFileVersionEquals,
+    editorExportScopeOutputRange, editorExportScopeSelectedSegmentCount,
+    editorExportRequestErrorMessage, EditorExportRequestError,
+    isFileURLPath, validateExistingLocalFile, validateCurrentVersion,
+    makeExportAssetFromPath, validateCurrentAssetVersions, exportAssetInputURLs,
+    exportFileNameComponent, exportOutputPath, exportTimestampText, defaultExportOutputPath,
+    buildEditorExportRequest,
+  } = m
+
+  function kindOf(fn) {
+    try {
+      fn()
+      return 'no-throw'
+    } catch (error) {
+      return error instanceof EditorExportRequestError ? error.kind : `other:${error}`
+    }
+  }
+  function messageOf(fn) {
+    try {
+      fn()
+      return 'no-throw'
+    } catch (error) {
+      return error.message
+    }
+  }
+
+  check('ex.kinds', EXPORT_OUTPUT_KINDS.join(','), 'video,audio')
+  check('ex.extVideo', exportOutputFileExtension('video'), 'mp4')
+  check('ex.extAudio', exportOutputFileExtension('audio'), 'm4a')
+
+  check('ex.roleScreen', exportAssetRoleDisplayName('screenRecording'), '主录屏')
+  check('ex.roleCamera', exportAssetRoleDisplayName('cameraRecording'), '摄像头')
+  check('ex.roleMic', exportAssetRoleDisplayName('microphoneRecording'), '麦克风')
+  check('ex.roleWallpaper', exportAssetRoleDisplayName('wallpaper'), '背景素材')
+  check('ex.roleSticker', exportAssetRoleDisplayName('sticker'), '贴图')
+
+  // --- 文件代次
+  const versionA = editorMediaFileVersion('/in/a.mp4', {
+    systemNumber: 16777220n,
+    systemFileNumber: 99n,
+    size: 1024n,
+    modificationDate: 1700000000000,
+  })
+  check('ex.versionPath', versionA.standardizedPath, '/in/a.mp4')
+  check('ex.versionSize', versionA.fileSize === 1024n, true)
+  check('ex.versionEquals', editorMediaFileVersionEquals(versionA, { ...versionA }), true)
+  check(
+    'ex.versionSizeDiffers',
+    editorMediaFileVersionEquals(versionA, { ...versionA, fileSize: 2048n }),
+    false
+  )
+  check(
+    'ex.versionDateDiffers',
+    editorMediaFileVersionEquals(versionA, { ...versionA, modificationDate: 1700000000001 }),
+    false
+  )
+  check(
+    'ex.versionMissingAttrs',
+    editorMediaFileVersion('/in/b.mp4', null).fileSystemNumber === null,
+    true
+  )
+
+  // --- 导出范围
+  const scopeRange = { start: 1.5, end: 4.5 }
+  check('ex.scopeFullRange', editorExportScopeOutputRange({ kind: 'fullProject' }) === null, true)
+  check('ex.scopeFullCount', editorExportScopeSelectedSegmentCount({ kind: 'fullProject' }), 0)
+  check(
+    'ex.scopeRangeStart',
+    editorExportScopeOutputRange({ kind: 'timelineRange', range: scopeRange, selectedSegmentCount: 3 }).start,
+    1.5
+  )
+  check(
+    'ex.scopeRangeCount',
+    editorExportScopeSelectedSegmentCount({ kind: 'timelineRange', range: scopeRange, selectedSegmentCount: 3 }),
+    3
+  )
+
+  // --- 错误文案（逐字）
+  check(
+    'ex.msgSession',
+    editorExportRequestErrorMessage('editorSessionMismatch'),
+    '导出素材不属于当前编辑会话，请等待预览重新准备。'
+  )
+  check(
+    'ex.msgGeneration',
+    editorExportRequestErrorMessage('mediaGenerationMismatch'),
+    '导出素材已经被新的编辑代次取代，请重新导出。'
+  )
+  check(
+    'ex.msgSequence',
+    editorExportRequestErrorMessage('sourceSequenceMismatch'),
+    '剪辑时间线已变化，请等待预览更新后重试。'
+  )
+  check(
+    'ex.msgManifest',
+    editorExportRequestErrorMessage('mediaManifestMismatch'),
+    '项目素材清单已变化，请等待预览更新后重试。'
+  )
+  check(
+    'ex.msgMissingRef',
+    editorExportRequestErrorMessage('missingAssetReference', { role: 'cameraRecording' }),
+    '项目需要摄像头素材，但当前编辑会话没有对应文件。'
+  )
+  check(
+    'ex.msgMissingFile',
+    editorExportRequestErrorMessage('missingAssetFile', { role: 'screenRecording', path: '/x.mp4' }),
+    '主录屏素材不存在：/x.mp4。'
+  )
+  check(
+    'ex.msgNonFile',
+    // 上游 displayName(wallpaper) = "背景素材"，模板是 "\(displayName)素材不是…"，
+    // 因此文案里出现「背景素材素材」是原样照搬，不做改写。
+    editorExportRequestErrorMessage('nonFileAsset', { role: 'wallpaper', value: '/dir' }),
+    '背景素材素材不是可用的本地文件：/dir。'
+  )
+  check(
+    'ex.msgChanged',
+    editorExportRequestErrorMessage('assetVersionChanged', { role: 'sticker', path: '/s.png' }),
+    '贴图素材在导出前已变化：/s.png。请重新打开或刷新项目。'
+  )
+  check(
+    'ex.msgInvalidURL',
+    editorExportRequestErrorMessage('invalidOutputURL', { value: 'https://x/y.mp4' }),
+    '导出位置不是本地文件路径：https://x/y.mp4。'
+  )
+  check(
+    'ex.msgCollides',
+    editorExportRequestErrorMessage('outputCollidesWithInput', { path: '/in.mp4' }),
+    '导出位置不能覆盖项目素材：/in.mp4。'
+  )
+  check(
+    'ex.msgRange',
+    editorExportRequestErrorMessage('invalidOutputRange'),
+    '所选片段已经变化，无法确定有效的导出范围。请重新选择片段。'
+  )
+
+  // --- 本地文件判定
+  check('ex.isLocal', isFileURLPath('/in/a.mp4'), true)
+  check('ex.isLocalWin', isFileURLPath('C:\\clips\\a.mp4'), true)
+  check('ex.isRemote', isFileURLPath('https://x/a.mp4'), false)
+  check('ex.isFileScheme', isFileURLPath('file:///in/a.mp4'), false)
+
+  const fakeFileSystem = (files) => ({
+    fileExists: (path) => Object.prototype.hasOwnProperty.call(files, path),
+    isDirectory: (path) => files[path] === 'dir',
+    attributes: (path) =>
+      files[path] === 'dir' || !Object.prototype.hasOwnProperty.call(files, path)
+        ? null
+        : { systemNumber: 1n, systemFileNumber: 2n, size: BigInt(files[path]), modificationDate: 1000 },
+  })
+  const filesBase = { '/in/screen.mp4': 100, '/in/cam.mov': 200, '/in/mic.m4a': 300, '/in/sticker.png': 400 }
+  const fsA = fakeFileSystem(filesBase)
+
+  check('ex.validLocal', kindOf(() => validateExistingLocalFile('/in/screen.mp4', 'screenRecording', fsA)), 'no-throw')
+  check('ex.validRemote', kindOf(() => validateExistingLocalFile('https://x/a.mp4', 'sticker', fsA)), 'nonFileAsset')
+  check('ex.validMissing', kindOf(() => validateExistingLocalFile('/in/none.mp4', 'sticker', fsA)), 'missingAssetFile')
+  const fsDir = fakeFileSystem({ ...filesBase, '/in/somedir': 'dir' })
+  check('ex.validDirectory', kindOf(() => validateExistingLocalFile('/in/somedir', 'wallpaper', fsDir)), 'nonFileAsset')
+
+  // --- 素材冻结与代次比对
+  const screenAsset = makeExportAssetFromPath('/in/screen.mp4', 'screenRecording', fsA)
+  check('ex.assetSize', screenAsset.version.fileSize === 100n, true)
+  check('ex.assetStable', kindOf(() => validateCurrentVersion(screenAsset, 'screenRecording', fsA)), 'no-throw')
+  const fsReplaced = fakeFileSystem({ ...filesBase, '/in/screen.mp4': 999 })
+  check(
+    'ex.assetReplaced',
+    kindOf(() => validateCurrentVersion(screenAsset, 'screenRecording', fsReplaced)),
+    'assetVersionChanged'
+  )
+  const fsGone = fakeFileSystem({ '/in/cam.mov': 200 })
+  check(
+    'ex.assetGone',
+    kindOf(() => validateCurrentVersion(screenAsset, 'screenRecording', fsGone)),
+    'missingAssetFile'
+  )
+
+  const stickerAsset = makeExportAssetFromPath('/in/sticker.png', 'sticker', fsA)
+  const micAsset = makeExportAssetFromPath('/in/mic.m4a', 'microphoneRecording', fsA)
+  const assetUnion = {
+    source: screenAsset,
+    camera: null,
+    microphone: micAsset,
+    wallpaper: null,
+    stickers: { 'stickers/a.png': stickerAsset },
+  }
+  check('ex.assetUnionURLs', exportAssetInputURLs(assetUnion).length, 3)
+  check('ex.assetUnionFirst', exportAssetInputURLs(assetUnion)[0], '/in/screen.mp4')
+  check('ex.assetUnionAllValid', kindOf(() => validateCurrentAssetVersions(assetUnion, fsA)), 'no-throw')
+  check(
+    'ex.assetUnionBadSticker',
+    kindOf(() =>
+      validateCurrentAssetVersions(assetUnion, fakeFileSystem({ '/in/screen.mp4': 100, '/in/mic.m4a': 300 }))
+    ),
+    'missingAssetFile'
+  )
+
+  // --- 文件名净化
+  check('ex.nameBlank', exportFileNameComponent('   '), null)
+  check('ex.namePlain', exportFileNameComponent('  我的录像  '), '我的录像')
+  check('ex.nameSlash', exportFileNameComponent('a/b:c'), 'a-b-c')
+  check('ex.nameNewline', exportFileNameComponent('第一行\n第二行'), '第一行-第二行')
+  check('ex.nameLeadingSeparator', exportFileNameComponent('/开头'), '开头')
+  check('ex.nameControl', exportFileNameComponent('a\u0000b'), 'a-b')
+  check('ex.nameCollapse', exportFileNameComponent('a / b'), 'a-b')
+
+  // --- 输出路径
+  const noFiles = () => false
+  check(
+    'ex.outPathPlain',
+    exportOutputPath({ folder: '/out', baseName: '成片', outputKind: 'video', fileExists: noFiles }),
+    '/out/成片.mp4'
+  )
+  check(
+    'ex.outPathAudio',
+    exportOutputPath({ folder: '/out', baseName: '音频', outputKind: 'audio', fileExists: noFiles }),
+    '/out/音频.m4a'
+  )
+  const taken = new Set(['/out/成片.mp4', '/out/成片-2.mp4'])
+  check(
+    'ex.outPathSuffix',
+    exportOutputPath({
+      folder: '/out/',
+      baseName: '成片',
+      outputKind: 'video',
+      fileExists: (path) => taken.has(path),
+    }),
+    '/out/成片-3.mp4'
+  )
+  check(
+    'ex.outPathBlankName',
+    kindOf(() =>
+      exportOutputPath({ folder: '/out', baseName: ' : ', outputKind: 'video', fileExists: noFiles })
+    ),
+    'invalidOutputURL'
+  )
+
+  // --- 时间戳与默认名
+  const stamp = exportTimestampText(new Date(2024, 0, 2, 3, 4, 5).getTime())
+  check('ex.timestamp', stamp, '2024-01-02-03-04-05')
+  check(
+    'ex.defaultVideoNamed',
+    defaultExportOutputPath({
+      folder: '/out',
+      projectName: '项目一',
+      frameRate: 30,
+      outputKind: 'video',
+      timestampMilliseconds: 0,
+      fileExists: noFiles,
+    }),
+    '/out/项目一-30fps.mp4'
+  )
+  check(
+    'ex.defaultVideoUnnamed',
+    defaultExportOutputPath({
+      folder: '/out',
+      projectName: '   ',
+      frameRate: 60,
+      outputKind: 'video',
+      timestampMilliseconds: new Date(2024, 0, 2, 3, 4, 5).getTime(),
+      fileExists: noFiles,
+    }),
+    '/out/成片-2024-01-02-03-04-05-60fps.mp4'
+  )
+  check(
+    'ex.defaultAudioNamed',
+    defaultExportOutputPath({
+      folder: '/out',
+      projectName: '项目一',
+      frameRate: 30,
+      outputKind: 'audio',
+      timestampMilliseconds: 0,
+      fileExists: noFiles,
+    }),
+    '/out/项目一-音频.m4a'
+  )
+  check(
+    'ex.defaultAudioUnnamed',
+    defaultExportOutputPath({
+      folder: '/out',
+      projectName: null,
+      frameRate: 30,
+      outputKind: 'audio',
+      timestampMilliseconds: new Date(2024, 0, 2, 3, 4, 5).getTime(),
+      fileExists: noFiles,
+    }),
+    '/out/音频-2024-01-02-03-04-05.m4a'
+  )
+
+  // --- 构建器：正常路径
+  const requiredNone = {
+    cameraVideo: false,
+    microphoneAudio: false,
+    backgroundImage: false,
+    backgroundVideo: false,
+  }
+  const preparedBase = {
+    editorSessionID: 'session-1',
+    generation: 7,
+    sourceSequenceKey: 'seq-1',
+    sourceAsset: screenAsset,
+    cameraAsset: null,
+    microphoneAsset: null,
+    sourceVideoTimeRange: { start: 0, end: 10 },
+  }
+  const buildInput = (overrides = {}) => ({
+    editorSessionID: 'session-1',
+    mediaGeneration: 7,
+    project: { timeline: { stickerClips: [] } },
+    prepared: preparedBase,
+    hasMediaManifest: true,
+    projectSourceSequenceKey: 'seq-1',
+    preparedManifestKey: 'manifest-1',
+    projectManifestKey: 'manifest-1',
+    requiredMedia: requiredNone,
+    wallpaperPath: null,
+    stickerPaths: {},
+    outputURL: '/out/final.mp4',
+    outputKind: 'video',
+    outputRange: null,
+    fileSystem: fsA,
+    buildMediaPlan: () => ({ outputDuration: 10 }),
+    defaultOutputPath: () => '/out/default.mp4',
+    ...overrides,
+  })
+
+  const happy = buildEditorExportRequest(buildInput())
+  check('ex.buildURL', happy.outputURL, '/out/final.mp4')
+  check('ex.buildSession', happy.editorSessionID, 'session-1')
+  check('ex.buildGeneration', happy.mediaGeneration, 7)
+  check('ex.buildKind', happy.outputKind, 'video')
+  check('ex.buildRange', happy.outputRange === null, true)
+  check('ex.buildDuration', happy.mediaPlan.outputDuration, 10)
+  check('ex.buildCameraNull', happy.assets.camera === null, true)
+  check('ex.buildMicNull', happy.assets.microphone === null, true)
+  check('ex.buildWallpaperNull', happy.assets.wallpaper === null, true)
+  check('ex.buildStickerCount', Object.keys(happy.assets.stickers).length, 0)
+
+  const defaulted = buildEditorExportRequest(buildInput({ outputURL: null }))
+  check('ex.buildDefaultURL', defaulted.outputURL, '/out/default.mp4')
+
+  // --- 构建器：错误优先级
+  check(
+    'ex.buildSessionMismatch',
+    kindOf(() => buildEditorExportRequest(buildInput({ editorSessionID: 'other' }))),
+    'editorSessionMismatch'
+  )
+  check(
+    'ex.buildGenerationMismatch',
+    kindOf(() => buildEditorExportRequest(buildInput({ mediaGeneration: 8 }))),
+    'mediaGenerationMismatch'
+  )
+  check(
+    'ex.buildSequenceMismatch',
+    kindOf(() => buildEditorExportRequest(buildInput({ projectSourceSequenceKey: 'seq-2' }))),
+    'sourceSequenceMismatch'
+  )
+  check(
+    'ex.buildManifestMismatch',
+    kindOf(() => buildEditorExportRequest(buildInput({ projectManifestKey: 'manifest-2' }))),
+    'mediaManifestMismatch'
+  )
+  check(
+    'ex.buildNoManifest',
+    kindOf(() => buildEditorExportRequest(buildInput({ hasMediaManifest: false }))),
+    'missingAssetReference'
+  )
+  // 会话优先于清单：两者都不对时先报会话
+  check(
+    'ex.buildPrioritySession',
+    kindOf(() => buildEditorExportRequest(buildInput({ editorSessionID: 'x', hasMediaManifest: false }))),
+    'editorSessionMismatch'
+  )
+
+  // 缺素材（按后期状态决定）
+  const needCamera = { ...requiredNone, cameraVideo: true }
+  check(
+    'ex.buildCameraMissing',
+    kindOf(() => buildEditorExportRequest(buildInput({ requiredMedia: needCamera }))),
+    'missingAssetReference'
+  )
+  check(
+    'ex.buildCameraMissingMsg',
+    messageOf(() => buildEditorExportRequest(buildInput({ requiredMedia: needCamera }))),
+    '项目需要摄像头素材，但当前编辑会话没有对应文件。'
+  )
+  const needMic = { ...requiredNone, microphoneAudio: true }
+  check(
+    'ex.buildMicMissing',
+    kindOf(() => buildEditorExportRequest(buildInput({ requiredMedia: needMic }))),
+    'missingAssetReference'
+  )
+  const needWallpaper = { ...requiredNone, backgroundImage: true }
+  check(
+    'ex.buildWallpaperMissing',
+    kindOf(() => buildEditorExportRequest(buildInput({ requiredMedia: needWallpaper }))),
+    'missingAssetReference'
+  )
+  const camAsset = makeExportAssetFromPath('/in/cam.mov', 'cameraRecording', fsA)
+  const withCamera = buildEditorExportRequest(
+    buildInput({ requiredMedia: needCamera, prepared: { ...preparedBase, cameraAsset: camAsset } })
+  )
+  check('ex.buildCameraKept', withCamera.assets.camera !== null && withCamera.assets.camera.url, '/in/cam.mov')
+  // 只导音频时不要摄像头
+  const audioOnly = buildEditorExportRequest(
+    buildInput({ outputKind: 'audio', outputURL: '/out/final.m4a', requiredMedia: needCamera })
+  )
+  check('ex.buildAudioSkipsCamera', audioOnly.assets.camera === null, true)
+
+  const stickerProject = { timeline: { stickerClips: [{ relativePath: 'stickers/a.png' }] } }
+  check(
+    'ex.buildStickerMissing',
+    kindOf(() => buildEditorExportRequest(buildInput({ project: stickerProject }))),
+    'missingAssetReference'
+  )
+  const stickered = buildEditorExportRequest(
+    buildInput({ project: stickerProject, stickerPaths: { 'stickers/a.png': '/in/sticker.png' } })
+  )
+  check('ex.buildStickerKept', stickered.assets.stickers['stickers/a.png'].url, '/in/sticker.png')
+
+  // 素材在准备之后被替换
+  check(
+    'ex.buildAssetChanged',
+    kindOf(() => buildEditorExportRequest(buildInput({ fileSystem: fsReplaced }))),
+    'assetVersionChanged'
+  )
+
+  // 输出路径
+  check(
+    'ex.buildRemoteOutput',
+    kindOf(() => buildEditorExportRequest(buildInput({ outputURL: 'https://x/final.mp4' }))),
+    'invalidOutputURL'
+  )
+  check(
+    'ex.buildWrongExtension',
+    kindOf(() => buildEditorExportRequest(buildInput({ outputURL: '/out/final.m4a' }))),
+    'invalidOutputURL'
+  )
+  check(
+    'ex.buildWrongExtensionMsg',
+    messageOf(() => buildEditorExportRequest(buildInput({ outputURL: '/out/final.m4a' }))),
+    '导出位置不是本地文件路径：音视频类型与扩展名不匹配：/out/final.m4a。'
+  )
+  check(
+    'ex.buildCaseInsensitiveExtension',
+    buildEditorExportRequest(buildInput({ outputURL: '/out/final.MP4' })).outputURL,
+    '/out/final.MP4'
+  )
+  check(
+    'ex.buildCollides',
+    kindOf(() => buildEditorExportRequest(buildInput({ outputURL: '/in/screen.mp4' }))),
+    'outputCollidesWithInput'
+  )
+
+  // 源视频轨缺失
+  check(
+    'ex.buildNoSourceRange',
+    kindOf(() =>
+      buildEditorExportRequest(buildInput({ prepared: { ...preparedBase, sourceVideoTimeRange: null } }))
+    ),
+    'mediaManifestMismatch'
+  )
+
+  // 范围校验
+  const ranged = buildEditorExportRequest(buildInput({ outputRange: { start: 2, end: 8 } }))
+  check('ex.buildRangeKept', ranged.outputRange.start, 2)
+  check('ex.buildRangeEnd', ranged.outputRange.end, 8)
+  check(
+    'ex.buildRangeNegative',
+    kindOf(() => buildEditorExportRequest(buildInput({ outputRange: { start: -0.5, end: 8 } }))),
+    'invalidOutputRange'
+  )
+  check(
+    'ex.buildRangeOverflow',
+    kindOf(() => buildEditorExportRequest(buildInput({ outputRange: { start: 1, end: 10.5 } }))),
+    'invalidOutputRange'
+  )
+  check(
+    'ex.buildRangeEmpty',
+    kindOf(() => buildEditorExportRequest(buildInput({ outputRange: { start: 5, end: 5 } }))),
+    'invalidOutputRange'
+  )
+  // 浮点尾差被容差吸收并夹取
+  const tolerant = buildEditorExportRequest(
+    buildInput({ outputRange: { start: -1e-9, end: 10 + 1e-9 } })
+  )
+  check('ex.buildRangeToleranceStart', tolerant.outputRange.start, 0)
+  check('ex.buildRangeToleranceEnd', tolerant.outputRange.end, 10)
+
+}
+
+await runEditorExportRequestBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

@@ -465,3 +465,29 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
 - `core/EditorTextInputHitTesting.ts`（60 行）：两条判据 —— 活动 field editor 可能被重挂到输入框之外，命中它自身可见区就直接算「点到了文本输入」；否则从命中节点沿父链找可编辑 NSTextField/NSTextView。锚点视图 `hitTest` 恒返回 nil，永不拦截鼠标。
 - `core/EditorPlaybackInitialFrameWaiter.ts`（72 行）：一次性首帧桥接。`requestNotificationOfMediaDataChange` 在没有 pull delegate 时无效，所以必须先装 delegate；结果只定一次（超时/取消/通知都收敛到同一条 `finish`），定完立刻摘 delegate、清计时器 —— 不必用 8ms 轮询把编辑器叫醒。
 - verify-model 断言 1366 → 1499（+133）：旋钮角度四象限与死区、步进/精细/夹取、接缝最短路径、跨圆心重锚定、滚轮五类守卫、三套文案、遮罩 revision 竞态四态、面板 show/hide 幂等与过期回调、观察者事务单次提交与过期清理、同步点 y/label/草稿/删除决策、文本输入命中两条判据、首帧等待的成功/超时/取消/缓存四种结局。
+
+## 二十二、导出请求构建（1 文件 / 431 行 + 2 处符号合并）
+
+`EditorExportRequest.swift` 是「按下导出」到「真正开编」之间唯一的闸门：它把编辑器检查过的
+素材**冻结成路径 + 文件代次**，任何代次漂移都在这里变成可读的中文错误，而不是悄悄编到别的文件上。
+
+- 代次冻结：`EditorExportAsset = { url, version }`，`version` 取 inode 号（`NSFileSystemFileNumber` /
+  `NSFileSystemNumber`）+ 大小 + 修改时间。只比路径不够 —— 同路径被覆盖后路径完全一样。
+- 校验流水线顺序即错误优先级（`buildEditorExportRequest`）：会话 → 代次 → 源序列键 → 清单键 →
+  清单存在 → 逐个素材（摄像头/麦克风/背景/贴图按**后期状态**决定要不要）→ 代次复核 → 输出路径
+  （本地 → 扩展名 → 不覆盖输入）→ 源视频轨 → 重建媒体计划 → 范围夹取。
+- 只导音频时不要求摄像头与背景素材 —— 但麦克风仍按 `requiredMedia.microphoneAudio` 要。
+- 贴图清单来自 `project.timeline.stickerClips` 的 `relativePath`，用 `stickerURLs[relativePath]` 查表；
+  表里没有就是 `missingAssetReference`（而不是「文件不存在」）—— 这两类错误对用户是不同动作。
+- 输出路径三段：`isFileURLPath` 拒掉带 scheme 的地址（`file://` 也算，因为 port 层只接裸路径）；
+  扩展名必须与 `outputKind` 一致（大小写不敏感）；最后用 `exportFileTransactionCollides`
+  与全部输入 URL 比对，防止导出覆盖项目素材。
+- 范围夹取容差 = `max(|成片时长| × ulp × 8, 1e-6)`：用户把播放头拖到末尾时浮点尾数会略微超出，
+  不能因此报错；夹取后要求 `end > start`，「选了 0 长度片段」仍然报 `invalidOutputRange`。
+- 文案：`nonFileAsset` 模板是 `"\(displayName)素材不是可用的本地文件"`，而 `wallpaper` 的
+  displayName 就是「背景素材」，所以会输出「背景素材素材不是…」—— 上游原样如此，照搬不改写。
+- verify-model 断言 1499 → 1599（+100）：两种输出扩展名、五种素材名、文件代次五字段比对与
+  inode 缺失、范围/片段计数取值、11 类中文文案逐字、本地路径四态（含 `file://`）、素材三类校验
+  顺序、文件名净化六种输入（`/` `:` 换行 控制字符 首尾空白 空串）、`-2`/`-3` 不覆盖、
+  默认名四条分支（有名/无名 × 视频/音频）、构建器正常路径 + 十类错误优先级 + 摄像头只在视频要、
+  浮点容差夹取到 `[0, 时长]`。
