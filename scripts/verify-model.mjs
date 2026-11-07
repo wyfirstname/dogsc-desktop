@@ -10790,5 +10790,930 @@ async function runPreviewAndSelectionBatch() {
 
 await runPreviewAndSelectionBatch()
 
+
+
+async function runWindowAndMarkerBatch() {
+  // ========== 8 文件 / 1794 行：编辑器窗口桥 / 悬浮参考线 / 连续圆角 /
+  //            画布比例 / 设置窗口 / 倾斜板 / 标记列表 / 录制运行安全
+  const {
+    // ---- EditorWindowLifecycleBridge.swift
+    EDITOR_TITLE_BAR_HEIGHT, EDITOR_TRAFFIC_LIGHT_LEADING_INSET,
+    EDITOR_TRAFFIC_LIGHT_SPACING, EDITOR_TRAFFIC_LIGHT_BUTTONS,
+    editorWindowTitle, editorWindowIsActive, editorTitleBarContainerFrame,
+    editorTrafficLightOrigin, editorShouldAlignTrafficLights,
+    editorScreenSizeDecision, editorDeferredDispatchShouldRun, EditorWindowObservation,
+    // ---- EditorTimelineHoverGuide.swift
+    TIMELINE_HOVER_GUIDE_LINE_WIDTH, TIMELINE_HOVER_GUIDE_DASH,
+    TIMELINE_HOVER_BADGE_WIDTH, TIMELINE_HOVER_BADGE_HEIGHT,
+    TIMELINE_HOVER_BADGE_CORNER_RADIUS, TIMELINE_HOVER_BADGE_BORDER_WIDTH,
+    TIMELINE_HOVER_BADGE_SHADOW_OPACITY, TIMELINE_HOVER_BADGE_SHADOW_RADIUS,
+    TIMELINE_HOVER_BADGE_SHADOW_OFFSET_Y, TIMELINE_HOVER_BADGE_LABEL_FONT_SIZE,
+    TIMELINE_HOVER_GUIDE_STROKE_ALPHA, TIMELINE_HOVER_GUIDE_BORDER_ALPHA,
+    TIMELINE_HOVER_GUIDE_TEXT_ALPHA, TIMELINE_HOVER_BADGE_LEADING_GAP,
+    TIMELINE_HOVER_BADGE_TRAILING_INSET, timelineHoverTimecodeLabel,
+    timelineHoverGuideLayout, timelineHoverBadgeLabelFrame,
+    timelineHoverGuideConfigurePlan, timelineHoverBackingScale, TimelineHoverGuideState,
+    // ---- ContinuousCornerMask.swift
+    CORNER_MASK_CACHE_COUNT_LIMIT, CORNER_MASK_CACHE_COST_LIMIT,
+    CORNER_MASK_BITS_PER_COMPONENT, CORNER_MASK_EXTENT_TOLERANCE,
+    continuousCornerMaskCacheKey, continuousCornerClampedRadius,
+    continuousCornerMaskKind, continuousCornerIsCircle, continuousCornerAtlasCap,
+    continuousCornerAtlasPlan, continuousCornerAtlasSlices,
+    continuousCornerAtlasTranslation, continuousCornerStretchPlan,
+    continuousCornerStretchAccepts, continuousCornerCacheCost,
+    continuousCornerMaskTranslation, ContinuousCornerMaskCache,
+    // ---- EditorCanvasRatioSelector.swift
+    EDITOR_CANVAS_RATIO_PRESETS, EDITOR_CANVAS_CUSTOM_RATIO_MIN,
+    EDITOR_CANVAS_CUSTOM_RATIO_MAX, EDITOR_CANVAS_RATIO_PANEL_WIDTH,
+    EDITOR_CANVAS_RATIO_PANEL_PADDING, EDITOR_CANVAS_RATIO_GRID_COLUMNS,
+    EDITOR_CANVAS_RATIO_GRID_SPACING, EDITOR_CANVAS_RATIO_ITEM_HEIGHT,
+    EDITOR_CANVAS_RATIO_THUMB_MAX_EDGE, EDITOR_CANVAS_RATIO_THUMB_BOX,
+    EDITOR_CANVAS_RATIO_PANEL_TITLE_SIZE, EDITOR_CANVAS_RATIO_CLOSE_GLYPH_SIZE,
+    EDITOR_CANVAS_RATIO_CUSTOM_HINT, editorCanvasIsPortrait, editorCanvasSelectedPreset,
+    editorCanvasCustomAspectRatio, editorCanvasRatioNumberText, editorCanvasRatioFields,
+    editorCanvasOrientedRatio, editorCanvasPresetAspectValue, editorCanvasPresetThumbSize,
+    editorCanvasCustomFieldID, editorCanvasPresetUsesIcon, editorCanvasPresetSymbol,
+    editorCanvasShowsOrientationControl, editorCanvasPresetTitleKey,
+    editorCanvasRatioValueLabel, editorCanvasStyleIsPortrait,
+    // ---- AppSettingsWindowController.swift
+    SETTINGS_WINDOW_CONTENT_WIDTH, SETTINGS_WINDOW_MAXIMUM_CONTENT_HEIGHT,
+    SETTINGS_WINDOW_INITIAL_CONTENT_HEIGHT, SETTINGS_WINDOW_MINIMUM_CONTENT_HEIGHT,
+    SETTINGS_WINDOW_SCREEN_HEIGHT_RESERVE, SETTINGS_WINDOW_MINIMUM_LIMIT,
+    SETTINGS_WINDOW_IDENTIFIER, SETTINGS_HEIGHT_SPRING_INTERVAL,
+    SETTINGS_HEIGHT_EPSILON, SETTINGS_WINDOW_STYLE, settingsHeightLimit,
+    settingsInitialHeight, settingsWindowOrigin, settingsFinishPresentationPlan,
+    settingsTargetHeight, settingsHeightAppliesImmediately, windowHeightSpringFrame,
+    WindowHeightSpring, settingsReferenceSpring,
+    // ---- EditorTiltPad.swift
+    TILT_PAD_MAXIMUM_X, TILT_PAD_MAXIMUM_Y, TILT_PAD_WIDTH, TILT_PAD_HEIGHT,
+    TILT_PAD_INSET, TILT_PAD_OUTER_CORNER_RADIUS, TILT_PAD_PLATE_CORNER_RADIUS,
+    TILT_PAD_PLATE_HORIZONTAL_PADDING, TILT_PAD_PLATE_VERTICAL_PADDING,
+    TILT_PAD_PREVIEW_ROTATION_SCALE, TILT_PAD_PREVIEW_PERSPECTIVE,
+    TILT_PAD_CROSS_ALPHA, TILT_PAD_ACTIVE_CROSS_ALPHA, TILT_PAD_HANDLE_INNER_IDLE,
+    TILT_PAD_HANDLE_INNER_ACTIVE, TILT_PAD_HANDLE_OUTER_IDLE, TILT_PAD_HANDLE_OUTER_ACTIVE,
+    TILT_PAD_DEAD_ZONE_DEGREES, TILT_PAD_NEUTRAL_EPSILON, TILT_PAD_READOUT_UNIT,
+    TILT_PAD_READOUT_DIGITS, tiltPadClamped, tiltPadIsNeutral, tiltPadHandlePoint,
+    tiltPadTiltAt, tiltPadPlateRotation, tiltPadHandleSize, tiltPadIsActive,
+    tiltPadAllowsHitTesting, TiltPadDragState,
+    // ---- EditorMarkerListControl.swift
+    EDITOR_MARKER_ENTRY_HEIGHT, EDITOR_MARKER_ENTRY_HORIZONTAL_PADDING,
+    EDITOR_MARKER_ENTRY_CORNER_RADIUS, EDITOR_MARKER_CARD_CORNER_RADIUS,
+    EDITOR_MARKER_CARD_BORDER_WIDTH, EDITOR_MARKER_CARD_BORDER_ALPHA,
+    EDITOR_MARKER_ROW_HEIGHT, EDITOR_MARKER_ROW_SPACING, EDITOR_MARKER_ROW_STRIDE,
+    EDITOR_MARKER_LIST_MINIMUM_HEIGHT, EDITOR_MARKER_LIST_MAXIMUM_HEIGHT,
+    EDITOR_MARKER_LIST_CHROME_HEIGHT, EDITOR_MARKER_EMPTY_HINT, EDITOR_MARKER_SUBTITLE,
+    EDITOR_MARKER_FOOTER_HINT, EDITOR_MARKER_TRASH_WIDTH, EDITOR_MARKER_TRASH_HEIGHT,
+    EDITOR_MARKER_TRASH_ALPHA_IDLE, EDITOR_MARKER_TRASH_ALPHA_HOVERED,
+    EDITOR_MARKER_PANEL_MAXIMUM_WIDTH, EDITOR_MARKER_PANEL_SCREEN_INSET,
+    EDITOR_MARKER_PANEL_ANCHOR_GAP, EDITOR_MARKER_PANEL_MINIMUM_HEIGHT,
+    EDITOR_MARKER_PANEL_IDENTIFIER, EDITOR_MARKER_ESCAPE_KEY_CODE,
+    editorMarkerListHeight, editorMarkerTrashAlpha, editorMarkerPanelLevel,
+    editorMarkerPanelFrame, EDITOR_MARKER_DISMISS_ORDER, editorMarkerEventDecision,
+    EditorMarkerCardPresenter,
+    // ---- ScreenRecorderRunSafety.swift
+    ScreenRecorderRunSafetyState, CAPTURE_OUTPUT_ERROR_DOMAIN,
+    CAPTURE_OUTPUT_TERMINAL_ERROR_CODES, CAPTURE_OUTPUT_TERMINAL_STAGE_DESCRIPTIONS,
+    captureOutputTerminalErrorCode, captureOutputTerminalErrorDescription,
+    CaptureOutputTerminalState,
+    // ---- 依赖
+    makeCanvasStyle,
+  } = m
+
+  // ---------------------------------------------------------------------------
+  // EditorWindowLifecycleBridge.swift（189 行）
+  // ---------------------------------------------------------------------------
+  check('ewl.titleBarHeight', EDITOR_TITLE_BAR_HEIGHT, 46)
+  check('ewl.trafficLeading', EDITOR_TRAFFIC_LIGHT_LEADING_INSET, 16)
+  check('ewl.trafficSpacing', EDITOR_TRAFFIC_LIGHT_SPACING, 20)
+  check('ewl.trafficButtons', EDITOR_TRAFFIC_LIGHT_BUTTONS.length, 3)
+
+  check('ewl.titleWithProject',
+    editorWindowTitle({ projectTitle: '  我的片子  ', appDisplayName: 'DogSC' }),
+    '我的片子 — DogSC')
+  check('ewl.titleBlank',
+    editorWindowTitle({ projectTitle: '   ', appDisplayName: 'DogSC' }), 'DogSC 编辑器')
+  check('ewl.titleKeepsInnerSpace',
+    editorWindowTitle({ projectTitle: 'a b', appDisplayName: 'DogSC' }), 'a b — DogSC')
+
+  const activeAll = {
+    applicationIsActive: true, applicationIsHidden: false,
+    windowIsMiniaturized: false, windowIsVisible: true, windowIsOccluded: true,
+  }
+  check('ewl.active', editorWindowIsActive(activeAll), true)
+  check('ewl.activeAppInactive',
+    editorWindowIsActive({ ...activeAll, applicationIsActive: false }), false)
+  check('ewl.activeAppHidden',
+    editorWindowIsActive({ ...activeAll, applicationIsHidden: true }), false)
+  check('ewl.activeMiniaturized',
+    editorWindowIsActive({ ...activeAll, windowIsMiniaturized: true }), false)
+  check('ewl.activeInvisible',
+    editorWindowIsActive({ ...activeAll, windowIsVisible: false }), false)
+  check('ewl.activeOccluded',
+    editorWindowIsActive({ ...activeAll, windowIsOccluded: false }), false)
+
+  check('ewl.trafficLightFirst',
+    (() => {
+      const o = editorTrafficLightOrigin({ index: 0, barHeight: 46, buttonHeight: 14 })
+      return `${o.x},${o.y}`
+    })(), '16,16')
+  check('ewl.trafficLightThird',
+    (() => {
+      const o = editorTrafficLightOrigin({ index: 2, barHeight: 46, buttonHeight: 14 })
+      return `${o.x},${o.y}`
+    })(), '56,16')
+  check('ewl.trafficLightRoundsUp',
+    editorTrafficLightOrigin({ index: 0, barHeight: 46, buttonHeight: 13 }).y, 17)
+
+  check('ewl.containerFrame',
+    (() => {
+      const f = editorTitleBarContainerFrame({ windowWidth: 900, windowHeight: 600, barHeight: 46 })
+      return `${f.x},${f.y},${f.width},${f.height}`
+    })(), '0,554,900,46')
+  check('ewl.alignOk',
+    editorShouldAlignTrafficLights({ hasWindow: true, isFullScreen: false, hasTitlebarAccessory: true }),
+    true)
+  check('ewl.alignFullScreen',
+    editorShouldAlignTrafficLights({ hasWindow: true, isFullScreen: true, hasTitlebarAccessory: true }),
+    false)
+  check('ewl.alignNoWindow',
+    editorShouldAlignTrafficLights({ hasWindow: false, isFullScreen: false, hasTitlebarAccessory: true }),
+    false)
+
+  check('ewl.screenSizeFirst',
+    editorScreenSizeDecision({ lastScreenSize: null, screenSize: { width: 100, height: 50 } }).schedule,
+    true)
+  check('ewl.screenSizeSame',
+    editorScreenSizeDecision({
+      lastScreenSize: { width: 100, height: 50 }, screenSize: { width: 100, height: 50 },
+    }).schedule, false)
+  check('ewl.screenSizeChanged',
+    editorScreenSizeDecision({
+      lastScreenSize: { width: 100, height: 50 }, screenSize: { width: 100, height: 51 },
+    }).schedule, true)
+  check('ewl.screenSizeNull',
+    editorScreenSizeDecision({ lastScreenSize: { width: 100, height: 50 }, screenSize: null }).schedule,
+    false)
+  check('ewl.deferredSame', editorDeferredDispatchShouldRun(5, 5), true)
+
+  {
+    const changes = []
+    const sizes = []
+    const observation = new EditorWindowObservation({
+      onActivityChanged: (active) => changes.push(active),
+      onScreenSizeChanged: (size) => sizes.push(`${size.width}x${size.height}`),
+    })
+    check('ewl.obsFirstActivity', observation.updateActivity(activeAll), true)
+    check('ewl.obsSameActivity', observation.updateActivity(activeAll), false)
+    await Promise.resolve()
+    check('ewl.obsNotifiedOnce', changes.join(','), 'true')
+    observation.reset()
+    check('ewl.obsResetClears', observation.activityValue, null)
+    check('ewl.obsReNotifyAfterReset', observation.updateActivity(activeAll), true)
+    check('ewl.obsFirstScreenSize', observation.updateScreenSize({ width: 800, height: 600 }), true)
+    check('ewl.obsSameScreenSize', observation.updateScreenSize({ width: 800, height: 600 }), false)
+    await Promise.resolve()
+    check('ewl.obsScreenNotified', sizes.join(','), '800x600')
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorTimelineHoverGuide.swift（204 行）
+  // ---------------------------------------------------------------------------
+  check('thg.lineWidth', TIMELINE_HOVER_GUIDE_LINE_WIDTH, 1)
+  check('thg.dash', TIMELINE_HOVER_GUIDE_DASH.join(','), '3,4')
+  check('thg.badgeWidth', TIMELINE_HOVER_BADGE_WIDTH, 62)
+  check('thg.badgeHeight', TIMELINE_HOVER_BADGE_HEIGHT, 18)
+  check('thg.badgeRadius', TIMELINE_HOVER_BADGE_CORNER_RADIUS, 9)
+  check('thg.badgeBorder', TIMELINE_HOVER_BADGE_BORDER_WIDTH, 0.75)
+  check('thg.badgeShadowOpacity', TIMELINE_HOVER_BADGE_SHADOW_OPACITY, 0.34)
+  check('thg.badgeShadowRadius', TIMELINE_HOVER_BADGE_SHADOW_RADIUS, 4)
+  check('thg.badgeShadowOffset', TIMELINE_HOVER_BADGE_SHADOW_OFFSET_Y, 2)
+  check('thg.labelFont', TIMELINE_HOVER_BADGE_LABEL_FONT_SIZE, 9)
+  check('thg.strokeAlpha', TIMELINE_HOVER_GUIDE_STROKE_ALPHA, 0.34)
+  check('thg.borderAlpha', TIMELINE_HOVER_GUIDE_BORDER_ALPHA, 0.18)
+  check('thg.textAlpha', TIMELINE_HOVER_GUIDE_TEXT_ALPHA, 0.92)
+  check('thg.leadingGap', TIMELINE_HOVER_BADGE_LEADING_GAP, 3)
+  check('thg.trailingInset', TIMELINE_HOVER_BADGE_TRAILING_INSET, 65)
+
+  check('thg.timecodeZero', timelineHoverTimecodeLabel(0), '0:00.00')
+  check('thg.timecodeMinute', timelineHoverTimecodeLabel(6000), '1:00.00')
+  check('thg.timecodeMixed', timelineHoverTimecodeLabel(6150), '1:01.50')
+  check('thg.timecodeMax', timelineHoverTimecodeLabel(359999), '59:59.99')
+  check('thg.timecodeNegative', timelineHoverTimecodeLabel(-5), '0:00.00')
+
+  const guideBounds = { x: 0, y: 0, width: 1000, height: 200 }
+  const guideVisible = { x: 0, y: 0, width: 1000, height: 200 }
+  const guideBase = {
+    isEnabled: true,
+    viewportPoint: { x: 500, y: 50 },
+    bounds: guideBounds,
+    visible: guideVisible,
+    duration: 10,
+    canvasHeight: 180,
+    badgeY: 2,
+  }
+  check('thg.layoutCenter', (() => {
+    const l = timelineHoverGuideLayout(guideBase)
+    return `${l.lineX}:${l.badgeX}:${l.centiseconds}:${l.label}`
+  })(), '499.5:469:500:0:05.00')
+  check('thg.layoutScrolled', (() => {
+    const l = timelineHoverGuideLayout({
+      ...guideBase,
+      viewportPoint: { x: 100, y: 50 },
+      visible: { x: 200, y: 0, width: 400, height: 200 },
+    })
+    return `${l.centiseconds}:${l.badgeX}`
+  })(), '300:269')
+  check('thg.layoutClampedLeft', (() => {
+    const l = timelineHoverGuideLayout({ ...guideBase, viewportPoint: { x: -600, y: 50 } })
+    return `${l.lineX}:${l.badgeX}`
+  })(), '-0.5:3')
+  check('thg.layoutClampedRight', (() => {
+    const l = timelineHoverGuideLayout({ ...guideBase, viewportPoint: { x: 5000, y: 50 } })
+    return `${l.lineX}:${l.badgeX}:${l.label}`
+  })(), '999.5:935:0:10.00')
+  check('thg.layoutNarrowVisible', (() => {
+    const l = timelineHoverGuideLayout({
+      ...guideBase,
+      visible: { x: 0, y: 0, width: 50, height: 200 },
+    })
+    return l.badgeX
+  })(), 3)
+  check('thg.layoutDisabled',
+    timelineHoverGuideLayout({ ...guideBase, isEnabled: false }).showsGuide, false)
+  check('thg.layoutNoPoint',
+    timelineHoverGuideLayout({ ...guideBase, viewportPoint: null }).showsGuide, false)
+  check('thg.layoutZeroWidth',
+    timelineHoverGuideLayout({ ...guideBase, bounds: { x: 0, y: 0, width: 0, height: 200 } }).showsGuide,
+    false)
+  check('thg.layoutNegativeDuration',
+    timelineHoverGuideLayout({ ...guideBase, duration: -5 }).centiseconds, 0)
+
+  check('thg.labelFrame', (() => {
+    const f = timelineHoverBadgeLabelFrame(11)
+    return `${f.y}:${f.height}:${f.width}`
+  })(), '3:11:62')
+  check('thg.labelFrameCeils', timelineHoverBadgeLabelFrame(10.2).height, 11)
+  check('thg.backingScaleFallback', timelineHoverBackingScale(null), 2)
+  check('thg.backingScaleGiven', timelineHoverBackingScale(1), 1)
+
+  check('thg.configureNone', (() => {
+    const p = timelineHoverGuideConfigurePlan({
+      locationChanged: false, canvasHeightChanged: false, scrollViewChanged: false,
+    })
+    return `${p.rebindsLocation}:${p.rebuildsPath}:${p.rebindsScrollView}`
+  })(), 'false:false:false')
+  check('thg.configureAll', (() => {
+    const p = timelineHoverGuideConfigurePlan({
+      locationChanged: true, canvasHeightChanged: true, scrollViewChanged: true,
+    })
+    return `${p.rebindsLocation}:${p.rebuildsPath}:${p.rebindsScrollView}`
+  })(), 'true:true:true')
+
+  {
+    const state = new TimelineHoverGuideState()
+    check('thg.stateInitial', state.label, '0:00.00')
+    check('thg.stateFirstUpdate', state.updateCentiseconds(500), true)
+    check('thg.stateLabel', state.label, '0:05.00')
+    check('thg.stateSameUpdate', state.updateCentiseconds(500), false)
+    check('thg.stateChanged', state.updateCentiseconds(600), true)
+    check('thg.stateCentiseconds', state.centisecondsValue, 600)
+  }
+
+  // ---------------------------------------------------------------------------
+  // ContinuousCornerMask.swift（218 行）
+  // ---------------------------------------------------------------------------
+  check('cc.cacheCountLimit', CORNER_MASK_CACHE_COUNT_LIMIT, 48)
+  check('cc.cacheCostLimit', CORNER_MASK_CACHE_COST_LIMIT, 67108864)
+  check('cc.bitsPerComponent', CORNER_MASK_BITS_PER_COMPONENT, 8)
+  check('cc.extentTolerance', CORNER_MASK_EXTENT_TOLERANCE, 0.001)
+
+  check('cc.cacheKey',
+    continuousCornerMaskCacheKey({ width: 100.5, height: 50.25, clampedRadius: 12 }),
+    '100.5x50.25@12')
+  check('cc.clampRadius', continuousCornerClampedRadius(100, 200, 100), 50)
+  check('cc.clampRadiusSmall', continuousCornerClampedRadius(4, 200, 100), 4)
+
+  check('cc.kindTransparent',
+    continuousCornerMaskKind({ width: 0, height: 10, radius: 4 }), 'transparent')
+  check('cc.kindTransparentHeight',
+    continuousCornerMaskKind({ width: 10, height: 0, radius: 4 }), 'transparent')
+  check('cc.kindOpaque', continuousCornerMaskKind({ width: 10, height: 10, radius: 0 }), 'opaque')
+  check('cc.kindRounded', continuousCornerMaskKind({ width: 10, height: 10, radius: 2 }), 'rounded')
+
+  check('cc.isCircle',
+    continuousCornerIsCircle({ width: 100, height: 100, clampedRadius: 50 }), true)
+  check('cc.isCircleCapsule',
+    continuousCornerIsCircle({ width: 400, height: 100, clampedRadius: 50 }), false)
+  check('cc.isCircleNotFull',
+    continuousCornerIsCircle({ width: 100, height: 100, clampedRadius: 49 }), false)
+  check('cc.isCircleNearSquare',
+    continuousCornerIsCircle({ width: 100, height: 100.4, clampedRadius: 50 }), true)
+
+  check('cc.atlasCap', continuousCornerAtlasCap(12), 26)
+  check('cc.atlasPlanLarge', (() => {
+    const p = continuousCornerAtlasPlan({ width: 1000, height: 600, clampedRadius: 12, isCircle: false })
+    return `${p.usesAtlas}:${p.drawingWidth}x${p.drawingHeight}:${p.usesFullPath}`
+  })(), 'true:54x54:false')
+  check('cc.atlasPlanSmall', (() => {
+    const p = continuousCornerAtlasPlan({ width: 50, height: 50, clampedRadius: 12, isCircle: false })
+    return `${p.usesAtlas}:${p.drawingWidth}x${p.drawingHeight}`
+  })(), 'false:50x50')
+  check('cc.atlasPlanStrictBoundary', (() => {
+    // cap*2+2 = 54；54 > 54 为假 → 走整路径（严格大于）
+    const p = continuousCornerAtlasPlan({ width: 54, height: 54, clampedRadius: 12, isCircle: false })
+    return p.usesAtlas
+  })(), false)
+  check('cc.atlasPlanCircle', (() => {
+    const p = continuousCornerAtlasPlan({ width: 100.4, height: 100.4, clampedRadius: 50, isCircle: true })
+    return `${p.usesAtlas}:${p.drawingWidth}:${p.usesFullPath}`
+  })(), 'false:101:true')
+
+  check('cc.slices', (() => {
+    const slices = continuousCornerAtlasSlices(10)
+    return slices.map((s) => `${s.origin}+${s.length}`).join('|')
+  })(), '0+10|10+2|12+10')
+  check('cc.translationLast', continuousCornerAtlasTranslation({
+    index: 2, drawingSize: 54, targetSize: 1000,
+  }), -946)
+  check('cc.translationFirst', continuousCornerAtlasTranslation({
+    index: 0, drawingSize: 54, targetSize: 1000,
+  }), 0)
+
+  check('cc.stretchPlan', (() => {
+    const p = continuousCornerStretchPlan({ cap: 26, width: 1000, height: 600, drawingWidth: 54, drawingHeight: 54 })
+    return `${p.breakpoint0.x},${p.breakpoint0.y}|${p.breakpoint1.x},${p.breakpoint1.y}|${p.growAmount.x},${p.growAmount.y}`
+  })(), '26,26|28,28|946,546')
+
+  const acceptsBase = {
+    hasOutput: true, isFinite: true, isNull: false,
+    extentWidth: 1000, extentHeight: 600, targetWidth: 1000, targetHeight: 600,
+  }
+  check('cc.accepts', continuousCornerStretchAccepts(acceptsBase), true)
+  check('cc.acceptsOffByTolerance',
+    continuousCornerStretchAccepts({ ...acceptsBase, extentWidth: 1000.002 }), false)
+  check('cc.acceptsWithinTolerance',
+    continuousCornerStretchAccepts({ ...acceptsBase, extentWidth: 1000.0005 }), true)
+  check('cc.acceptsNull',
+    continuousCornerStretchAccepts({ ...acceptsBase, isNull: true }), false)
+  check('cc.acceptsInfinite',
+    continuousCornerStretchAccepts({ ...acceptsBase, isFinite: false }), false)
+  check('cc.acceptsNoOutput',
+    continuousCornerStretchAccepts({ ...acceptsBase, hasOutput: false }), false)
+
+  check('cc.cacheCostFloor', continuousCornerCacheCost(0), 1)
+  check('cc.cacheCostKeep', continuousCornerCacheCost(500), 500)
+  check('cc.maskTranslation', (() => {
+    const t = continuousCornerMaskTranslation({ minX: 10, minY: 20 })
+    return `${t.x},${t.y}`
+  })(), '10,20')
+
+  {
+    const cache = new ContinuousCornerMaskCache()
+    cache.set('a', 100)
+    check('cc.cacheAfterSet', `${cache.count}:${cache.cost}`, '1:100')
+    cache.set('a', 50)
+    check('cc.cacheReplacesCost', `${cache.count}:${cache.cost}`, '1:50')
+    cache.removeAll()
+    check('cc.cacheCleared', `${cache.count}:${cache.cost}`, '0:0')
+    for (let index = 0; index < CORNER_MASK_CACHE_COUNT_LIMIT + 1; index += 1) {
+      cache.set(`k${index}`, 1)
+    }
+    check('cc.cacheEvictsByCount', cache.count, CORNER_MASK_CACHE_COUNT_LIMIT)
+    check('cc.cacheEvictedOldest', cache.has('k0'), false)
+    const oversize = new ContinuousCornerMaskCache()
+    oversize.set('huge', CORNER_MASK_CACHE_COST_LIMIT + 1)
+    check('cc.cacheEvictsByCost', `${oversize.count}:${oversize.cost}`, '0:0')
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorCanvasRatioSelector.swift（225 行）
+  // ---------------------------------------------------------------------------
+  check('crs.presets', EDITOR_CANVAS_RATIO_PRESETS.join(','), '适应,16:9,4:3,2.39:1,1:1,自定义')
+  check('crs.customRatioMin', EDITOR_CANVAS_CUSTOM_RATIO_MIN, 0.1)
+  check('crs.customRatioMax', EDITOR_CANVAS_CUSTOM_RATIO_MAX, 10)
+  check('crs.panelWidth', EDITOR_CANVAS_RATIO_PANEL_WIDTH, 320)
+  check('crs.panelPadding', EDITOR_CANVAS_RATIO_PANEL_PADDING, 16)
+  check('crs.gridColumns', EDITOR_CANVAS_RATIO_GRID_COLUMNS, 3)
+  check('crs.gridSpacing', EDITOR_CANVAS_RATIO_GRID_SPACING, 8)
+  check('crs.itemHeight', EDITOR_CANVAS_RATIO_ITEM_HEIGHT, 68)
+  check('crs.thumbMaxEdge', EDITOR_CANVAS_RATIO_THUMB_MAX_EDGE, 24)
+  check('crs.thumbBox', EDITOR_CANVAS_RATIO_THUMB_BOX, 32)
+  check('crs.titleSize', EDITOR_CANVAS_RATIO_PANEL_TITLE_SIZE, 14)
+  check('crs.closeGlyph', EDITOR_CANVAS_RATIO_CLOSE_GLYPH_SIZE, 14)
+  check('crs.customHint', EDITOR_CANVAS_RATIO_CUSTOM_HINT,
+    '输入宽高比例，例如 3:2（支持 1:10 至 10:1）')
+
+  check('crs.isPortrait', editorCanvasIsPortrait(0.5), true)
+  check('crs.isPortraitSquare', editorCanvasIsPortrait(1), false)
+  check('crs.isPortraitNull', editorCanvasIsPortrait(null), false)
+  check('crs.selectedPresetPortrait',
+    editorCanvasSelectedPreset({ aspectRatio: '9:16', editingCustom: false }), '16:9')
+  check('crs.selectedPresetStandardPortrait',
+    editorCanvasSelectedPreset({ aspectRatio: '3:4', editingCustom: false }), '4:3')
+  check('crs.selectedPresetCinemaPortrait',
+    editorCanvasSelectedPreset({ aspectRatio: '1:2.39', editingCustom: false }), '2.39:1')
+  check('crs.selectedPresetSquare',
+    editorCanvasSelectedPreset({ aspectRatio: '1:1', editingCustom: false }), '1:1')
+  check('crs.selectedPresetEditing',
+    editorCanvasSelectedPreset({ aspectRatio: '16:9', editingCustom: true }), '自定义')
+
+  check('crs.customValid', (() => {
+    const r = editorCanvasCustomAspectRatio('16', '9')
+    return `${r.width}:${r.height}`
+  })(), '16:9')
+  check('crs.customBoundaryLow', editorCanvasCustomAspectRatio('1', '10') != null, true)
+  check('crs.customBoundaryHigh', editorCanvasCustomAspectRatio('10', '1') != null, true)
+  check('crs.customOutOfRange', editorCanvasCustomAspectRatio('100', '1'), null)
+  check('crs.customZero', editorCanvasCustomAspectRatio('0', '9'), null)
+  check('crs.customNegative', editorCanvasCustomAspectRatio('-1', '9'), null)
+  check('crs.customNaN', editorCanvasCustomAspectRatio('abc', '9'), null)
+
+  check('crs.numberInteger', editorCanvasRatioNumberText(16), '16')
+  check('crs.numberFraction', editorCanvasRatioNumberText(3.5), '3.5')
+  check('crs.numberTruncated', editorCanvasRatioNumberText(0.3333), '0.333')
+  check('crs.numberZero', editorCanvasRatioNumberText(0), '0')
+  check('crs.numberTen', editorCanvasRatioNumberText(10), '10')
+  check('crs.numberNaN', editorCanvasRatioNumberText(Number.NaN), '0')
+
+  check('crs.fields', (() => {
+    const f = editorCanvasRatioFields({
+      aspectRatio: '自定义', customAspectRatio: { width: 16, height: 9 },
+    })
+    return `${f.editingCustom}:${f.widthText}:${f.heightText}`
+  })(), 'true:16:9')
+  check('crs.fieldsNotCustom', editorCanvasRatioFields({
+    aspectRatio: '16:9', customAspectRatio: { width: 4, height: 3 },
+  }).editingCustom, false)
+
+  check('crs.oriented', editorCanvasOrientedRatio('16:9', true), '9:16')
+  check('crs.orientedKeep', editorCanvasOrientedRatio('16:9', false), '16:9')
+  check('crs.orientedSquare', editorCanvasOrientedRatio('1:1', true), '1:1')
+  check('crs.orientedCinema', editorCanvasOrientedRatio('2.39:1', true), '1:2.39')
+  check('crs.orientedCustom', editorCanvasOrientedRatio('自定义', true), '自定义')
+
+  check('crs.aspectValue', editorCanvasPresetAspectValue('16:9'), 16 / 9)
+  check('crs.aspectValueFallback', editorCanvasPresetAspectValue('1:1'), 1)
+  check('crs.thumbWideWidth', editorCanvasPresetThumbSize('16:9').width, 32, 1e-9)
+  check('crs.thumbWideHeight', editorCanvasPresetThumbSize('16:9').height, 18, 1e-9)
+  check('crs.thumbSquare', (() => {
+    const s = editorCanvasPresetThumbSize('1:1')
+    return `${s.width}x${s.height}`
+  })(), '24x24')
+  check('crs.thumbCinemaWidth', editorCanvasPresetThumbSize('2.39:1').width, 32, 1e-6)
+  check('crs.thumbCinemaHeight',
+    editorCanvasPresetThumbSize('2.39:1').height / editorCanvasPresetThumbSize('2.39:1').width,
+    1 / 2.39, 1e-9)
+
+  check('crs.customFieldWidth', editorCanvasCustomFieldID('width'), 'editor.canvas.custom.width')
+  check('crs.customFieldHeight', editorCanvasCustomFieldID('height'), 'editor.canvas.custom.height')
+  check('crs.usesIconCustom', editorCanvasPresetUsesIcon('自定义'), true)
+  check('crs.usesIconAdaptive', editorCanvasPresetUsesIcon('适应'), true)
+  check('crs.usesIconLandscape', editorCanvasPresetUsesIcon('16:9'), false)
+  check('crs.symbolCustom', editorCanvasPresetSymbol('自定义'), 'slider.horizontal.3')
+  check('crs.symbolAdaptive', editorCanvasPresetSymbol('适应'), 'arrow.up.left.and.arrow.down.right')
+  check('crs.symbolNone', editorCanvasPresetSymbol('16:9'), null)
+
+  check('crs.orientationShown',
+    editorCanvasShowsOrientationControl({ editingCustom: false, selectedPreset: '16:9' }), true)
+  check('crs.orientationHiddenSquare',
+    editorCanvasShowsOrientationControl({ editingCustom: false, selectedPreset: '1:1' }), false)
+  check('crs.orientationHiddenAdaptive',
+    editorCanvasShowsOrientationControl({ editingCustom: false, selectedPreset: '适应' }), false)
+  check('crs.orientationHiddenEditing',
+    editorCanvasShowsOrientationControl({ editingCustom: true, selectedPreset: '16:9' }), false)
+
+  check('crs.titleKeyCinema', editorCanvasPresetTitleKey('2.39:1'), '电影')
+  check('crs.titleKeyOther', editorCanvasPresetTitleKey('16:9'), '16:9')
+  check('crs.valueLabel', editorCanvasRatioValueLabel('自定义'), '自定义')
+  check('crs.styleIsPortrait', editorCanvasStyleIsPortrait(
+    makeCanvasStyle({ aspectRatio: '9:16' })), true)
+  check('crs.styleIsPortraitLandscape', editorCanvasStyleIsPortrait(
+    makeCanvasStyle({ aspectRatio: '16:9' })), false)
+
+  // ---------------------------------------------------------------------------
+  // AppSettingsWindowController.swift（237 行）
+  // ---------------------------------------------------------------------------
+  check('swc.width', SETTINGS_WINDOW_CONTENT_WIDTH, 560)
+  check('swc.heightMax', SETTINGS_WINDOW_MAXIMUM_CONTENT_HEIGHT, 640)
+  check('swc.heightInitial', SETTINGS_WINDOW_INITIAL_CONTENT_HEIGHT, 540)
+  check('swc.heightMin', SETTINGS_WINDOW_MINIMUM_CONTENT_HEIGHT, 240)
+  check('swc.screenReserve', SETTINGS_WINDOW_SCREEN_HEIGHT_RESERVE, 100)
+  check('swc.minimumLimit', SETTINGS_WINDOW_MINIMUM_LIMIT, 420)
+  check('swc.identifier', SETTINGS_WINDOW_IDENTIFIER, 'cn.laogou.dogsc.settings-window')
+  check('swc.springInterval', SETTINGS_HEIGHT_SPRING_INTERVAL, 1 / 120)
+  check('swc.epsilon', SETTINGS_HEIGHT_EPSILON, 0.5)
+  check('swc.styleAlwaysOnTop', SETTINGS_WINDOW_STYLE.alwaysOnTop, false)
+  check('swc.styleHidesOnDeactivate', SETTINGS_WINDOW_STYLE.hidesOnDeactivate, true)
+  check('swc.styleRestorable', SETTINGS_WINDOW_STYLE.restorable, false)
+
+  check('swc.limitTallScreen', settingsHeightLimit(900), 640)
+  check('swc.limitSmallScreen', settingsHeightLimit(300), 420)
+  check('swc.limitHugeScreen', settingsHeightLimit(1500), 640)
+  check('swc.limitBoundary', settingsHeightLimit(1120), 640)
+  check('swc.initialWithMemory',
+    settingsInitialHeight({ lastPreferredHeight: 600, limit: 500 }), 500)
+  check('swc.initialDefault', settingsInitialHeight({ lastPreferredHeight: null, limit: 640 }), 540)
+
+  check('swc.origin', (() => {
+    const o = settingsWindowOrigin({
+      visibleBounds: { x: 0, y: 0, width: 1000, height: 800 },
+      windowWidth: 560, windowHeight: 566, typicalFrameHeight: 566,
+    })
+    return `${o.x},${o.y}`
+  })(), '220,117')
+
+  check('swc.finishOk', (() => {
+    const p = settingsFinishPresentationPlan({
+      isLatestRequest: true, applicationIsActive: true, hasWindow: true, clearsInitialFocus: false,
+    })
+    return `${p.shouldPresent}:${p.shouldClearFirstResponder}`
+  })(), 'true:false')
+  check('swc.finishClearsFocus', settingsFinishPresentationPlan({
+    isLatestRequest: true, applicationIsActive: true, hasWindow: true, clearsInitialFocus: true,
+  }).shouldClearFirstResponder, true)
+  check('swc.finishStaleRequest', settingsFinishPresentationPlan({
+    isLatestRequest: false, applicationIsActive: true, hasWindow: true, clearsInitialFocus: false,
+  }).shouldPresent, false)
+  check('swc.finishInactive', settingsFinishPresentationPlan({
+    isLatestRequest: true, applicationIsActive: false, hasWindow: true, clearsInitialFocus: false,
+  }).shouldPresent, false)
+
+  check('swc.targetClamp', settingsTargetHeight(100), 240)
+  check('swc.targetMax', settingsTargetHeight(900), 640)
+  check('swc.targetRounds', settingsTargetHeight(540.6), 541)
+  check('swc.targetKeep', settingsTargetHeight(300), 300)
+
+  check('swc.appliesImmediatelyInvisible',
+    settingsHeightAppliesImmediately({ windowIsVisible: false, reduceMotion: false }), true)
+  check('swc.appliesImmediatelyReduceMotion',
+    settingsHeightAppliesImmediately({ windowIsVisible: true, reduceMotion: true }), true)
+  check('swc.appliesAnimated',
+    settingsHeightAppliesImmediately({ windowIsVisible: true, reduceMotion: false }), false)
+
+  check('swc.springFrame', (() => {
+    const f = windowHeightSpringFrame({
+      currentFrame: { x: 10, y: 100, width: 560, height: 566 },
+      width: 560, contentHeight: 600, frameHeightForContent: 600,
+    })
+    return `${f.x},${f.y},${f.width},${f.height}`
+  })(), '10,66,560,600')
+
+  {
+    const spring = settingsReferenceSpring()
+    const heights = []
+    const animator = new WindowHeightSpring({
+      spring, from: 500, to: 600, now: 0,
+      setHeight: (height) => heights.push(height),
+    })
+    check('swc.springSettlingRounded', Math.round(spring.settlingDuration * 1000), 308)
+    animator.start()
+    check('swc.springRunning', animator.isRunning, true)
+    check('swc.springNoRetargetSame', animator.retarget(600, 0.05), false)
+    check('swc.springRetarget', animator.retarget(700, 0.05), true)
+    check('swc.springRetargetTo', animator.currentTo, 700)
+    check('swc.springTickEarly', animator.tick(0.06), true)
+    check('swc.springTickSettles', animator.tick(2), false)
+    check('swc.springFinalHeight', heights[heights.length - 1], 700)
+    check('swc.springStopped', animator.isRunning, false)
+  }
+
+  {
+    const animator = new WindowHeightSpring({
+      spring: settingsReferenceSpring(), from: 500, to: 600, now: 0, setHeight: () => {},
+    })
+    animator.start()
+    animator.detachWindow()
+    check('swc.springDetachedStops', animator.tick(0.01), false)
+    check('swc.springDetachedNotRunning', animator.isRunning, false)
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorTiltPad.swift（238 行）
+  // ---------------------------------------------------------------------------
+  check('tp.maxX', TILT_PAD_MAXIMUM_X, 28)
+  check('tp.maxY', TILT_PAD_MAXIMUM_Y, 32)
+  check('tp.width', TILT_PAD_WIDTH, 184)
+  check('tp.height', TILT_PAD_HEIGHT, 126)
+  check('tp.inset', TILT_PAD_INSET, 12)
+  check('tp.outerRadius', TILT_PAD_OUTER_CORNER_RADIUS, 12)
+  check('tp.plateRadius', TILT_PAD_PLATE_CORNER_RADIUS, 9)
+  check('tp.platePaddingX', TILT_PAD_PLATE_HORIZONTAL_PADDING, 24)
+  check('tp.platePaddingY', TILT_PAD_PLATE_VERTICAL_PADDING, 18)
+  check('tp.previewScale', TILT_PAD_PREVIEW_ROTATION_SCALE, 0.55)
+  check('tp.previewPerspective', TILT_PAD_PREVIEW_PERSPECTIVE, 0.72)
+  check('tp.crossAlpha', TILT_PAD_CROSS_ALPHA, 0.13)
+  check('tp.activeCrossAlpha', TILT_PAD_ACTIVE_CROSS_ALPHA, 0.27)
+  check('tp.handleInnerIdle', TILT_PAD_HANDLE_INNER_IDLE, 14)
+  check('tp.handleInnerActive', TILT_PAD_HANDLE_INNER_ACTIVE, 16)
+  check('tp.handleOuterIdle', TILT_PAD_HANDLE_OUTER_IDLE, 24)
+  check('tp.handleOuterActive', TILT_PAD_HANDLE_OUTER_ACTIVE, 28)
+  check('tp.deadZone', TILT_PAD_DEAD_ZONE_DEGREES, 1.4)
+  check('tp.neutralEpsilon', TILT_PAD_NEUTRAL_EPSILON, 0.0005)
+  check('tp.readoutUnit', TILT_PAD_READOUT_UNIT, '°')
+  check('tp.readoutDigits', TILT_PAD_READOUT_DIGITS, 1)
+
+  check('tp.clampInside', tiltPadClamped(5, -28, 28), 5)
+  check('tp.clampHigh', tiltPadClamped(100, -28, 28), 28)
+  check('tp.clampNaN', tiltPadClamped(Number.NaN, -28, 28), 0)
+  check('tp.neutral', tiltPadIsNeutral(0.0001, -0.0002), true)
+  check('tp.notNeutral', tiltPadIsNeutral(0.001, 0), false)
+
+  const padSize = { width: TILT_PAD_WIDTH, height: TILT_PAD_HEIGHT }
+  check('tp.handleCenter', (() => {
+    const p = tiltPadHandlePoint({ rotationX: 0, rotationY: 0, size: padSize, inset: TILT_PAD_INSET })
+    return `${p.x},${p.y}`
+  })(), '92,63')
+  check('tp.handleTopRight', (() => {
+    const p = tiltPadHandlePoint({
+      rotationX: TILT_PAD_MAXIMUM_X, rotationY: TILT_PAD_MAXIMUM_Y,
+      size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${p.x},${p.y}`
+  })(), '172,12')
+  check('tp.handleBottomLeft', (() => {
+    const p = tiltPadHandlePoint({
+      rotationX: -TILT_PAD_MAXIMUM_X, rotationY: -TILT_PAD_MAXIMUM_Y,
+      size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${p.x},${p.y}`
+  })(), '12,114')
+  check('tp.handleClampsBeyondMax', (() => {
+    const p = tiltPadHandlePoint({
+      rotationX: 999, rotationY: 999, size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${p.x},${p.y}`
+  })(), '172,12')
+
+  check('tp.tiltCenter', (() => {
+    const t = tiltPadTiltAt({
+      location: { x: 92, y: 63 }, size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${t.x},${t.y}`
+  })(), '0,0')
+  check('tp.tiltTop', (() => {
+    const t = tiltPadTiltAt({
+      location: { x: 92, y: TILT_PAD_INSET }, size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${t.x},${t.y}`
+  })(), '28,0')
+  check('tp.tiltLeft', (() => {
+    const t = tiltPadTiltAt({
+      location: { x: TILT_PAD_INSET, y: 63 }, size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${t.x},${t.y}`
+  })(), '0,-32')
+  check('tp.tiltDeadZone', (() => {
+    // vertical 0.48 → x = (0.5 − 0.48) × 56 = 1.12，落在 1.4 死区内 → 归零
+    const t = tiltPadTiltAt({
+      location: { x: 92, y: 12 + 0.48 * 102 }, size: padSize, inset: TILT_PAD_INSET,
+    })
+    return t.x
+  })(), 0)
+  check('tp.tiltOutsideClamps', (() => {
+    const t = tiltPadTiltAt({
+      location: { x: -999, y: -999 }, size: padSize, inset: TILT_PAD_INSET,
+    })
+    return `${t.x},${t.y}`
+  })(), '28,-32')
+
+  const plateNormal = tiltPadPlateRotation({ rotationX: 28, rotationY: 32 })
+  check('tp.plateRotationX', plateNormal.x, 15.4, 1e-9)
+  check('tp.plateRotationY', plateNormal.y, 17.6, 1e-9)
+  const plateClamped = tiltPadPlateRotation({ rotationX: 56, rotationY: 64 })
+  check('tp.plateRotationClampsX', plateClamped.x, 15.4, 1e-9)
+  check('tp.plateRotationClampsY', plateClamped.y, 17.6, 1e-9)
+
+  check('tp.handleSizeIdle', (() => {
+    const s = tiltPadHandleSize(false)
+    return `${s.inner},${s.outer}`
+  })(), '14,24')
+  check('tp.handleSizeActive', (() => {
+    const s = tiltPadHandleSize(true)
+    return `${s.inner},${s.outer}`
+  })(), '16,28')
+  check('tp.isActive', tiltPadIsActive({ isDragging: false, isAngleEditing: true }), true)
+  check('tp.allowsHitTesting', tiltPadAllowsHitTesting(true), false)
+  check('tp.allowsHitTestingIdle', tiltPadAllowsHitTesting(false), true)
+
+  {
+    const changes = []
+    let ended = 0
+    const drag = new TiltPadDragState({
+      rotationX: 5, rotationY: 5,
+      onChanged: (x, y) => changes.push(`${x},${y}`),
+      onEnded: () => { ended += 1 },
+    })
+    const tilt = drag.dragChanged({ x: 92, y: TILT_PAD_INSET }, {
+      size: padSize, inset: TILT_PAD_INSET,
+    })
+    check('tp.dragEmitsChange', changes.join('|'), '28,0')
+    check('tp.dragNotifiesX', tilt.x, 28)
+    check('tp.dragActive', drag.isDragging, true)
+    drag.dragEnded()
+    check('tp.dragEnded', `${drag.isDragging}:${ended}`, 'false:1')
+    drag.resetToNeutral()
+    check('tp.resetEmits', changes.join('|'), '28,0|0,0')
+    check('tp.resetRotation', `${drag.rotation.x},${drag.rotation.y}`, '0,0')
+    check('tp.resetEnded', ended, 2)
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorMarkerListControl.swift（239 行）
+  // ---------------------------------------------------------------------------
+  check('mlc.entryHeight', EDITOR_MARKER_ENTRY_HEIGHT, 30)
+  check('mlc.entryPadding', EDITOR_MARKER_ENTRY_HORIZONTAL_PADDING, 8)
+  check('mlc.entryRadius', EDITOR_MARKER_ENTRY_CORNER_RADIUS, 8)
+  check('mlc.cardRadius', EDITOR_MARKER_CARD_CORNER_RADIUS, 16)
+  check('mlc.cardBorder', EDITOR_MARKER_CARD_BORDER_WIDTH, 1)
+  check('mlc.cardBorderAlpha', EDITOR_MARKER_CARD_BORDER_ALPHA, 0.09)
+  check('mlc.rowHeight', EDITOR_MARKER_ROW_HEIGHT, 41)
+  check('mlc.rowSpacing', EDITOR_MARKER_ROW_SPACING, 3)
+  check('mlc.rowStride', EDITOR_MARKER_ROW_STRIDE, 44)
+  check('mlc.listMin', EDITOR_MARKER_LIST_MINIMUM_HEIGHT, 44)
+  check('mlc.listMax', EDITOR_MARKER_LIST_MAXIMUM_HEIGHT, 261)
+  check('mlc.listChrome', EDITOR_MARKER_LIST_CHROME_HEIGHT, 120)
+  check('mlc.emptyHint', EDITOR_MARKER_EMPTY_HINT, '标记所在素材已被剪掉，恢复剪辑后可重新定位')
+  check('mlc.subtitle', EDITOR_MARKER_SUBTITLE, '快速找回重点与重录位置')
+  check('mlc.footerHint', EDITOR_MARKER_FOOTER_HINT, '点击定位 · 点删除图标移除')
+  check('mlc.trashSize', `${EDITOR_MARKER_TRASH_WIDTH}x${EDITOR_MARKER_TRASH_HEIGHT}`, '24x30')
+  check('mlc.trashAlphaIdle', EDITOR_MARKER_TRASH_ALPHA_IDLE, 0.28)
+  check('mlc.trashAlphaHovered', EDITOR_MARKER_TRASH_ALPHA_HOVERED, 0.55)
+  check('mlc.panelWidth', EDITOR_MARKER_PANEL_MAXIMUM_WIDTH, 304)
+  check('mlc.panelInset', EDITOR_MARKER_PANEL_SCREEN_INSET, 12)
+  check('mlc.panelGap', EDITOR_MARKER_PANEL_ANCHOR_GAP, 8)
+  check('mlc.panelMinHeight', EDITOR_MARKER_PANEL_MINIMUM_HEIGHT, 100)
+  check('mlc.panelIdentifier', EDITOR_MARKER_PANEL_IDENTIFIER, 'editor.recording-markers')
+  check('mlc.escapeKeyCode', EDITOR_MARKER_ESCAPE_KEY_CODE, 53)
+
+  check('mlc.listHeightThree', editorMarkerListHeight(3, 500), 129)
+  check('mlc.listHeightOne', editorMarkerListHeight(1, 500), 41)
+  check('mlc.listHeightMany', editorMarkerListHeight(20, 500), 261)
+  check('mlc.listHeightTight', editorMarkerListHeight(2, 200), 80)
+  check('mlc.listHeightVeryTight', editorMarkerListHeight(2, 100), 44)
+  // 空列表时上游公式会得到 −3；这个分支不会被渲染（只在非空时进列表），
+  // 这里锁定行为，避免有人把它「修」成 0 而让 max(44, …) 的下限失去意义。
+  check('mlc.listHeightEmpty', editorMarkerListHeight(0, 500), -3)
+
+  check('mlc.trashAlphaHover', editorMarkerTrashAlpha(true), 0.55)
+  check('mlc.trashAlphaIdleValue', editorMarkerTrashAlpha(false), 0.28)
+  check('mlc.panelLevel', editorMarkerPanelLevel(3), 4)
+
+  const markerVisible = { x: 0, y: 0, width: 1000, height: 800 }
+  check('mlc.panelFlippedAbove', (() => {
+    const f = editorMarkerPanelFrame({
+      visibleFrame: markerVisible,
+      anchorRect: { x: 100, y: 200, width: 100, height: 30 },
+      contentHeight: 300,
+    })
+    return `${f.x},${f.y},${f.width},${f.height},${f.placedAbove}`
+  })(), '100,238,304,300,true')
+  check('mlc.panelBelow', (() => {
+    const f = editorMarkerPanelFrame({
+      visibleFrame: markerVisible,
+      anchorRect: { x: 100, y: 600, width: 100, height: 30 },
+      contentHeight: 300,
+    })
+    return `${f.y},${f.placedAbove}`
+  })(), '292,false')
+  check('mlc.panelClampsRight', (() => {
+    const f = editorMarkerPanelFrame({
+      visibleFrame: markerVisible,
+      anchorRect: { x: 900, y: 600, width: 100, height: 30 },
+      contentHeight: 300,
+    })
+    return f.x
+  })(), 684)
+  check('mlc.panelMinHeightApplied', (() => {
+    const f = editorMarkerPanelFrame({
+      visibleFrame: markerVisible,
+      anchorRect: { x: 100, y: 600, width: 100, height: 30 },
+      contentHeight: 40,
+    })
+    return f.height
+  })(), 100)
+  check('mlc.dismissOrder', EDITOR_MARKER_DISMISS_ORDER.length, 7)
+
+  check('mlc.eventEscape', editorMarkerEventDecision({
+    isKeyDown: true, keyCode: 53, isPanelWindow: false, isAnchorWindow: false, isInsideAnchorBounds: false,
+  }), 'dismissRestoreFocus')
+  check('mlc.eventOtherKey', editorMarkerEventDecision({
+    isKeyDown: true, keyCode: 12, isPanelWindow: false, isAnchorWindow: false, isInsideAnchorBounds: false,
+  }), 'passThrough')
+  check('mlc.eventInsidePanel', editorMarkerEventDecision({
+    isKeyDown: false, keyCode: 0, isPanelWindow: true, isAnchorWindow: false, isInsideAnchorBounds: false,
+  }), 'passThrough')
+  check('mlc.eventAnchorToggle', editorMarkerEventDecision({
+    isKeyDown: false, keyCode: 0, isPanelWindow: false, isAnchorWindow: true, isInsideAnchorBounds: true,
+  }), 'dismissRestoreFocus')
+  check('mlc.eventOutsideAnchor', editorMarkerEventDecision({
+    isKeyDown: false, keyCode: 0, isPanelWindow: false, isAnchorWindow: true, isInsideAnchorBounds: false,
+  }), 'dismiss')
+  check('mlc.eventOtherWindow', editorMarkerEventDecision({
+    isKeyDown: false, keyCode: 0, isPanelWindow: false, isAnchorWindow: false, isInsideAnchorBounds: false,
+  }), 'dismiss')
+
+  {
+    const notifications = []
+    const presenter = new EditorMarkerCardPresenter((presented) => notifications.push(presented))
+    check('mlc.presenterRejectsWithoutAnchor', presenter.toggle(null), 'rejected')
+    check('mlc.presenterNotPresented', presenter.isPresented, false)
+    check('mlc.presenterOpens', presenter.toggle(3), 'presented')
+    check('mlc.presenterLevel', presenter.panelLevel, 4)
+    check('mlc.presenterTogglesClosed', presenter.toggle(3), 'dismissed')
+    check('mlc.presenterNotifications', notifications.join(','), 'true,false')
+    check('mlc.presenterDismissIdle', presenter.dismiss(), false)
+    presenter.toggle(2)
+    presenter.detach()
+    check('mlc.presenterDetach', `${presenter.isPresented}:${presenter.panelLevel}`, 'false:0')
+  }
+
+  // ---------------------------------------------------------------------------
+  // ScreenRecorderRunSafety.swift（244 行）
+  // ---------------------------------------------------------------------------
+  {
+    const state = new ScreenRecorderRunSafetyState()
+    const begun = state.begin('run-a')
+    check('srs.beginAccepted', begun.kind, 'accepted')
+    check('srs.beginGeneration', begun.token.streamGeneration, 1)
+    const token = begun.token
+    check('srs.activeRunID', state.activeRunID, 'run-a')
+    check('srs.beginAgain', state.begin('run-b').kind, 'alreadyActive')
+    check('srs.beginAgainRunID', state.begin('run-b').runID, 'run-a')
+    check('srs.lifecycleStarting', state.lifecycle(token), 'starting')
+    check('srs.registerStreams', state.registerStreams('s1', 's2', token), true)
+    check('srs.registerWrongToken', state.registerStreams('s3', null, {
+      runID: 'run-a', streamGeneration: 99,
+    }), false)
+    check('srs.tokenForPrimary', state.tokenForDelegate('s1').streamGeneration, 1)
+    check('srs.tokenForUnknown', state.tokenForDelegate('nope'), null)
+    check('srs.rolePrimary', state.streamRole('s1', token), 'primary')
+    check('srs.roleSecondary', state.streamRole('s2', token), 'secondary')
+    check('srs.roleUnknown', state.streamRole('nope', token), null)
+    check('srs.markCapturing', state.markCapturing(token), true)
+    check('srs.markCapturingAgain', state.markCapturing(token), false)
+    check('srs.lifecycleCapturing', state.lifecycle(token), 'capturing')
+
+    const update = state.makeSurfaceUpdate('run-a')
+    check('srs.surfaceRevision', update.revision, 1)
+    check('srs.surfaceDecisionApply', state.surfaceUpdateDecision(update, false), 'apply')
+    check('srs.surfaceDecisionCancelled', state.surfaceUpdateDecision(update, true), 'cancelled')
+    const second = state.makeSurfaceUpdate('run-a')
+    check('srs.surfaceRevisionIncrements', second.revision, 2)
+    check('srs.surfaceDecisionStaleRevision',
+      state.surfaceUpdateDecision(update, false), 'stale')
+    check('srs.surfaceUpdateWrongRun', state.makeSurfaceUpdate('run-b'), null)
+
+    const error = { message: '磁盘已满' }
+    check('srs.claimTerminal', state.claimTerminal(error, token), true)
+    check('srs.lifecycleTerminal', state.lifecycle(token), 'terminal')
+    check('srs.terminalError', state.terminalError('run-a').message, '磁盘已满')
+    check('srs.terminalErrorOtherRun', state.terminalError('run-b'), null)
+    check('srs.tokenForDelegateAfterTerminal', state.tokenForDelegate('s1'), null)
+    check('srs.surfaceUpdateAfterTerminal', state.makeSurfaceUpdate('run-a'), null)
+    check('srs.claimTerminalTwice', state.claimTerminal({ message: 'x' }, token), false)
+    check('srs.beginStoppingFromTerminal', state.beginStopping('run-a').streamGeneration, 1)
+    check('srs.lifecycleStopping', state.lifecycle(token), 'stopping')
+    check('srs.end', state.end(token), true)
+    check('srs.endedActive', state.activeRunID, null)
+    check('srs.endTwice', state.end(token), false)
+    check('srs.lifecycleAfterEnd', state.lifecycle(token), null)
+    check('srs.beginAfterEnd', state.begin('run-c').token.streamGeneration, 2)
+  }
+
+  {
+    const state = new ScreenRecorderRunSafetyState()
+    const token = state.begin('run-x').token
+    check('srs.deferTerminal', state.deferTerminalDuringStart({ message: '提前终止' }, token), true)
+    check('srs.deferTerminalTwice', state.deferTerminalDuringStart({ message: 'again' }, token), false)
+    check('srs.markCapturingAfterDefer', state.markCapturing(token), false)
+    check('srs.lifecycleStillStarting', state.lifecycle(token), 'starting')
+    check('srs.claimTerminalDuringStart', state.claimTerminal({ message: 'x' }, token), false)
+    check('srs.deferredTerminalError', state.terminalError('run-x').message, '提前终止')
+    check('srs.beginStoppingDuringStart', state.beginStopping('run-x'), null)
+    // starting 阶段仍可换 token（代理回调可能先到）
+    check('srs.deferRegister', state.registerStreams('s1', null, token), true)
+    check('srs.deferTokenForDelegate', state.tokenForDelegate('s1').runID, 'run-x')
+  }
+
+  check('srs.outputErrorDomain', CAPTURE_OUTPUT_ERROR_DOMAIN, 'cn.laogou.dogsc.capture-output')
+  check('srs.outputStages', Object.keys(CAPTURE_OUTPUT_TERMINAL_STAGE_DESCRIPTIONS).length, 3)
+  check('srs.outputCodeWriter', captureOutputTerminalErrorCode('writerStart'), 1)
+  check('srs.outputCodeVideo', captureOutputTerminalErrorCode('videoAppend'), 2)
+  check('srs.outputCodeAudio', captureOutputTerminalErrorCode('audioAppend'), 3)
+  check('srs.outputDescription', captureOutputTerminalErrorDescription('audioAppend', '磁盘已满'),
+    '写入系统声音失败：磁盘已满')
+  check('srs.outputCodesTable', CAPTURE_OUTPUT_TERMINAL_ERROR_CODES.writerStart, 1)
+
+  {
+    const terminal = new CaptureOutputTerminalState()
+    check('srs.terminalNoStage', terminal.stage, null)
+    check('srs.terminalClaimFirst', terminal.claim('writerStart'), true)
+    check('srs.terminalClaimSecond', terminal.claim('videoAppend'), false)
+    check('srs.terminalStage', terminal.stage, 'writerStart')
+  }
+}
+
+await runWindowAndMarkerBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
