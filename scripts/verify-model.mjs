@@ -13534,5 +13534,1001 @@ async function runCanvasInteractionBatch() {
 }
 await runCanvasInteractionBatch()
 
+
+async function runRecorderSetupBatch() {
+  // ========== 6 文件 / 1,626 行：壁纸视频播放 / 缩放焦点地图 / 十六进制颜色输入 /
+  //            录制待机小岛 / 录制浮层宿主 / 录制作业与代数
+  const {
+    // ---- PreviewWallpaperVideoPlayback.swift
+    WALLPAPER_FORWARD_BUFFER_SECONDS, WALLPAPER_TIMESCALE, WALLPAPER_PIXEL_FORMAT,
+    WALLPAPER_PIXEL_FORMAT_METAL_COMPATIBLE, WALLPAPER_PLAYER_IS_MUTED,
+    WALLPAPER_ACTION_AT_ITEM_END, WALLPAPER_WAITS_TO_MINIMIZE_STALLING,
+    WALLPAPER_PREVENTS_DISPLAY_SLEEP, WALLPAPER_PAUSED_RESYNC_TOLERANCE,
+    WALLPAPER_PLAYING_RESYNC_TOLERANCE, WALLPAPER_LOOP_BOUNDARY_MARGIN,
+    WALLPAPER_READY_POLL_ATTEMPTS, WALLPAPER_READY_POLL_INTERVAL_MS,
+    wallpaperLocalTime, wallpaperConfigureNeedsRebuild, wallpaperSyncAction,
+    wallpaperSynchronizeStep, wallpaperPausedSeekStep, wallpaperResumesQueuedSeek,
+    wallpaperFrameCopyAccepted, wallpaperSeekTolerance, wallpaperReadyOutcome,
+    WALLPAPER_INVALIDATE_ORDER, wallpaperPrimedAction, wallpaperPreparationStillOwns,
+    // ---- EditorZoomViews.swift
+    ZOOM_MAP_HEIGHT_BASE, ZOOM_MAP_MINIMUM_ASPECT, ZOOM_MAP_MINIMUM_HEIGHT,
+    ZOOM_MAP_MAXIMUM_HEIGHT, ZOOM_MAP_PADDING, ZOOM_MAP_THUMBNAIL_CORNER_RADIUS,
+    ZOOM_GUIDE_CORNER_RADIUS, ZOOM_MAP_CORNER_RADIUS, ZOOM_GUIDE_STROKE_WIDTH,
+    ZOOM_GUIDE_STROKE_DASH, ZOOM_GUIDE_STROKE_ALPHA, ZOOM_CROSSHAIR_ALPHA,
+    ZOOM_CROSSHAIR_STROKE_WIDTH, ZOOM_CROSSHAIR_DASH, ZOOM_PUCK_DIAMETER,
+    ZOOM_PUCK_PIP_DIAMETER, ZOOM_PUCK_ACTIVE_SCALE, ZOOM_MAP_BORDER_ACTIVE_ALPHA,
+    ZOOM_MAP_BORDER_HOVER_ALPHA, ZOOM_MAP_BORDER_IDLE_ALPHA, ZOOM_CENTER_TOLERANCE,
+    ZOOM_MAP_REFRESH_INTERVAL, zoomClamp01, zoomFocusMapRect, zoomFocusMapHeight,
+    zoomFocusPoint, zoomNormalizedFocus, zoomFocusIsCentered, zoomGuideRect,
+    zoomCrosshairSegments, zoomFocusSurfaceIsActive, zoomPuckScale, zoomMapBorderAlpha,
+    zoomTimelinePaused, zoomFocusEditingStep, zoomThumbnailRequestID,
+    zoomShouldCancelOnDisappear, zoomFocusSurfaceAcceptsHitTesting,
+    zoomShowsCoordinateControls,
+    // ---- EditorHexColorInput.swift
+    HexColorDraft, HEX_COLOR_INPUT_INVALID_MESSAGE, HEX_COLOR_SWATCH_WIDTH,
+    HEX_COLOR_SWATCH_HEIGHT, HEX_COLOR_SWATCH_CONTAINER_WIDTH,
+    HEX_COLOR_SWATCH_CONTAINER_HEIGHT, HEX_COLOR_SWATCH_CORNER_RADIUS,
+    HEX_COLOR_SWATCH_HIT_RADIUS, HEX_COLOR_FIELD_HEIGHT,
+    HEX_COLOR_FIELD_HORIZONTAL_PADDING, HEX_COLOR_FIELD_CORNER_RADIUS,
+    HEX_COLOR_FIELD_FOCUSED_BORDER_WIDTH, HEX_COLOR_FIELD_IDLE_BORDER_WIDTH,
+    HEX_COLOR_FIELD_FOCUSED_BORDER_ALPHA, HEX_COLOR_FIELD_IDLE_BORDER_ALPHA,
+    HEX_COLOR_SWATCH_BORDER_ALPHA, hexColorInputShowsValidation,
+    hexColorInputSwatchColor, hexColorInputTextDraftUpdate, hexColorInputSubmit,
+    hexColorInputBlurAction, hexColorInputApplyBlur, HEX_COLOR_ESCAPE_STEP_ORDER,
+    hexColorInputShouldRebase, hexColorPickerToggleAction, hexColorPickerInitialDraft,
+    hexColorInteractionStep, hexColorInputPickerPreview,
+    hexColorTransactionalCommitAllowed, hexColorUsesPaletteLifecycle,
+    // ---- RecorderSetupSurface.swift
+    RECORDER_SETUP_HEIGHT, RECORDER_SETUP_HORIZONTAL_PADDING,
+    RECORDER_SETUP_INPUTS_LEADING, RECORDER_SETUP_RECORD_LEADING,
+    RECORDER_SETUP_BUTTON_SIZE, RECORDER_WHEEL_LEADING, RECORDER_WHEEL_TRAILING,
+    RECORDER_WHEEL_HEIGHT, RECORDER_WHEEL_NOTCH, RECORDER_WHEEL_LINE_MULTIPLIER,
+    RECORDER_RECORD_DISC_DIAMETER, RECORDER_RECORD_PIP_DIAMETER,
+    RECORDER_MODE_GLYPH_STROKE_DIVISOR, RECORDER_MODE_GLYPH_GRID,
+    RECORDER_MICROPHONE_RING_SIZE, RECORDER_MICROPHONE_RING_BASE_SCALE,
+    RECORDER_MICROPHONE_RING_SCALE_GAIN, RECORDER_MICROPHONE_RING_OPACITY_GAIN,
+    RECORDER_LEVEL_BAR_RESPONSE, RECORDER_LEVEL_BAR_GAIN, RECORDER_LEVEL_BAR_WIDTH,
+    RECORDER_LEVEL_BAR_MINIMUM_HEIGHT, RECORDER_LEVEL_BAR_SPACING,
+    RECORDER_LEVEL_BAR_ACTIVE_THRESHOLD, RECORDER_CAPTURE_SOURCE_LABELS,
+    RECORDER_CAPTURE_SOURCES, recorderSetupMode, recorderCaptureSourceLabel,
+    recorderWheelRoll, recorderWheelTravel, recorderWheelKeyStep, recorderWheelClickStep,
+    recorderMicrophoneRing, recorderLevelBarReach, recorderLevelBarHeight,
+    recorderLevelBarIsActive, recorderInputGlyphSymbol, recorderInputGlyphTone,
+    recorderMicrophoneAccessibilityValue, recorderModeGlyphStrokeWidth,
+    recorderModeGlyphUnit, recorderModeGlyphRect, recorderModeGlyphPoint,
+    RECORDER_MODE_GLYPH_SHAPES, recorderModeGlyphUsesViewfinder, recorderSetupTourEnabled,
+    // ---- RecorderPopover.swift
+    RECORDER_POPOVER_SCREEN_INSET, RECORDER_POPOVER_EDGE_GAP,
+    RECORDER_POPOVER_MINIMUM_HEIGHT, RECORDER_POPOVER_DEFAULT_WIDTH,
+    RECORDER_POPOVER_CORNER_RADIUS, RECORDER_POPOVER_CONTENT_PADDING,
+    RECORDER_POPOVER_INITIAL_CONTENT_HEIGHT, RECORDER_POPOVER_RESIZE_EPSILON,
+    RECORDER_POPOVER_ESCAPE_KEY_CODE, RECORDER_POPOVER_ARRIVAL_OFFSET,
+    RECORDER_POPOVER_IDENTIFIER_PREFIX, RECORDER_POPOVER_TRIGGER_IDENTIFIER_PREFIX,
+    RECORDER_POPOVER_COLLECTION_BEHAVIOR, RECORDER_POPOVER_DISMISS_NOTIFICATIONS,
+    RECORDER_POPOVER_LOCAL_EVENTS, RECORDER_POPOVER_GLOBAL_EVENTS,
+    recorderPopoverToggleStep, recorderPopoverVisibleFrame, recorderPopoverMaxHeight,
+    recorderPopoverInitialHeight, recorderPopoverX, recorderPopoverY,
+    recorderPopoverResizeAccepted, recorderPopoverLevel, recorderPopoverIdentifier,
+    recorderPopoverTriggerIdentifier, recorderPopoverCanBecomeMain,
+    recorderPopoverLocalEvent, RECORDER_DISMISS_AND_PERFORM_ORDER,
+    recorderDismissRestoresOwnerKey, RECORDER_POPOVER_DISMISS_ORDER,
+    recorderPopoverViewportHeight, recorderPopoverMeasuredHeight,
+    recorderPopoverAcceptsMeasuredHeight, recorderPopoverButtonCornerRadius,
+    recorderPopoverSurfaceOffset, recorderPopoverSurfaceOpacity, recorderChoiceRowAlpha,
+    recorderChoiceRowTone, recorderChoiceRowFontWeight, recorderChoiceRowCheckmark,
+    recorderChoiceRowRadio, recorderChoiceRowAccessibilityValue,
+    RECORDER_CHOICE_ROW_RADIO_SIZE, RECORDER_CHOICE_ROW_RADIO_INNER_PADDING,
+    RECORDER_CHOICE_ROW_HORIZONTAL_PADDING, RECORDER_CHOICE_ROW_VERTICAL_PADDING,
+    RECORDER_CHOICE_ROW_MINIMUM_HEIGHT, RECORDER_CHOICE_ROW_CORNER_RADIUS,
+    RECORDER_CHOICE_ROW_SPACING, recorderActionListItemKind,
+    RECORDER_ACTION_LIST_SEPARATOR_HEIGHT, RECORDER_ACTION_LIST_SPACING,
+    // ---- RecordingRun.swift
+    RECORDING_PLAN_ERROR_DESCRIPTIONS, recordingPlanErrorDescription,
+    recordingPlanTargetError, recordingPlanInputDeviceError,
+    recordingPlanInputDeviceRequests, recordingPlanPrimaryRelativePath,
+    recordingPlanInitialMediaManifest, recordingPlanAvailabilityError,
+    RECORDING_TRACK_BITS, recordingStartedTracksUnion, recordingStartedTrackEnabled,
+    RecordingRunState, pointerCaptureFrame, pointerCaptureAreaFallsBackToScreen,
+    pointerCaptureWindowMayDegradeToScreen, CAPTURE_WINDOW_LIST_OPTIONS,
+    recordingRunAdding,
+    // ---- HexColor（既有导出）
+    HexColor,
+  } = m
+
+  // ================ 壁纸视频播放
+  check('wp.buffer', WALLPAPER_FORWARD_BUFFER_SECONDS, 1.5)
+  check('wp.timescale', WALLPAPER_TIMESCALE, 600)
+  check('wp.pixelFormat', WALLPAPER_PIXEL_FORMAT, '420YpCbCr8BiPlanarVideoRange')
+  check('wp.metalCompatible', WALLPAPER_PIXEL_FORMAT_METAL_COMPATIBLE, true)
+  check('wp.muted', WALLPAPER_PLAYER_IS_MUTED, true)
+  check('wp.actionAtEnd', WALLPAPER_ACTION_AT_ITEM_END, 'pause')
+  check('wp.waitsToMinimize', WALLPAPER_WAITS_TO_MINIMIZE_STALLING, false)
+  check('wp.preventsSleep', WALLPAPER_PREVENTS_DISPLAY_SLEEP, false)
+  check('wp.pausedTolerance', WALLPAPER_PAUSED_RESYNC_TOLERANCE, 1 / 120)
+  check('wp.playingTolerance', WALLPAPER_PLAYING_RESYNC_TOLERANCE, 0.25)
+  check('wp.loopMargin', WALLPAPER_LOOP_BOUNDARY_MARGIN, 0.08)
+  check('wp.pollAttempts', WALLPAPER_READY_POLL_ATTEMPTS, 500)
+  check('wp.pollInterval', WALLPAPER_READY_POLL_INTERVAL_MS, 10)
+
+  check('wp.localWraps', wallpaperLocalTime(7, 5), 2)
+  check('wp.localInside', wallpaperLocalTime(2, 5), 2)
+  check('wp.localNegative', wallpaperLocalTime(-1, 5), 4)
+  check('wp.localZero', wallpaperLocalTime(0, 5), 0)
+  check('wp.localExactMultiple', wallpaperLocalTime(5, 5), 0)
+  check('wp.localNoDuration', wallpaperLocalTime(3, 0), 0)
+  check('wp.localNaN', wallpaperLocalTime(Number.NaN, 5), 0)
+
+  check('wp.rebuildBothNull', wallpaperConfigureNeedsRebuild({
+    currentURL: null, incomingURL: null }), false)
+  check('wp.rebuildFirst', wallpaperConfigureNeedsRebuild({
+    currentURL: null, incomingURL: 'a' }), true)
+  check('wp.rebuildSame', wallpaperConfigureNeedsRebuild({
+    currentURL: 'a', incomingURL: 'a' }), false)
+  check('wp.rebuildChanged', wallpaperConfigureNeedsRebuild({
+    currentURL: 'a', incomingURL: 'b' }), true)
+
+  const wpSync = (over = {}) => ({
+    isPlaying: false, force: false, discontinuityChanged: false,
+    currentTime: 5, targetTime: 5, playbackRate: 1, ...over,
+  })
+  check('wp.pausedNoSeek', wallpaperSyncAction(wpSync()), 'pause-without-seek')
+  check('wp.pausedWithinHalfFrame', wallpaperSyncAction(wpSync({ targetTime: 5.005 })),
+    'pause-without-seek')
+  check('wp.pausedNeedsSeek', wallpaperSyncAction(wpSync({ targetTime: 5.5 })), 'pause-and-seek')
+  check('wp.pausedForce', wallpaperSyncAction(wpSync({ force: true })), 'pause-and-seek')
+  check('wp.pausedDiscontinuity', wallpaperSyncAction(wpSync({
+    discontinuityChanged: true })), 'pause-and-seek')
+  check('wp.pausedNonFinite', wallpaperSyncAction(wpSync({
+    currentTime: Number.NaN })), 'pause-and-seek')
+
+  check('wp.playingStable', wallpaperSyncAction(wpSync({ isPlaying: true })), 'keep-playing')
+  check('wp.playingRateZero', wallpaperSyncAction(wpSync({ isPlaying: true, playbackRate: 0 })),
+    'realign-playback')
+  check('wp.playingLargeDrift', wallpaperSyncAction(wpSync({ isPlaying: true, targetTime: 5.3 })),
+    'realign-playback')
+  check('wp.playingSmallDrift', wallpaperSyncAction(wpSync({ isPlaying: true, targetTime: 5.2 })),
+    'keep-playing')
+  check('wp.playingLoopCrossed', wallpaperSyncAction(wpSync({ isPlaying: true, targetTime: 4.9 })),
+    'realign-playback')
+  check('wp.playingLoopNotCrossed', wallpaperSyncAction(wpSync({
+    isPlaying: true, targetTime: 4.95 })), 'keep-playing')
+
+  check('wp.syncNoTick', wallpaperSynchronizeStep({
+    hasTick: false, duration: 5, isPrimed: true }), 'pause-only')
+  check('wp.syncNoDuration', wallpaperSynchronizeStep({
+    hasTick: true, duration: 0, isPrimed: true }), 'ignore')
+  check('wp.syncNotPrimed', wallpaperSynchronizeStep({
+    hasTick: true, duration: 5, isPrimed: false }), 'ignore')
+  check('wp.syncApply', wallpaperSynchronizeStep({
+    hasTick: true, duration: 5, isPrimed: true }), 'apply')
+
+  check('wp.seekNoPlayer', wallpaperPausedSeekStep({
+    seekIsInFlight: false, hasPlayer: false }), 'queue-until-idle')
+  check('wp.seekInFlight', wallpaperPausedSeekStep({
+    seekIsInFlight: true, hasPlayer: true }), 'queue-until-idle')
+  check('wp.seekIdle', wallpaperPausedSeekStep({
+    seekIsInFlight: false, hasPlayer: true }), 'start-now')
+  check('wp.resumeQueued', wallpaperResumesQueuedSeek({ hasQueuedSeek: true }), true)
+  check('wp.resumeNothing', wallpaperResumesQueuedSeek({ hasQueuedSeek: false }), false)
+
+  check('wp.copyNoDuration', wallpaperFrameCopyAccepted({
+    duration: 0, hasOutput: true, displayTimeIsNumeric: true,
+    displayTimeEqualsLast: false }), false)
+  check('wp.copyNoOutput', wallpaperFrameCopyAccepted({
+    duration: 5, hasOutput: false, displayTimeIsNumeric: true,
+    displayTimeEqualsLast: false }), false)
+  check('wp.copyDuplicate', wallpaperFrameCopyAccepted({
+    duration: 5, hasOutput: true, displayTimeIsNumeric: true,
+    displayTimeEqualsLast: true }), false)
+  check('wp.copyFresh', wallpaperFrameCopyAccepted({
+    duration: 5, hasOutput: true, displayTimeIsNumeric: true,
+    displayTimeEqualsLast: false }), true)
+  check('wp.copyNonNumeric', wallpaperFrameCopyAccepted({
+    duration: 5, hasOutput: true, displayTimeIsNumeric: false,
+    displayTimeEqualsLast: true }), true)
+
+  check('wp.toleranceExact', wallpaperSeekTolerance(true), 0)
+  check('wp.toleranceLoose', wallpaperSeekTolerance(false), 1 / 30)
+  check('wp.readyReady', wallpaperReadyOutcome('readyToPlay'), 'ready')
+  check('wp.readyUnknown', wallpaperReadyOutcome('unknown'), 'keep-waiting')
+  check('wp.readyFailed', wallpaperReadyOutcome('failed'), 'failed')
+  check('wp.readyOther', wallpaperReadyOutcome('other'), 'failed')
+  check('wp.invalidateSteps', WALLPAPER_INVALIDATE_ORDER.length, 13)
+  check('wp.invalidateFirst', WALLPAPER_INVALIDATE_ORDER[0], 'cancel-preparation-task')
+
+  check('wp.primedPlaying', wallpaperPrimedAction({ hasTick: true, isPlaying: true }),
+    'apply-playing')
+  check('wp.primedPaused', wallpaperPrimedAction({ hasTick: true, isPlaying: false }),
+    'pause-and-remember')
+  check('wp.primedNoTick', wallpaperPrimedAction({ hasTick: false, isPlaying: true }),
+    'pause-and-remember')
+  check('wp.ownsStill', wallpaperPreparationStillOwns({
+    currentURL: 'a', expectedURL: 'a' }), true)
+  check('wp.ownsSwapped', wallpaperPreparationStillOwns({
+    currentURL: 'b', expectedURL: 'a' }), false)
+
+  // ================ 缩放焦点地图
+  check('zv.heightBase', ZOOM_MAP_HEIGHT_BASE, 312)
+  check('zv.minAspect', ZOOM_MAP_MINIMUM_ASPECT, 0.5)
+  check('zv.minHeight', ZOOM_MAP_MINIMUM_HEIGHT, 150)
+  check('zv.maxHeight', ZOOM_MAP_MAXIMUM_HEIGHT, 200)
+  check('zv.padding', ZOOM_MAP_PADDING, 8)
+  check('zv.thumbnailCorner', ZOOM_MAP_THUMBNAIL_CORNER_RADIUS, 7)
+  check('zv.guideCorner', ZOOM_GUIDE_CORNER_RADIUS, 6)
+  check('zv.mapCorner', ZOOM_MAP_CORNER_RADIUS, 14)
+  check('zv.guideStroke', ZOOM_GUIDE_STROKE_WIDTH, 0.75)
+  check('zv.guideDash', ZOOM_GUIDE_STROKE_DASH.join(','), '4,4')
+  check('zv.guideAlpha', ZOOM_GUIDE_STROKE_ALPHA, 0.65)
+  check('zv.crosshairAlpha', ZOOM_CROSSHAIR_ALPHA, 0.7)
+  check('zv.crosshairStroke', ZOOM_CROSSHAIR_STROKE_WIDTH, 0.75)
+  check('zv.crosshairDash', ZOOM_CROSSHAIR_DASH.join(','), '2.5,3.5')
+  check('zv.puckDiameter', ZOOM_PUCK_DIAMETER, 22)
+  check('zv.puckPip', ZOOM_PUCK_PIP_DIAMETER, 8)
+  check('zv.puckScale', ZOOM_PUCK_ACTIVE_SCALE, 1.1)
+  check('zv.borderActive', ZOOM_MAP_BORDER_ACTIVE_ALPHA, 0.8)
+  check('zv.borderHover', ZOOM_MAP_BORDER_HOVER_ALPHA, 0.35)
+  check('zv.borderIdle', ZOOM_MAP_BORDER_IDLE_ALPHA, 0)
+  check('zv.centerTolerance', ZOOM_CENTER_TOLERANCE, 0.0005)
+  check('zv.refreshInterval', ZOOM_MAP_REFRESH_INTERVAL, 1 / 30)
+
+  check('zv.clampInside', zoomClamp01(0.3), 0.3)
+  check('zv.clampLow', zoomClamp01(-1), 0)
+  check('zv.clampHigh', zoomClamp01(2), 1)
+  check('zv.clampNaN', zoomClamp01(Number.NaN), 0.5)
+  check('zv.clampInfinity', zoomClamp01(Number.POSITIVE_INFINITY), 0.5)
+
+  check('zv.heightWide', zoomFocusMapHeight({ width: 1600, height: 900 }), 175.5, 1e-6)
+  check('zv.heightSquare', zoomFocusMapHeight({ width: 100, height: 100 }), 200)
+  check('zv.heightTall', zoomFocusMapHeight({ width: 100, height: 200 }), 200)
+  check('zv.heightVeryTall', zoomFocusMapHeight({ width: 100, height: 1000 }), 200)
+  check('zv.heightUltraWide', zoomFocusMapHeight({ width: 1000, height: 100 }), 150)
+  check('zv.heightZeroHeight', zoomFocusMapHeight({ width: 100, height: 0 }), 150)
+
+  const zvRectTall = zoomFocusMapRect({
+    size: { width: 200, height: 200 }, sourcePixelSize: { width: 1600, height: 900 } })
+  check('zv.rectTallX', zvRectTall.x, 8)
+  check('zv.rectTallY', zvRectTall.y, 48.25, 1e-6)
+  check('zv.rectTallW', zvRectTall.width, 184)
+  check('zv.rectTallH', zvRectTall.height, 103.5, 1e-6)
+  const zvRectWide = zoomFocusMapRect({
+    size: { width: 400, height: 200 }, sourcePixelSize: { width: 1600, height: 900 } })
+  check('zv.rectWideX', zvRectWide.x, 36.44444444444444, 1e-6)
+  check('zv.rectWideY', zvRectWide.y, 8)
+  check('zv.rectWideW', zvRectWide.width, 327.1111111111111, 1e-6)
+  check('zv.rectWideH', zvRectWide.height, 184)
+
+  const zvPoint = zoomFocusPoint({
+    mapRect: { x: 0, y: 0, width: 100, height: 200 }, focus: { x: 0.5, y: 0.25 } })
+  check('zv.pointX', zvPoint.x, 50)
+  check('zv.pointY', zvPoint.y, 50)
+  const zvPointClamped = zoomFocusPoint({
+    mapRect: { x: 0, y: 0, width: 100, height: 200 }, focus: { x: 2, y: -1 } })
+  check('zv.pointClampX', zvPointClamped.x, 100)
+  check('zv.pointClampY', zvPointClamped.y, 0)
+
+  const zvNorm = zoomNormalizedFocus({
+    point: { x: 50, y: 50 }, rect: { x: 0, y: 0, width: 100, height: 200 } })
+  check('zv.normX', zvNorm.x, 0.5)
+  check('zv.normY', zvNorm.y, 0.25)
+  const zvNormOutside = zoomNormalizedFocus({
+    point: { x: 150, y: 300 }, rect: { x: 0, y: 0, width: 100, height: 200 } })
+  check('zv.normClampX', zvNormOutside.x, 1)
+  check('zv.normClampY', zvNormOutside.y, 1)
+  const zvNormZeroRect = zoomNormalizedFocus({
+    point: { x: 10, y: 10 }, rect: { x: 0, y: 0, width: 0, height: 0 } })
+  check('zv.normZeroRect', zvNormZeroRect.x, 1)
+
+  check('zv.centered', zoomFocusIsCentered({ x: 0.5, y: 0.5 }), true)
+  check('zv.centeredWithinTolerance', zoomFocusIsCentered({ x: 0.5001, y: 0.5 }), true)
+  check('zv.centeredOff', zoomFocusIsCentered({ x: 0.6, y: 0.5 }), false)
+
+  const zvGuide = zoomGuideRect({
+    mapRect: { x: 0, y: 0, width: 100, height: 200 }, guideInset: 0.05 })
+  check('zv.guideW', zvGuide.width, 90, 1e-9)
+  check('zv.guideH', zvGuide.height, 180, 1e-9)
+  check('zv.guideX', zvGuide.x, 5, 1e-9)
+  check('zv.guideY', zvGuide.y, 10, 1e-9)
+
+  const zvSegments = zoomCrosshairSegments({
+    point: { x: 50, y: 50 }, mapRect: { x: 10, y: 20, width: 100, height: 200 } })
+  check('zv.verticalFromY', zvSegments.vertical.from.y, 20)
+  check('zv.verticalToY', zvSegments.vertical.to.y, 220)
+  check('zv.verticalX', zvSegments.vertical.from.x, 50)
+  check('zv.horizontalFromX', zvSegments.horizontal.from.x, 10)
+  check('zv.horizontalToX', zvSegments.horizontal.to.x, 110)
+  check('zv.horizontalY', zvSegments.horizontal.from.y, 50)
+
+  check('zv.surfaceInactive', zoomFocusSurfaceIsActive({
+    isEditingFocus: false, isCoordinateEditing: false }), false)
+  check('zv.surfaceDrag', zoomFocusSurfaceIsActive({
+    isEditingFocus: true, isCoordinateEditing: false }), true)
+  check('zv.surfaceEditing', zoomFocusSurfaceIsActive({
+    isEditingFocus: false, isCoordinateEditing: true }), true)
+  check('zv.puckActive', zoomPuckScale({ isActive: true, reducesMotion: false }), 1.1)
+  check('zv.puckReduced', zoomPuckScale({ isActive: true, reducesMotion: true }), 1)
+  check('zv.puckIdle', zoomPuckScale({ isActive: false, reducesMotion: false }), 1)
+  check('zv.mapBorderActive', zoomMapBorderAlpha({ isActive: true, isHovered: false }), 0.8)
+  check('zv.mapBorderHover', zoomMapBorderAlpha({ isActive: false, isHovered: true }), 0.35)
+  check('zv.mapBorderIdle', zoomMapBorderAlpha({ isActive: false, isHovered: false }), 0)
+
+  check('zv.timelineRunning', zoomTimelinePaused({
+    refreshesDuringPlayback: true, isPlaying: true,
+    isCoordinateEditing: false, isEditingFocus: false }), false)
+  check('zv.timelineNoRefresh', zoomTimelinePaused({
+    refreshesDuringPlayback: false, isPlaying: true,
+    isCoordinateEditing: false, isEditingFocus: false }), true)
+  check('zv.timelineNotPlaying', zoomTimelinePaused({
+    refreshesDuringPlayback: true, isPlaying: false,
+    isCoordinateEditing: false, isEditingFocus: false }), true)
+  check('zv.timelineEditingText', zoomTimelinePaused({
+    refreshesDuringPlayback: true, isPlaying: true,
+    isCoordinateEditing: true, isEditingFocus: false }), true)
+  check('zv.timelineDragging', zoomTimelinePaused({
+    refreshesDuringPlayback: true, isPlaying: true,
+    isCoordinateEditing: false, isEditingFocus: true }), true)
+
+  check('zv.editBegin', zoomFocusEditingStep({
+    action: 'begin', isEditingFocus: false }), 'begin')
+  check('zv.editBeginTwice', zoomFocusEditingStep({
+    action: 'begin', isEditingFocus: true }), 'noop-begin')
+  check('zv.editEnd', zoomFocusEditingStep({
+    action: 'end', isEditingFocus: true }), 'end')
+  check('zv.editEndIdle', zoomFocusEditingStep({
+    action: 'end', isEditingFocus: false }), 'noop-end')
+  check('zv.editCancel', zoomFocusEditingStep({
+    action: 'cancel', isEditingFocus: true }), 'cancel')
+  check('zv.editCancelIdle', zoomFocusEditingStep({
+    action: 'cancel', isEditingFocus: false }), 'noop-cancel')
+
+  check('zv.thumbnailID', zoomThumbnailRequestID({
+    generation: 'g1', outputTime: 1.23456 }), 'g1#1.235')
+  check('zv.thumbnailNoGeneration', zoomThumbnailRequestID({
+    generation: null, outputTime: 0 }), 'none#0.000')
+  check('zv.cancelOnDisappear', zoomShouldCancelOnDisappear({ isEditingFocus: true }), true)
+  check('zv.noCancelOnDisappear', zoomShouldCancelOnDisappear({ isEditingFocus: false }), false)
+  check('zv.hitAllowed', zoomFocusSurfaceAcceptsHitTesting({
+    allowsEditing: true, isCoordinateEditing: false }), true)
+  check('zv.hitBlockedWhileTyping', zoomFocusSurfaceAcceptsHitTesting({
+    allowsEditing: true, isCoordinateEditing: true }), false)
+  check('zv.hitBlockedReadOnly', zoomFocusSurfaceAcceptsHitTesting({
+    allowsEditing: false, isCoordinateEditing: false }), false)
+  check('zv.showsControls', zoomShowsCoordinateControls({ allowsEditing: true }), true)
+  check('zv.hidesControls', zoomShowsCoordinateControls({ allowsEditing: false }), false)
+
+  // ================ 十六进制颜色输入
+  check('hx.invalidMessage', HEX_COLOR_INPUT_INVALID_MESSAGE,
+    '请输入 6 位十六进制颜色，例如 #D8B26A')
+  check('hx.swatchW', HEX_COLOR_SWATCH_WIDTH, 32)
+  check('hx.swatchH', HEX_COLOR_SWATCH_HEIGHT, 26)
+  check('hx.swatchContainerW', HEX_COLOR_SWATCH_CONTAINER_WIDTH, 36)
+  check('hx.swatchContainerH', HEX_COLOR_SWATCH_CONTAINER_HEIGHT, 30)
+  check('hx.swatchCorner', HEX_COLOR_SWATCH_CORNER_RADIUS, 5)
+  check('hx.swatchHit', HEX_COLOR_SWATCH_HIT_RADIUS, 7)
+  check('hx.fieldHeight', HEX_COLOR_FIELD_HEIGHT, 30)
+  check('hx.fieldPadding', HEX_COLOR_FIELD_HORIZONTAL_PADDING, 9)
+  check('hx.fieldCorner', HEX_COLOR_FIELD_CORNER_RADIUS, 7)
+  check('hx.fieldFocusedBorder', HEX_COLOR_FIELD_FOCUSED_BORDER_WIDTH, 1)
+  check('hx.fieldIdleBorder', HEX_COLOR_FIELD_IDLE_BORDER_WIDTH, 0.75)
+  check('hx.fieldFocusedAlpha', HEX_COLOR_FIELD_FOCUSED_BORDER_ALPHA, 0.24)
+  check('hx.fieldIdleAlpha', HEX_COLOR_FIELD_IDLE_BORDER_ALPHA, 0.085)
+  check('hx.swatchBorderAlpha', HEX_COLOR_SWATCH_BORDER_ALPHA, 0.24)
+
+  {
+    const base = HexColor.parse('#D8B26A')
+    const draft = new HexColorDraft(base)
+    check('hx.draftText', draft.text, '#D8B26A')
+    check('hx.draftClean', draft.isDirty, false)
+    check('hx.draftValid', draft.isValid, true)
+    check('hx.draftParsed', draft.parsed.hexString, '#D8B26A')
+    draft.updateText('#000000')
+    check('hx.draftDirty', draft.isDirty, true)
+    draft.updateText('zzz')
+    check('hx.draftInvalid', draft.isValid, false)
+    check('hx.draftParsedNull', draft.parsed, null)
+    draft.cancel()
+    check('hx.draftCancelText', draft.text, '#D8B26A')
+    check('hx.draftCancelClean', draft.isDirty, false)
+    draft.updateText('#123456')
+    draft.rebase(HexColor.parse('#112233'))
+    check('hx.draftRebaseCommitted', draft.committed.hexString, '#112233')
+    check('hx.draftRebaseText', draft.text, '#112233')
+  }
+  {
+    const draft = new HexColorDraft(HexColor.parse('#D8B26A'))
+    check('hx.validationClean', hexColorInputShowsValidation(draft), false)
+    draft.updateText('#00FF00')
+    check('hx.validationValidDirty', hexColorInputShowsValidation(draft), false)
+    draft.updateText('#00FF')
+    check('hx.validationInvalidDirty', hexColorInputShowsValidation(draft), true)
+    check('hx.swatchFallback', hexColorInputSwatchColor(draft).hexString, '#D8B26A')
+    const update = hexColorInputTextDraftUpdate({ draft, text: '#00FF00' })
+    check('hx.textUpdateColor', update.color.hexString, '#00FF00')
+    check('hx.textUpdateBegins', update.beginsInteraction, true)
+    check('hx.textUpdatePreviews', update.previewsColor, true)
+    const invalidUpdate = hexColorInputTextDraftUpdate({ draft, text: '#00FF' })
+    check('hx.textUpdateInvalid', invalidUpdate.color, null)
+    check('hx.textUpdateNoBegin', invalidUpdate.beginsInteraction, false)
+  }
+  {
+    const draft = new HexColorDraft(HexColor.parse('#D8B26A'))
+    draft.updateText('#00FF00')
+    const submit = hexColorInputSubmit(draft)
+    check('hx.submitColor', submit.color.hexString, '#00FF00')
+    check('hx.submitRebases', submit.rebases, true)
+    check('hx.submitBlurs', submit.blurs, true)
+    check('hx.submitCleanAfter', draft.isDirty, false)
+    draft.updateText('#00FF')
+    const badSubmit = hexColorInputSubmit(draft)
+    check('hx.submitInvalidColor', badSubmit.color, null)
+    check('hx.submitInvalidBlur', badSubmit.blurs, false)
+  }
+  {
+    const draft = new HexColorDraft(HexColor.parse('#D8B26A'))
+    const picker = HexColor.parse('#112233')
+    draft.updateText('#ZZZ')
+    check('hx.blurRevert', hexColorInputBlurAction({ draft, pickerDraft: picker }),
+      'revert-text-to-picker')
+    check('hx.blurRevertResult', hexColorInputApplyBlur({ draft, pickerDraft: picker }), null)
+    check('hx.blurRevertText', draft.text, '#112233')
+    draft.updateText('#445566')
+    check('hx.blurAccept', hexColorInputBlurAction({ draft, pickerDraft: picker }), 'accept-color')
+    check('hx.blurAcceptColor', hexColorInputApplyBlur({ draft, pickerDraft: picker }).hexString,
+      '#445566')
+  }
+  check('hx.escapeSteps', HEX_COLOR_ESCAPE_STEP_ORDER.length, 4)
+  check('hx.escapeFirst', HEX_COLOR_ESCAPE_STEP_ORDER[0], 'reset-picker-draft')
+  check('hx.escapeThird', HEX_COLOR_ESCAPE_STEP_ORDER[2], 'preview-committed')
+
+  check('hx.rebaseIdle', hexColorInputShouldRebase({
+    interactionIsActive: false, newValueEqualsPickerDraft: false }), true)
+  check('hx.rebaseOwnPreview', hexColorInputShouldRebase({
+    interactionIsActive: true, newValueEqualsPickerDraft: true }), false)
+  check('hx.rebaseExternalWhileActive', hexColorInputShouldRebase({
+    interactionIsActive: true, newValueEqualsPickerDraft: false }), true)
+
+  check('hx.pickerOpen', hexColorPickerToggleAction({ isPresented: true }), 'begin-interaction')
+  check('hx.pickerClose', hexColorPickerToggleAction({ isPresented: false }), 'rebase-and-end')
+
+  {
+    const draft = new HexColorDraft(HexColor.parse('#D8B26A'))
+    check('hx.pickerInitialParsed', hexColorPickerInitialDraft(draft).hexString, '#D8B26A')
+    draft.updateText('#00')
+    check('hx.pickerInitialFallback', hexColorPickerInitialDraft(draft).hexString, '#D8B26A')
+    const preview = hexColorInputPickerPreview({ draft, color: HexColor.parse('#AABBCC') })
+    check('hx.pickerPreviewBegins', preview.beginsInteraction, true)
+    check('hx.pickerPreviewText', preview.text, '#AABBCC')
+  }
+
+  check('hx.interactionBegin', hexColorInteractionStep({
+    action: 'begin', interactionIsActive: false }), 'begin')
+  check('hx.interactionBeginTwice', hexColorInteractionStep({
+    action: 'begin', interactionIsActive: true }), 'noop-begin')
+  check('hx.interactionEnd', hexColorInteractionStep({
+    action: 'end', interactionIsActive: true }), 'end')
+  check('hx.interactionEndIdle', hexColorInteractionStep({
+    action: 'end', interactionIsActive: false }), 'noop-end')
+
+  check('hx.commitAllowed', hexColorTransactionalCommitAllowed({
+    ownedInteractionID: 'i1', currentInteractionID: 'i1',
+    ownedScope: 's', currentScope: 's' }), true)
+  check('hx.commitNoOwner', hexColorTransactionalCommitAllowed({
+    ownedInteractionID: null, currentInteractionID: 'i1',
+    ownedScope: 's', currentScope: 's' }), false)
+  check('hx.commitIDMismatch', hexColorTransactionalCommitAllowed({
+    ownedInteractionID: 'i1', currentInteractionID: 'i2',
+    ownedScope: 's', currentScope: 's' }), false)
+  check('hx.commitScopeMismatch', hexColorTransactionalCommitAllowed({
+    ownedInteractionID: 'i1', currentInteractionID: 'i1',
+    ownedScope: 's', currentScope: 't' }), false)
+  check('hx.paletteLifecycle', hexColorUsesPaletteLifecycle(true), true)
+  check('hx.noPaletteLifecycle', hexColorUsesPaletteLifecycle(false), false)
+
+  // ================ 录制待机小岛
+  check('rs.height', RECORDER_SETUP_HEIGHT, 56)
+  check('rs.horizontalPadding', RECORDER_SETUP_HORIZONTAL_PADDING, 8)
+  check('rs.inputsLeading', RECORDER_SETUP_INPUTS_LEADING, 6)
+  check('rs.recordLeading', RECORDER_SETUP_RECORD_LEADING, 4)
+  check('rs.buttonSize', RECORDER_SETUP_BUTTON_SIZE, 44)
+  check('rs.wheelLeading', RECORDER_WHEEL_LEADING, 14)
+  check('rs.wheelTrailing', RECORDER_WHEEL_TRAILING, 11)
+  check('rs.wheelHeight', RECORDER_WHEEL_HEIGHT, 40)
+  check('rs.wheelNotch', RECORDER_WHEEL_NOTCH, 26)
+  check('rs.wheelLineMultiplier', RECORDER_WHEEL_LINE_MULTIPLIER, 14)
+  check('rs.recordDisc', RECORDER_RECORD_DISC_DIAMETER, 36)
+  check('rs.recordPip', RECORDER_RECORD_PIP_DIAMETER, 12)
+  check('rs.glyphStrokeDivisor', RECORDER_MODE_GLYPH_STROKE_DIVISOR, 11)
+  check('rs.glyphGrid', RECORDER_MODE_GLYPH_GRID, 18)
+  check('rs.ringSize', RECORDER_MICROPHONE_RING_SIZE, 30)
+  check('rs.ringBaseScale', RECORDER_MICROPHONE_RING_BASE_SCALE, 0.78)
+  check('rs.ringScaleGain', RECORDER_MICROPHONE_RING_SCALE_GAIN, 0.34)
+  check('rs.ringOpacityGain', RECORDER_MICROPHONE_RING_OPACITY_GAIN, 4)
+  check('rs.barResponse', RECORDER_LEVEL_BAR_RESPONSE.join(','), '0.62,1,0.8,0.5,0.9,0.7,0.55,0.95')
+  check('rs.barGain', RECORDER_LEVEL_BAR_GAIN, 1.6)
+  check('rs.barWidth', RECORDER_LEVEL_BAR_WIDTH, 2.5)
+  check('rs.barMinHeight', RECORDER_LEVEL_BAR_MINIMUM_HEIGHT, 3)
+  check('rs.barSpacing', RECORDER_LEVEL_BAR_SPACING, 2)
+  check('rs.barActiveThreshold', RECORDER_LEVEL_BAR_ACTIVE_THRESHOLD, 0.02)
+  check('rs.sourceOrder', RECORDER_CAPTURE_SOURCES.join(','), 'display,window,area,device')
+  check('rs.labelCount', Object.keys(RECORDER_CAPTURE_SOURCE_LABELS).length, 4)
+
+  check('rs.modeSelectedWins', recorderSetupMode({
+    selectedCaptureSource: 'window', storedMode: 'area' }), 'window')
+  check('rs.modeStoredFallback', recorderSetupMode({
+    selectedCaptureSource: null, storedMode: 'area' }), 'area')
+  check('rs.modeStoredInvalid', recorderSetupMode({
+    selectedCaptureSource: null, storedMode: 'bogus' }), 'display')
+  check('rs.modeDefault', recorderSetupMode({
+    selectedCaptureSource: null, storedMode: null }), 'display')
+  check('rs.labelDevice', recorderCaptureSourceLabel('device'), '设备')
+  check('rs.labelUnknown', recorderCaptureSourceLabel('zzz'), '')
+
+  const rsRollForward = recorderWheelRoll({ step: 1, currentMode: 'display' })
+  check('rs.rollForwardIndex', rsRollForward.nextIndex, 1)
+  check('rs.rollForwardMode', rsRollForward.nextMode, 'window')
+  check('rs.rollForwardFlag', rsRollForward.rollsForward, true)
+  const rsRollBackward = recorderWheelRoll({ step: -1, currentMode: 'display' })
+  check('rs.rollBackwardIndex', rsRollBackward.nextIndex, 3)
+  check('rs.rollBackwardMode', rsRollBackward.nextMode, 'device')
+  check('rs.rollBackwardFlag', rsRollBackward.rollsForward, false)
+  check('rs.rollZero', recorderWheelRoll({ step: 0, currentMode: 'display' }), null)
+  check('rs.rollFullLoop', recorderWheelRoll({ step: 4, currentMode: 'display' }).nextIndex, 0)
+  check('rs.rollOverflowBackward', recorderWheelRoll({
+    step: -5, currentMode: 'window' }).nextIndex, 0)
+  check('rs.rollUnknownMode', recorderWheelRoll({ step: 1, currentMode: 'bogus' }), null)
+
+  const rsTravelSmall = recorderWheelTravel({
+    travel: 0, scrollingDeltaY: 10, hasPreciseScrollingDeltas: true, phaseBegan: false })
+  check('rs.travelSmallAccum', rsTravelSmall.travel, 10)
+  check('rs.travelSmallSteps', rsTravelSmall.steps.length, 0)
+  const rsTravelNotch = recorderWheelTravel({
+    travel: 20, scrollingDeltaY: 10, hasPreciseScrollingDeltas: true, phaseBegan: false })
+  check('rs.travelNotchAccum', rsTravelNotch.travel, 4)
+  check('rs.travelNotchSteps', rsTravelNotch.steps.join(','), '-1')
+  const rsTravelBack = recorderWheelTravel({
+    travel: 0, scrollingDeltaY: -30, hasPreciseScrollingDeltas: true, phaseBegan: false })
+  check('rs.travelBackAccum', rsTravelBack.travel, -4)
+  check('rs.travelBackSteps', rsTravelBack.steps.join(','), '1')
+  const rsTravelMouse = recorderWheelTravel({
+    travel: 100, scrollingDeltaY: 5, hasPreciseScrollingDeltas: false, phaseBegan: true })
+  check('rs.travelMouseAccum', rsTravelMouse.travel, 18)
+  check('rs.travelMouseSteps', rsTravelMouse.steps.join(','), '-1,-1')
+  const rsTravelBeginResets = recorderWheelTravel({
+    travel: 25, scrollingDeltaY: 1, hasPreciseScrollingDeltas: true, phaseBegan: true })
+  check('rs.travelBeginResets', rsTravelBeginResets.travel, 1)
+  check('rs.travelBeginNoSteps', rsTravelBeginResets.steps.length, 0)
+
+  check('rs.keyDown', recorderWheelKeyStep(125), 1)
+  check('rs.keyRight', recorderWheelKeyStep(124), 1)
+  check('rs.keyUp', recorderWheelKeyStep(126), -1)
+  check('rs.keyLeft', recorderWheelKeyStep(123), -1)
+  check('rs.keyOther', recorderWheelKeyStep(0), 0)
+  check('rs.clickStep', recorderWheelClickStep(), 1)
+
+  const rsRing = recorderMicrophoneRing({ meterValue: 0.5, enabled: true })
+  check('rs.ringLevel', rsRing.level, 0.5)
+  check('rs.ringScale', rsRing.scale, 0.95, 1e-9)
+  check('rs.ringOpacity', rsRing.opacity, 1)
+  const rsRingOff = recorderMicrophoneRing({ meterValue: 0.5, enabled: false })
+  check('rs.ringOffLevel', rsRingOff.level, 0)
+  check('rs.ringOffScale', rsRingOff.scale, 0.78)
+  check('rs.ringOffOpacity', rsRingOff.opacity, 0)
+  check('rs.ringQuietOpacity', recorderMicrophoneRing({
+    meterValue: 0.1, enabled: true }).opacity, 0.4, 1e-9)
+  check('rs.ringClampLevel', recorderMicrophoneRing({
+    meterValue: 2, enabled: true }).level, 1)
+
+  check('rs.barReachFirst', recorderLevelBarReach({ level: 1, index: 0, active: true }),
+    0.992, 1e-9)
+  check('rs.barReachSecond', recorderLevelBarReach({ level: 1, index: 1, active: true }), 1)
+  check('rs.barReachThird', recorderLevelBarReach({ level: 0.5, index: 2, active: true }),
+    0.64, 1e-9)
+  check('rs.barReachWraps', recorderLevelBarReach({ level: 1, index: 8, active: true }),
+    0.992, 1e-9)
+  check('rs.barReachInactive', recorderLevelBarReach({ level: 1, index: 0, active: false }), 0)
+
+  check('rs.barHeightFloor', recorderLevelBarHeight({ height: 14, reach: 0 }), 3)
+  check('rs.barHeightFull', recorderLevelBarHeight({ height: 14, reach: 1 }), 14)
+  check('rs.barHeightHalf', recorderLevelBarHeight({ height: 14, reach: 0.5 }), 8.5, 1e-9)
+  check('rs.barActiveAtThreshold', recorderLevelBarIsActive(0.02, true), false)
+  check('rs.barActive', recorderLevelBarIsActive(0.03, true), true)
+  check('rs.barInactiveFlag', recorderLevelBarIsActive(0.5, false), false)
+
+  check('rs.glyphOn', recorderInputGlyphSymbol({ on: 'mic.fill', off: 'mic.slash.fill', enabled: true }),
+    'mic.fill')
+  check('rs.glyphOff', recorderInputGlyphSymbol({ on: 'mic.fill', off: 'mic.slash.fill', enabled: false }),
+    'mic.slash.fill')
+  check('rs.toneEnabled', recorderInputGlyphTone(true), 'ink')
+  check('rs.toneDisabled', recorderInputGlyphTone(false), 'faint')
+  check('rs.micValue', recorderMicrophoneAccessibilityValue(0.456), '45%')
+  check('rs.glyphStroke', recorderModeGlyphStrokeWidth(18), 18 / 11)
+  check('rs.glyphUnit', recorderModeGlyphUnit(18), 1)
+  const rsGlyphRect = recorderModeGlyphRect({
+    originX: 0, originY: 0, unit: 1, x: 1.5, y: 2.5, width: 15, height: 10 })
+  check('rs.glyphRectX', rsGlyphRect.x, 1.5)
+  check('rs.glyphRectW', rsGlyphRect.width, 15)
+  const rsGlyphPoint = recorderModeGlyphPoint({
+    originX: 0, originY: 0, unit: 1, x: 6, y: 15.6 })
+  check('rs.glyphPointY', rsGlyphPoint.y, 15.6)
+  check('rs.glyphShapes', Object.keys(RECORDER_MODE_GLYPH_SHAPES).length, 3)
+  check('rs.glyphDisplayRect', RECORDER_MODE_GLYPH_SHAPES.display.rect[0], 1.5)
+  check('rs.glyphAreaViewfinder', recorderModeGlyphUsesViewfinder('area'), true)
+  check('rs.glyphWindowNotViewfinder', recorderModeGlyphUsesViewfinder('window'), false)
+  check('rs.tourEnabled', recorderSetupTourEnabled({
+    phase: 'setup', showsRequiredPermissionGate: false }), true)
+  check('rs.tourGated', recorderSetupTourEnabled({
+    phase: 'setup', showsRequiredPermissionGate: true }), false)
+  check('rs.tourWrongPhase', recorderSetupTourEnabled({
+    phase: 'recording', showsRequiredPermissionGate: false }), false)
+
+  // ================ 录制浮层宿主
+  check('rp.screenInset', RECORDER_POPOVER_SCREEN_INSET, 12)
+  check('rp.edgeGap', RECORDER_POPOVER_EDGE_GAP, 16)
+  check('rp.minimumHeight', RECORDER_POPOVER_MINIMUM_HEIGHT, 80)
+  check('rp.defaultWidth', RECORDER_POPOVER_DEFAULT_WIDTH, 290)
+  check('rp.cornerRadius', RECORDER_POPOVER_CORNER_RADIUS, 18)
+  check('rp.contentPadding', RECORDER_POPOVER_CONTENT_PADDING, 10)
+  check('rp.initialContentHeight', RECORDER_POPOVER_INITIAL_CONTENT_HEIGHT, 300)
+  check('rp.resizeEpsilon', RECORDER_POPOVER_RESIZE_EPSILON, 1)
+  check('rp.escapeKey', RECORDER_POPOVER_ESCAPE_KEY_CODE, 53)
+  check('rp.arrivalOffset', RECORDER_POPOVER_ARRIVAL_OFFSET, -6)
+  check('rp.identifierPrefix', RECORDER_POPOVER_IDENTIFIER_PREFIX, 'recorder.popover.')
+  check('rp.triggerPrefix', RECORDER_POPOVER_TRIGGER_IDENTIFIER_PREFIX, 'recorder.config.')
+  check('rp.collectionBehavior', RECORDER_POPOVER_COLLECTION_BEHAVIOR.join(','),
+    'canJoinAllSpaces,fullScreenAuxiliary,ignoresCycle')
+  check('rp.dismissNotifications', RECORDER_POPOVER_DISMISS_NOTIFICATIONS.length, 2)
+  check('rp.localEvents', RECORDER_POPOVER_LOCAL_EVENTS.length, 3)
+  check('rp.globalEvents', RECORDER_POPOVER_GLOBAL_EVENTS.join(','), 'leftMouseDown,rightMouseDown')
+
+  check('rp.toggleFirst', recorderPopoverToggleStep({
+    currentIdentifier: null, requestedIdentifier: 'a' }), 'replace-and-open')
+  check('rp.toggleSame', recorderPopoverToggleStep({
+    currentIdentifier: 'a', requestedIdentifier: 'a' }), 'dismiss')
+  check('rp.toggleOther', recorderPopoverToggleStep({
+    currentIdentifier: 'a', requestedIdentifier: 'b' }), 'replace-and-open')
+
+  const rpVisible = recorderPopoverVisibleFrame({ x: 0, y: 0, width: 1000, height: 800 })
+  check('rp.visibleX', rpVisible.x, 12)
+  check('rp.visibleW', rpVisible.width, 976)
+  check('rp.visibleH', rpVisible.height, 776)
+  check('rp.maxHeight', recorderPopoverMaxHeight(rpVisible), 760)
+  check('rp.initialFits', recorderPopoverInitialHeight({ fittingHeight: 200, maxHeight: 760 }), 200)
+  check('rp.initialMinimum', recorderPopoverInitialHeight({ fittingHeight: 50, maxHeight: 760 }), 80)
+  check('rp.initialClamped', recorderPopoverInitialHeight({ fittingHeight: 900, maxHeight: 760 }), 760)
+
+  check('rp.xCentered', recorderPopoverX({
+    anchorMidX: 500, width: 290, visibleFrame: rpVisible }), 355)
+  check('rp.xClampedLeft', recorderPopoverX({
+    anchorMidX: 10, width: 290, visibleFrame: rpVisible }), 12)
+  check('rp.xClampedRight', recorderPopoverX({
+    anchorMidX: 950, width: 290, visibleFrame: rpVisible }), 698)
+
+  // 下方放置 = anchor.minY − height − 16 = 500 − 200 − 16 = 284（不是 +16）
+  check('rp.yBelow', recorderPopoverY({
+    anchorRect: { x: 0, y: 500, width: 44, height: 44 },
+    height: 200, visibleFrame: rpVisible }), 284)
+  check('rp.yFlippedAbove', recorderPopoverY({
+    anchorRect: { x: 0, y: 100, width: 44, height: 44 },
+    height: 200, visibleFrame: rpVisible }), 160)
+  check('rp.yHighAnchor', recorderPopoverY({
+    anchorRect: { x: 0, y: 700, width: 44, height: 44 },
+    height: 200, visibleFrame: rpVisible }), 484)
+
+  check('rp.resizeAccepted', recorderPopoverResizeAccepted({
+    currentHeight: 100, newHeight: 101.5 }), true)
+  check('rp.resizeTooSmall', recorderPopoverResizeAccepted({
+    currentHeight: 100, newHeight: 100.5 }), false)
+  check('rp.resizeSame', recorderPopoverResizeAccepted({
+    currentHeight: 100, newHeight: 100 }), false)
+  check('rp.level', recorderPopoverLevel(3), 4)
+  check('rp.identifier', recorderPopoverIdentifier('microphone'), 'recorder.popover.microphone')
+  check('rp.triggerIdentifier', recorderPopoverTriggerIdentifier('camera'), 'recorder.config.camera')
+  check('rp.notMain', recorderPopoverCanBecomeMain(), false)
+
+  check('rp.eventEscape', recorderPopoverLocalEvent({
+    isKeyDown: true, keyCode: 53, eventWindowIsPanel: true,
+    anchorRectContainsMouse: false }), 'dismiss-and-consume')
+  check('rp.eventOtherKey', recorderPopoverLocalEvent({
+    isKeyDown: true, keyCode: 12, eventWindowIsPanel: false,
+    anchorRectContainsMouse: true }), 'pass-through')
+  check('rp.eventInsidePanel', recorderPopoverLocalEvent({
+    isKeyDown: false, keyCode: 0, eventWindowIsPanel: true,
+    anchorRectContainsMouse: false }), 'pass-through')
+  check('rp.eventOnAnchor', recorderPopoverLocalEvent({
+    isKeyDown: false, keyCode: 0, eventWindowIsPanel: false,
+    anchorRectContainsMouse: true }), 'dismiss-click-and-consume')
+  check('rp.eventOutside', recorderPopoverLocalEvent({
+    isKeyDown: false, keyCode: 0, eventWindowIsPanel: false,
+    anchorRectContainsMouse: false }), 'dismiss-click-and-pass')
+
+  check('rp.performOrder', RECORDER_DISMISS_AND_PERFORM_ORDER.length, 5)
+  check('rp.performFirst', RECORDER_DISMISS_AND_PERFORM_ORDER[0], 'capture-owner-window')
+  check('rp.restoresKey', recorderDismissRestoresOwnerKey({ ownerIsVisible: true }), true)
+  check('rp.noRestore', recorderDismissRestoresOwnerKey({ ownerIsVisible: false }), false)
+  check('rp.dismissOrder', RECORDER_POPOVER_DISMISS_ORDER.length, 8)
+  check('rp.dismissFirst', RECORDER_POPOVER_DISMISS_ORDER[0], 'remove-local-monitor')
+  check('rp.dismissLast', RECORDER_POPOVER_DISMISS_ORDER[7], 'close')
+
+  check('rp.viewportClamped', recorderPopoverViewportHeight({
+    contentHeight: 300, maxHeight: 200 }), 200)
+  check('rp.viewportFits', recorderPopoverViewportHeight({
+    contentHeight: 150, maxHeight: 200 }), 150)
+  check('rp.measuredCeil', recorderPopoverMeasuredHeight(10.2), 11)
+  check('rp.measuredZeroIgnored', recorderPopoverAcceptsMeasuredHeight(0), false)
+  check('rp.measuredPositive', recorderPopoverAcceptsMeasuredHeight(1), true)
+  check('rp.buttonCornerRound', recorderPopoverButtonCornerRadius({
+    width: 44, height: 44, groupRadius: 10 }), 22)
+  check('rp.buttonCornerGroup', recorderPopoverButtonCornerRadius({
+    width: 44, height: 30, groupRadius: 10 }), 10)
+  check('rp.surfaceOffset', recorderPopoverSurfaceOffset({
+    arrived: false, reducesMotion: false }), -6)
+  check('rp.surfaceOffsetArrived', recorderPopoverSurfaceOffset({
+    arrived: true, reducesMotion: false }), 0)
+  check('rp.surfaceOffsetReduced', recorderPopoverSurfaceOffset({
+    arrived: false, reducesMotion: true }), 0)
+  check('rp.surfaceOpacityIn', recorderPopoverSurfaceOpacity(true), 1)
+  check('rp.surfaceOpacityOut', recorderPopoverSurfaceOpacity(false), 0)
+
+  check('rp.rowAlphaEnabled', recorderChoiceRowAlpha(true), 1)
+  check('rp.rowAlphaDisabled', recorderChoiceRowAlpha(false), 0.4)
+  check('rp.rowToneSelected', recorderChoiceRowTone({
+    selected: true, isAlternative: false }), 'ink')
+  check('rp.rowToneAlternativeOff', recorderChoiceRowTone({
+    selected: false, isAlternative: true }), 'muted')
+  check('rp.rowToneMenu', recorderChoiceRowTone({
+    selected: false, isAlternative: false }), 'ink')
+  check('rp.rowWeightSelected', recorderChoiceRowFontWeight(true), 'medium')
+  check('rp.rowWeightIdle', recorderChoiceRowFontWeight(false), 'regular')
+  const rpCheckOn = recorderChoiceRowCheckmark(true)
+  check('rp.checkOpacityOn', rpCheckOn.opacity, 1)
+  check('rp.checkScaleOn', rpCheckOn.scale, 1)
+  const rpCheckOff = recorderChoiceRowCheckmark(false)
+  check('rp.checkOpacityOff', rpCheckOff.opacity, 0)
+  check('rp.checkScaleOff', rpCheckOff.scale, 0.4)
+  const rpRadioOn = recorderChoiceRowRadio(true)
+  check('rp.radioScaleOn', rpRadioOn.innerScale, 1)
+  check('rp.radioBorderOn', rpRadioOn.borderTone, 'ink')
+  const rpRadioOff = recorderChoiceRowRadio(false)
+  check('rp.radioScaleOff', rpRadioOff.innerScale, 0.01)
+  check('rp.radioOpacityOff', rpRadioOff.innerOpacity, 0)
+  check('rp.radioBorderOff', rpRadioOff.borderTone, 'faint')
+  check('rp.rowAccessibilityOn', recorderChoiceRowAccessibilityValue(true), '已选择')
+  check('rp.rowAccessibilityOff', recorderChoiceRowAccessibilityValue(false), '')
+  check('rp.radioSize', RECORDER_CHOICE_ROW_RADIO_SIZE, 15)
+  check('rp.radioInnerPadding', RECORDER_CHOICE_ROW_RADIO_INNER_PADDING, 4)
+  check('rp.rowHorizontalPadding', RECORDER_CHOICE_ROW_HORIZONTAL_PADDING, 10)
+  check('rp.rowVerticalPadding', RECORDER_CHOICE_ROW_VERTICAL_PADDING, 7)
+  check('rp.rowMinHeight', RECORDER_CHOICE_ROW_MINIMUM_HEIGHT, 36)
+  check('rp.rowCorner', RECORDER_CHOICE_ROW_CORNER_RADIUS, 10)
+  check('rp.rowSpacing', RECORDER_CHOICE_ROW_SPACING, 11)
+  check('rp.itemSeparator', recorderActionListItemKind('separator'), 'separator')
+  check('rp.itemInfo', recorderActionListItemKind('info'), 'info')
+  check('rp.itemAction', recorderActionListItemKind('action'), 'action')
+  check('rp.itemUnknown', recorderActionListItemKind('zzz'), 'action')
+  check('rp.separatorHeight', RECORDER_ACTION_LIST_SEPARATOR_HEIGHT, 1)
+  check('rp.listSpacing', RECORDER_ACTION_LIST_SPACING, 2)
+
+  // ================ 录制作业与代数
+  check('rr.errorCount', Object.keys(RECORDING_PLAN_ERROR_DESCRIPTIONS).length, 10)
+  check('rr.errorArea', recordingPlanErrorDescription('invalidArea'), '请先拖动选择要录制的区域。')
+  check('rr.errorWindow', recordingPlanErrorDescription('windowUnavailable'),
+    '已选择的窗口已关闭，请重新选择。')
+  check('rr.errorCamera', recordingPlanErrorDescription('missingCamera'),
+    '已开启摄像头，但没有选择可用的摄像头。')
+
+  check('rr.targetDisplayOk', recordingPlanTargetError({ kind: 'display', displayID: 5 }), null)
+  check('rr.targetDisplayZero', recordingPlanTargetError({ kind: 'display', displayID: 0 }),
+    'invalidDisplay')
+  check('rr.targetWindowOk', recordingPlanTargetError({ kind: 'window', windowID: 3 }), null)
+  check('rr.targetWindowZero', recordingPlanTargetError({ kind: 'window', windowID: 0 }),
+    'invalidWindow')
+  check('rr.targetAreaOk', recordingPlanTargetError({
+    kind: 'area', displayID: 1, rectIsConstrained: true,
+    rect: { x: 0, y: 0, width: 1, height: 1 } }), null)
+  check('rr.targetAreaNoDisplay', recordingPlanTargetError({
+    kind: 'area', displayID: null, rectIsConstrained: true,
+    rect: { x: 0, y: 0, width: 1, height: 1 } }), 'invalidArea')
+  check('rr.targetAreaUnconstrained', recordingPlanTargetError({
+    kind: 'area', displayID: 1, rectIsConstrained: false,
+    rect: { x: 0, y: 0, width: 1, height: 1 } }), 'invalidArea')
+  check('rr.targetAreaNaN', recordingPlanTargetError({
+    kind: 'area', displayID: 1, rectIsConstrained: true,
+    rect: { x: Number.NaN, y: 0, width: 1, height: 1 } }), 'invalidArea')
+  check('rr.targetDeviceOk', recordingPlanTargetError({ kind: 'device', deviceID: 'abc' }), null)
+  check('rr.targetDeviceBlank', recordingPlanTargetError({
+    kind: 'device', deviceID: '   ' }), 'invalidDevice')
+  check('rr.targetDeviceEmpty', recordingPlanTargetError({
+    kind: 'device', deviceID: '' }), 'invalidDevice')
+
+  check('rr.deviceMissingCameraNull', recordingPlanInputDeviceError({
+    recordsCamera: true, cameraDeviceID: null,
+    recordsMicrophone: false, microphoneDeviceID: null }), 'missingCamera')
+  check('rr.deviceMissingCameraEmpty', recordingPlanInputDeviceError({
+    recordsCamera: true, cameraDeviceID: '',
+    recordsMicrophone: false, microphoneDeviceID: null }), 'missingCamera')
+  check('rr.deviceCameraOk', recordingPlanInputDeviceError({
+    recordsCamera: true, cameraDeviceID: 'cam',
+    recordsMicrophone: false, microphoneDeviceID: null }), null)
+  check('rr.deviceMissingMicrophone', recordingPlanInputDeviceError({
+    recordsCamera: false, cameraDeviceID: null,
+    recordsMicrophone: true, microphoneDeviceID: null }), 'missingMicrophone')
+  check('rr.deviceAllOff', recordingPlanInputDeviceError({
+    recordsCamera: false, cameraDeviceID: null,
+    recordsMicrophone: false, microphoneDeviceID: null }), null)
+
+  const rrDeviceRequests = recordingPlanInputDeviceRequests({
+    target: { kind: 'device', deviceID: 'iphone-1' },
+    recordsCamera: true, cameraDeviceID: 'cam-1',
+    recordsMicrophone: true, microphoneDeviceID: 'mic-1' })
+  check('rr.requestCount', rrDeviceRequests.length, 3)
+  check('rr.requestRoles', rrDeviceRequests.map((r) => r.role).join(','),
+    'iosDevice,camera,microphone')
+  check('rr.requestAllExact', rrDeviceRequests.every((r) => r.kind === 'exact'), true)
+  check('rr.requestFirstID', rrDeviceRequests[0].uniqueID, 'iphone-1')
+  const rrDisplayRequests = recordingPlanInputDeviceRequests({
+    target: { kind: 'display', displayID: 1 },
+    recordsCamera: true, cameraDeviceID: 'cam-1',
+    recordsMicrophone: false, microphoneDeviceID: null })
+  check('rr.displayRequestRoles', rrDisplayRequests.map((r) => r.role).join(','), 'camera')
+  check('rr.noRequests', recordingPlanInputDeviceRequests({
+    target: { kind: 'window', windowID: 2 },
+    recordsCamera: false, cameraDeviceID: null,
+    recordsMicrophone: false, microphoneDeviceID: null }).length, 0)
+
+  check('rr.pathDevice', recordingPlanPrimaryRelativePath({
+    source: 'device', captureCodecUsesMOVContainer: true }), 'media/device-0001.mov')
+  check('rr.pathScreenMov', recordingPlanPrimaryRelativePath({
+    source: 'display', captureCodecUsesMOVContainer: true }), 'media/screen-0001.mov')
+  check('rr.pathScreenMp4', recordingPlanPrimaryRelativePath({
+    source: 'display', captureCodecUsesMOVContainer: false }), 'media/screen-0001.mp4')
+
+  const rrManifest = recordingPlanInitialMediaManifest({
+    source: 'display', captureCodecUsesMOVContainer: false,
+    recordsCamera: true, recordsMicrophone: true })
+  check('rr.manifestScreen', rrManifest.screen.relativePath, 'media/screen-0001.mp4')
+  check('rr.manifestCamera', rrManifest.camera.relativePath, 'media/camera-0001.mov')
+  check('rr.manifestMicrophone', rrManifest.microphone.relativePath, 'media/microphone.m4a')
+  check('rr.manifestPointer', rrManifest.pointerEvents.relativePath, 'events/pointer.jsonl')
+  const rrDeviceManifest = recordingPlanInitialMediaManifest({
+    source: 'device', captureCodecUsesMOVContainer: true,
+    recordsCamera: false, recordsMicrophone: false })
+  check('rr.manifestDevicePointer', rrDeviceManifest.pointerEvents, null)
+  check('rr.manifestDeviceCamera', rrDeviceManifest.camera, null)
+
+  check('rr.availDisplayOk', recordingPlanAvailabilityError({
+    target: { kind: 'display', displayID: 1 }, displayIDs: new Set([1]),
+    windowIDs: new Set(), deviceIDs: new Set() }), null)
+  check('rr.availDisplayGone', recordingPlanAvailabilityError({
+    target: { kind: 'display', displayID: 2 }, displayIDs: new Set([1]),
+    windowIDs: new Set(), deviceIDs: new Set() }), 'displayUnavailable')
+  check('rr.availAreaOk', recordingPlanAvailabilityError({
+    target: { kind: 'area', displayID: 1, rectIsConstrained: true,
+      rect: { x: 0, y: 0, width: 1, height: 1 } },
+    displayIDs: new Set([1]), windowIDs: new Set(), deviceIDs: new Set() }), null)
+  check('rr.availAreaNoDisplay', recordingPlanAvailabilityError({
+    target: { kind: 'area', displayID: null, rectIsConstrained: true,
+      rect: { x: 0, y: 0, width: 1, height: 1 } },
+    displayIDs: new Set([1]), windowIDs: new Set(), deviceIDs: new Set() }),
+    'displayUnavailable')
+  check('rr.availWindowOk', recordingPlanAvailabilityError({
+    target: { kind: 'window', windowID: 5 }, displayIDs: new Set(),
+    windowIDs: new Set([5]), deviceIDs: new Set() }), null)
+  check('rr.availWindowGone', recordingPlanAvailabilityError({
+    target: { kind: 'window', windowID: 6 }, displayIDs: new Set(),
+    windowIDs: new Set([5]), deviceIDs: new Set() }), 'windowUnavailable')
+  check('rr.availDeviceOk', recordingPlanAvailabilityError({
+    target: { kind: 'device', deviceID: 'd1' }, displayIDs: new Set(),
+    windowIDs: new Set(), deviceIDs: new Set(['d1']) }), null)
+  check('rr.availDeviceGone', recordingPlanAvailabilityError({
+    target: { kind: 'device', deviceID: 'd2' }, displayIDs: new Set(),
+    windowIDs: new Set(), deviceIDs: new Set(['d1']) }), 'deviceUnavailable')
+
+  check('rr.trackScreen', RECORDING_TRACK_BITS.screen, 1)
+  check('rr.trackDevice', RECORDING_TRACK_BITS.device, 2)
+  check('rr.trackCamera', RECORDING_TRACK_BITS.camera, 4)
+  check('rr.trackMicrophone', RECORDING_TRACK_BITS.microphone, 8)
+  check('rr.trackPointer', RECORDING_TRACK_BITS.pointer, 16)
+  check('rr.union', recordingStartedTracksUnion(1, 4), 5)
+  check('rr.unionIdempotent', recordingStartedTracksUnion(5, 1), 5)
+  check('rr.enabledScreen', recordingStartedTrackEnabled(5, 'screen'), true)
+  check('rr.enabledCamera', recordingStartedTrackEnabled(5, 'camera'), true)
+  check('rr.disabledPointer', recordingStartedTrackEnabled(5, 'pointer'), false)
+  check('rr.enabledUnknown', recordingStartedTrackEnabled(5, 'zzz'), false)
+
+  {
+    const state = new RecordingRunState()
+    check('rr.stateEmpty', state.activeID, null)
+    state.begin('r1')
+    check('rr.stateBegun', state.activeID, 'r1')
+    check('rr.stateTracksEmpty', state.activeTracks, 0)
+    check('rr.stateCurrent', state.isCurrent('r1'), true)
+    check('rr.stateNotCurrent', state.isCurrent('r0'), false)
+    check('rr.markStale', state.markStarted('screen', 'r0'), false)
+    check('rr.markStaleNoChange', state.activeTracks, 0)
+    check('rr.markScreen', state.markStarted('screen', 'r1'), true)
+    check('rr.markScreenBits', state.activeTracks, 1)
+    check('rr.markCamera', state.markStarted('camera', 'r1'), true)
+    check('rr.markCameraBits', state.activeTracks, 5)
+    check('rr.markUnknownTrack', state.markStarted('zzz', 'r1'), false)
+    check('rr.endStale', state.end('r0'), null)
+    check('rr.endStaleKeeps', state.activeID, 'r1')
+    state.begin('r2')
+    check('rr.stateReplaced', state.activeID, 'r2')
+    check('rr.stateReplacedTracks', state.activeTracks, 0)
+    check('rr.endOldRun', state.end('r1'), null)
+    check('rr.stateStillNew', state.activeID, 'r2')
+    const ended = state.end('r2')
+    check('rr.endReturns', ended.id, 'r2')
+    check('rr.stateCleared', state.activeID, null)
+  }
+
+  const rrScreen = { x: 0, y: 0, width: 1000, height: 800 }
+  const rrBaseFrame = {
+    target: { kind: 'display', displayID: 1 },
+    screenFrame: rrScreen, screenResolvedWithoutRequest: false,
+    area: null, windowIsAvailable: false, windowGeometry: null,
+  }
+  const rrDisplayFrame = pointerCaptureFrame(rrBaseFrame)
+  check('rr.frameDisplayOk', rrDisplayFrame.ok, true)
+  check('rr.frameDisplayWidth', rrDisplayFrame.frame.width, 1000)
+  const rrNoScreen = pointerCaptureFrame({
+    ...rrBaseFrame, screenFrame: null })
+  check('rr.frameNoScreenOk', rrNoScreen.ok, false)
+  check('rr.frameNoScreenError', rrNoScreen.error, 'displayUnavailable')
+  const rrNoScreenUnrequested = pointerCaptureFrame({
+    ...rrBaseFrame, screenFrame: null, screenResolvedWithoutRequest: true })
+  check('rr.frameNoScreenInvalid', rrNoScreenUnrequested.error, 'invalidDisplay')
+
+  const rrAreaFrame = pointerCaptureFrame({
+    ...rrBaseFrame,
+    target: { kind: 'area', displayID: 1, rectIsConstrained: true,
+      rect: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 } },
+    area: { x: 0.25, y: 0.25, width: 0.5, height: 0.5 } })
+  check('rr.frameAreaOk', rrAreaFrame.ok, true)
+  check('rr.frameAreaX', rrAreaFrame.frame.x, 250)
+  check('rr.frameAreaY', rrAreaFrame.frame.y, 200)
+  check('rr.frameAreaW', rrAreaFrame.frame.width, 500)
+  check('rr.frameAreaH', rrAreaFrame.frame.height, 400)
+  const rrAreaNoRect = pointerCaptureFrame({
+    ...rrBaseFrame,
+    target: { kind: 'area', displayID: 1, rectIsConstrained: true,
+      rect: { x: 0, y: 0, width: 1, height: 1 } },
+    area: null })
+  check('rr.frameAreaFallsBack', rrAreaNoRect.frame.width, 1000)
+
+  const rrWindowFrame = pointerCaptureFrame({
+    ...rrBaseFrame,
+    target: { kind: 'window', windowID: 7 },
+    windowIsAvailable: true,
+    windowGeometry: { windowID: 7, frame: { x: 10, y: 20, width: 640, height: 480 } } })
+  check('rr.frameWindowOk', rrWindowFrame.ok, true)
+  check('rr.frameWindowX', rrWindowFrame.frame.x, 10)
+  const rrWindowGone = pointerCaptureFrame({
+    ...rrBaseFrame,
+    target: { kind: 'window', windowID: 7 },
+    windowIsAvailable: false,
+    windowGeometry: { windowID: 7, frame: { x: 10, y: 20, width: 640, height: 480 } } })
+  check('rr.frameWindowGone', rrWindowGone.error, 'windowUnavailable')
+  const rrWindowMismatch = pointerCaptureFrame({
+    ...rrBaseFrame,
+    target: { kind: 'window', windowID: 7 },
+    windowIsAvailable: true,
+    windowGeometry: { windowID: 8, frame: { x: 10, y: 20, width: 640, height: 480 } } })
+  check('rr.frameWindowReusedID', rrWindowMismatch.error, 'windowUnavailable')
+  const rrDeviceFrame = pointerCaptureFrame({
+    ...rrBaseFrame, target: { kind: 'device', deviceID: 'd1' } })
+  check('rr.frameDeviceOk', rrDeviceFrame.ok, true)
+  check('rr.frameDeviceZero', rrDeviceFrame.frame.width, 0)
+
+  check('rr.areaFallsBack', pointerCaptureAreaFallsBackToScreen({ hasArea: false }), true)
+  check('rr.areaNoFallback', pointerCaptureAreaFallsBackToScreen({ hasArea: true }), false)
+  check('rr.windowNoDegrade', pointerCaptureWindowMayDegradeToScreen(), false)
+  check('rr.windowListOptions', CAPTURE_WINDOW_LIST_OPTIONS.join(','),
+    'optionAll,excludeDesktopElements')
+  check('rr.adding', recordingRunAdding({ currentTracks: 0, addedMask: 4 }), 4)
+  check('rr.addingMerge', recordingRunAdding({ currentTracks: 1, addedMask: 4 }), 5)
+}
+
+await runRecorderSetupBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
