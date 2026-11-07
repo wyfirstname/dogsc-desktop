@@ -11715,5 +11715,962 @@ async function runWindowAndMarkerBatch() {
 
 await runWindowAndMarkerBatch()
 
+async function runPreviewSurfaceBatch() {
+  // ========== 6 文件 / 1,567 行：预览帧流水线 / drawable 提交 / 图层退役 /
+  //            窗口可见性 / 合并波形 / 样机转盘
+  const {
+    // ---- SharedPreviewFramePipeline.swift
+    previewVisualSignaturesEqual, previewScenesMatchVisually, previewLayerOrdersMatch,
+    previewCursorPixelDimension, PREVIEW_CURSOR_BITMAP_COUNT_LIMIT,
+    PREVIEW_CURSOR_BITMAP_COST_LIMIT, PreviewCursorBitmapCache, cursorBitmapKey,
+    PreviewPreparedBackgroundCache, canUseCachedPreviewFrame, shouldHoldPresentedFrame,
+    shouldSuspendPreviewPresentation, shouldFinalizePreviewLayerRetirement,
+    previewMaximumInFlight, previewShouldDiscardBeforeRendering, previewShouldPresent,
+    canSeparatePreviewCursor, previewRectUnion, previewRectInsetBy, previewRectOffsetBy,
+    previewRectsIntersect, previewCursorIntersectsLaterCamera, previewRasterPlan,
+    // ---- SharedPreviewRenderPipeline.swift
+    previewDrawableTextureSize, previewDrawableDisplayBounds,
+    previewColorContractDidChange, previewDrawableDecision, previewDrawableReportsFailure,
+    previewPresentHostTime, previewTimingSegments, PREVIEW_DESTINATION_IS_FLIPPED,
+    previewQueueRebuildPlan,
+    // ---- SharedPreviewLayerRetirement.swift
+    PREVIEW_METAL_LAYER_CONFIGURATION, previewMetalLayerNeedsDeviceRepair,
+    previewRestoredLayerNeedsFullReconfigure, PREVIEW_RETIREMENT_DRAWABLE_SIZE,
+    PREVIEW_RETIREMENT_CLEAR_COLOR, PREVIEW_CURSOR_SUBLAYER_ORDER,
+    previewRestoreSublayerOrder, previewRetireSublayerOrder,
+    previewSuspendBackingLayerDecision, previewTinyRetirementStep,
+    previewTinyRetirementBailsSilently, previewRetirementCanFinalize,
+    previewBumpsRetirementGeneration, PREVIEW_INSTALL_STEP_ORDER,
+    // ---- SharedPreviewWindowVisibility.swift
+    PREVIEW_ANIMATION_CADENCE_FPS, PREVIEW_RETIREMENT_WATCHDOG_SECONDS,
+    previewCadenceFramesPerSecond, previewCadenceRange,
+    PREVIEW_VISIBILITY_WINDOW_NOTIFICATIONS, PREVIEW_VISIBILITY_APPLICATION_NOTIFICATIONS,
+    previewVisibilityNotificationRoute, previewForegroundResumeAllowed,
+    previewVisibilityUpdateDecision, PREVIEW_SUSPEND_STEP_ORDER,
+    previewCanShowSleepCoverTransition, previewSuspensionScheduling,
+    previewFrameBecameReadyAccepted, previewSleepCoverRequestAccepted,
+    previewFinishSuspensionAllowed, previewDisplayLinkShouldPause,
+    PREVIEW_RESUME_STEP_ORDER, previewStopObservingBumpsRevision,
+    previewAttachForcesVisibilityUpdate,
+    // ---- EditorTimelineMergedWaveform.swift
+    MERGED_WAVEFORM_MIN_SAMPLES, MERGED_WAVEFORM_MAX_SAMPLES,
+    MERGED_WAVEFORM_CELL_FRACTIONS, MERGED_WAVEFORM_PEAK_FLOOR,
+    MERGED_WAVEFORM_RUN_THRESHOLD, mergedWaveformSampleCount, mergedWaveformRequest,
+    waveformChannelAmplitude, sampleMergedEnvelope, waveformEnvelopeGeometry,
+    waveformPeakHeight, waveformAmplitudeRuns, waveformRunEdgePoints,
+    mergedWaveformAnimation, mergedWaveformRequestsEqual, mergedWaveformCacheAccepts,
+    mergedWaveformShouldCheckCancellation,
+    // ---- EditorMockupTurntable.swift
+    MOCKUP_TURNTABLE_CARD_WIDTH, MOCKUP_TURNTABLE_POINTS_PER_CARD,
+    MOCKUP_TURNTABLE_VIEW_HEIGHT, MOCKUP_TURNTABLE_INDICATOR_SELECTED_WIDTH,
+    MOCKUP_TURNTABLE_INDICATOR_WIDTH, MOCKUP_TURNTABLE_INDICATOR_HEIGHT,
+    MOCKUP_TURNTABLE_MOMENTUM, MOCKUP_TURNTABLE_MINIMUM_DRAG,
+    MOCKUP_TURNTABLE_HIT_THRESHOLD, mockupTurntableCount, mockupTurntableRounded,
+    wrappedTurntableOffset, mockupTurntableSelectedIndex, mockupTurntableSettle,
+    mockupTurntableArrowTarget, mockupTurntableDragRotation,
+    mockupTurntableProjectedRotation, mockupTurntableCardProjection,
+    mockupTurntableCardIsSelected, mockupTurntableTapTarget, mockupTurntableSyncAction,
+    mockupTurntableSettleSpring, MOCKUP_TURNTABLE_STYLE_NAMES, mockupTurntableStyleName,
+    mockupTurntableSafeGet, mockupTurntableIndicatorWidth, mockupTurntableArrowLabel,
+    MOCKUP_TURNTABLE_HELP_TEXT,
+  } = m
+
+  // ---------------- 光标像素尺寸（消抖取整）
+  check('pvp.cursorPixel110', previewCursorPixelDimension(110.00000000000003), 110)
+  check('pvp.cursorPixelHalf', previewCursorPixelDimension(110.5), 111)
+  check('pvp.cursorPixelOne', previewCursorPixelDimension(1), 1)
+  check('pvp.cursorPixelZero', previewCursorPixelDimension(0), 1)
+  check('pvp.cursorPixelNegative', previewCursorPixelDimension(-3), 1)
+  check('pvp.cursorPixelNaN', previewCursorPixelDimension(Number.NaN), 1)
+  check('pvp.cursorPixelSmall', previewCursorPixelDimension(0.3), 1)
+
+  // ---------------- 层序比较（跳过 cursor 必须逐项对齐）
+  check('pvp.layerSame', previewLayerOrdersMatch(['screen', 'camera'], ['screen', 'camera'], false), true)
+  check('pvp.layerLengthDiff', previewLayerOrdersMatch(['screen', 'cursor', 'camera'], ['screen', 'camera'], false), false)
+  check('pvp.layerSkipMid', previewLayerOrdersMatch(['screen', 'cursor', 'camera'], ['screen', 'camera'], true), true)
+  check('pvp.layerSkipHead', previewLayerOrdersMatch(['cursor', 'screen', 'camera'], ['screen', 'camera'], true), true)
+  check('pvp.layerSkipReorder', previewLayerOrdersMatch(['screen', 'camera', 'cursor'], ['camera', 'screen'], true), false)
+  check('pvp.layerSkipTrailing', previewLayerOrdersMatch(['screen'], ['screen', 'cursor'], true), true)
+  check('pvp.layerSkipEmpty', previewLayerOrdersMatch([], ['cursor'], true), true)
+  check('pvp.layerSkipMismatch', previewLayerOrdersMatch(['cursor'], ['screen'], true), false)
+  check('pvp.layerNoSkipTrailing', previewLayerOrdersMatch(['screen', 'camera'], ['screen', 'camera', 'cursor'], false), false)
+
+  // ---------------- 视觉签名
+  const pvpScene = (over = {}) => ({
+    time: 1,
+    canvasSize: { width: 1920, height: 1080 },
+    color: { space: 'sdr' },
+    background: { source: { kind: 'solid' }, blurRadius: 0, patternScale: 1, patternOpacity: 1 },
+    screen: { opacity: 1 },
+    camera: { rect: { x: 0, y: 0, width: 100, height: 100 } },
+    cursor: { assetID: 'system.arrow' },
+    stickers: [],
+    stickerBackdrop: null,
+    layerOrder: ['screen', 'camera', 'cursor'],
+    ...over,
+  })
+  const pvpPlan = (scene) => ({ presentationTime: 0, outputDuration: 5, frameRate: 60, scene })
+  const pvpSig = (over = {}) => ({
+    plan: pvpPlan(pvpScene()),
+    separatesCursor: false,
+    contentRevision: 7,
+    backingScale: 2,
+    destinationPixelSize: { width: 1920, height: 1080 },
+    colorContract: { identifier: 'sdr-desktop' },
+    ...over,
+  })
+  check('pvp.sigEqual', previewVisualSignaturesEqual(pvpSig(), pvpSig()), true)
+  check('pvp.sigSeparates', previewVisualSignaturesEqual(pvpSig(), pvpSig({ separatesCursor: true })), false)
+  check('pvp.sigRevision', previewVisualSignaturesEqual(pvpSig(), pvpSig({ contentRevision: 8 })), false)
+  check('pvp.sigScale', previewVisualSignaturesEqual(pvpSig(), pvpSig({ backingScale: 1 })), false)
+  check('pvp.sigPixelSize', previewVisualSignaturesEqual(
+    pvpSig(), pvpSig({ destinationPixelSize: { width: 1920, height: 1081 } })), false)
+  check('pvp.sigContractNull', previewVisualSignaturesEqual(
+    pvpSig(), pvpSig({ colorContract: null })), false)
+  check('pvp.sigContractSame', previewVisualSignaturesEqual(
+    pvpSig({ colorContract: null }), pvpSig({ colorContract: null })), true)
+  check('pvp.sigFrameRate', previewVisualSignaturesEqual(
+    pvpSig({ plan: pvpPlan(pvpScene()) }),
+    pvpSig({ plan: { ...pvpPlan(pvpScene()), frameRate: 30 } })), false)
+  check('pvp.sigStaticTimeIgnored', previewVisualSignaturesEqual(
+    pvpSig({ plan: pvpPlan(pvpScene({ time: 1 })) }),
+    pvpSig({ plan: pvpPlan(pvpScene({ time: 9 })) })), true)
+  check('pvp.sigDynamicTimeMatters', previewVisualSignaturesEqual(
+    pvpSig({ plan: pvpPlan(pvpScene({ time: 1, background: { source: { kind: 'dynamicFlow' }, blurRadius: 0, patternScale: 1, patternOpacity: 1 } })) }),
+    pvpSig({ plan: pvpPlan(pvpScene({ time: 2, background: { source: { kind: 'dynamicFlow' }, blurRadius: 0, patternScale: 1, patternOpacity: 1 } })) })), false)
+  check('pvp.sigCursorMatters', previewVisualSignaturesEqual(
+    pvpSig({ plan: pvpPlan(pvpScene({ cursor: { assetID: 'a' } })) }),
+    pvpSig({ plan: pvpPlan(pvpScene({ cursor: { assetID: 'b' } })) })), false)
+  check('pvp.sigCursorSkipped', previewVisualSignaturesEqual(
+    pvpSig({ separatesCursor: true, plan: pvpPlan(pvpScene({ cursor: { assetID: 'a' } })) }),
+    pvpSig({ separatesCursor: true, plan: pvpPlan(pvpScene({ cursor: { assetID: 'b' } })) })), true)
+
+  // ---------------- 场景逐字段
+  check('pvp.sceneSame', previewScenesMatchVisually(pvpScene(), pvpScene(), false), true)
+  check('pvp.sceneCanvas', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ canvasSize: { width: 1080, height: 1920 } }), false), false)
+  check('pvp.sceneCamera', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ camera: null }), false), false)
+  check('pvp.sceneStickers', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ stickers: [{ id: 's1' }] }), false), false)
+  check('pvp.sceneBackdrop', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ stickerBackdrop: { id: 'bd' } }), false), false)
+  check('pvp.sceneColor', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ color: { space: 'hdr' } }), false), false)
+  check('pvp.sceneScreen', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ screen: { opacity: 0.5 } }), false), false)
+  check('pvp.sceneBackground', previewScenesMatchVisually(
+    pvpScene(), pvpScene({ background: { source: { kind: 'wallpaper' }, blurRadius: 2, patternScale: 1, patternOpacity: 1 } }), false), false)
+
+  // ---------------- 光标位图 LRU
+  check('pvp.bitmapCountLimit', PREVIEW_CURSOR_BITMAP_COUNT_LIMIT, 12)
+  check('pvp.bitmapCostLimit', PREVIEW_CURSOR_BITMAP_COST_LIMIT, 2 * 1024 * 1024)
+  check('pvp.cursorKey', cursorBitmapKey({ assetID: 'system.arrow', width: 32, height: 48 }), 'system.arrow@32x48')
+  {
+    const cache = new PreviewCursorBitmapCache()
+    const made = cache.image({ assetID: 'a', width: 10, height: 10 }, () => ({ cost: 100 }))
+    check('pvp.bitmapMadeCost', made.cost, 100)
+    check('pvp.bitmapCount1', cache.count, 1)
+    check('pvp.bitmapCost1', cache.cost, 100)
+    check('pvp.bitmapKeys', cache.keys().join(','), 'a@10x10')
+    cache.image({ assetID: 'a', width: 10, height: 10 }, () => ({ cost: 100 }))
+    check('pvp.bitmapHitNoGrow', cache.count, 1)
+    check('pvp.bitmapHitCostStable', cache.cost, 100)
+    const nullMake = cache.image({ assetID: 'b', width: 1, height: 1 }, () => null)
+    check('pvp.bitmapNullMake', nullMake, null)
+    check('pvp.bitmapNullNoStore', cache.count, 1)
+    const oversized = cache.image({ assetID: 'big', width: 5, height: 5 }, () => ({ cost: 3 * 1024 * 1024 }))
+    check('pvp.bitmapOversizedReturned', oversized.cost, 3 * 1024 * 1024)
+    check('pvp.bitmapOversizedNotStored', cache.count, 1)
+    cache.reset()
+    check('pvp.bitmapResetCount', cache.count, 0)
+    check('pvp.bitmapResetCost', cache.cost, 0)
+  }
+  {
+    const cache = new PreviewCursorBitmapCache()
+    for (let i = 0; i < 12; i++) {
+      cache.image({ assetID: `k${i}`, width: 1, height: 1 }, () => ({ cost: 10 }))
+    }
+    check('pvp.bitmapFull', cache.count, 12)
+    cache.image({ assetID: 'k12', width: 1, height: 1 }, () => ({ cost: 10 }))
+    check('pvp.bitmapEvictKeepsLimit', cache.count, 12)
+    check('pvp.bitmapEvictOldest', cache.keys()[0], 'k1@1x1')
+    check('pvp.bitmapEvictNewest', cache.keys()[11], 'k12@1x1')
+    cache.image({ assetID: 'k11', width: 1, height: 1 }, () => ({ cost: 10 }))
+    check('pvp.bitmapLruMovesToEnd', cache.keys()[11], 'k11@1x1')
+  }
+
+  // ---------------- 背景缓存
+  {
+    const cache = new PreviewPreparedBackgroundCache()
+    check('pvp.bgEmptyCached', cache.isCached, false)
+    const solid = { scene: { source: { kind: 'solid' } }, canvasSize: { width: 100, height: 100 }, wallpaperRevision: 0 }
+    check('pvp.bgFirstRebuild', cache.image(solid), 'rebuild')
+    check('pvp.bgAfterCached', cache.isCached, true)
+    check('pvp.bgReuse', cache.image(solid), 'reuse')
+    check('pvp.bgRevisionRebuild', cache.image({ ...solid, wallpaperRevision: 1 }), 'rebuild')
+    check('pvp.bgDynamicBypass', cache.image({ ...solid, scene: { source: { kind: 'dynamicFlow' } } }), 'bypass')
+    check('pvp.bgDynamicClears', cache.isCached, false)
+    check('pvp.bgVideoBypass', cache.image({ ...solid, scene: { source: { kind: 'projectVideo', assetID: 'v1' } } }), 'bypass')
+    cache.reset()
+    check('pvp.bgReset', cache.isCached, false)
+  }
+
+  // ---------------- 相机帧连续性
+  check('pvp.cacheFrameSame', canUseCachedPreviewFrame({
+    cachedMediaGeneration: 1, cachedDiscontinuityID: 2,
+    currentMediaGeneration: 1, currentDiscontinuityID: 2, presentationIsPaused: false,
+  }), true)
+  check('pvp.cacheFrameMediaChanged', canUseCachedPreviewFrame({
+    cachedMediaGeneration: 1, cachedDiscontinuityID: 2,
+    currentMediaGeneration: 2, currentDiscontinuityID: 2, presentationIsPaused: true,
+  }), false)
+  check('pvp.cacheFramePausedSeek', canUseCachedPreviewFrame({
+    cachedMediaGeneration: 1, cachedDiscontinuityID: 2,
+    currentMediaGeneration: 1, currentDiscontinuityID: 3, presentationIsPaused: true,
+  }), true)
+  check('pvp.cacheFramePlayingSeek', canUseCachedPreviewFrame({
+    cachedMediaGeneration: 1, cachedDiscontinuityID: 2,
+    currentMediaGeneration: 1, currentDiscontinuityID: 3, presentationIsPaused: false,
+  }), false)
+
+  check('pvp.holdFrame', shouldHoldPresentedFrame({
+    cameraOpacity: 0.5, cameraIsExpected: true, hasCameraFrame: false }), true)
+  check('pvp.holdFrameTransparent', shouldHoldPresentedFrame({
+    cameraOpacity: 0, cameraIsExpected: true, hasCameraFrame: false }), false)
+  check('pvp.holdFrameArrived', shouldHoldPresentedFrame({
+    cameraOpacity: 0.5, cameraIsExpected: true, hasCameraFrame: true }), false)
+  check('pvp.holdFrameNotExpected', shouldHoldPresentedFrame({
+    cameraOpacity: 0.5, cameraIsExpected: false, hasCameraFrame: false }), false)
+  check('pvp.holdFrameNullOpacity', shouldHoldPresentedFrame({
+    cameraOpacity: null, cameraIsExpected: true, hasCameraFrame: false }), false)
+
+  // ---------------- 可见性 / 退役 / 在飞
+  check('pvp.suspendNoWindow', shouldSuspendPreviewPresentation({
+    hasWindow: false, isMiniaturized: false, isVisible: true }), true)
+  check('pvp.suspendOk', shouldSuspendPreviewPresentation({
+    hasWindow: true, isMiniaturized: false, isVisible: true }), false)
+  check('pvp.suspendMini', shouldSuspendPreviewPresentation({
+    hasWindow: true, isMiniaturized: true, isVisible: true }), true)
+  check('pvp.suspendHidden', shouldSuspendPreviewPresentation({
+    hasWindow: true, isMiniaturized: false, isVisible: false }), true)
+  check('pvp.suspendInactive', shouldSuspendPreviewPresentation({
+    hasWindow: true, isMiniaturized: false, isVisible: true, isApplicationActive: false }), true)
+  check('pvp.suspendDefaultActive', shouldSuspendPreviewPresentation({
+    hasWindow: true, isMiniaturized: false, isVisible: true, isApplicationActive: undefined }), false)
+
+  check('pvp.retireFinalize', shouldFinalizePreviewLayerRetirement({
+    requestedGeneration: 3, latestGeneration: 3, isSuspended: true, ownsRequestedLayer: true }), true)
+  check('pvp.retireStaleGen', shouldFinalizePreviewLayerRetirement({
+    requestedGeneration: 2, latestGeneration: 3, isSuspended: true, ownsRequestedLayer: true }), false)
+  check('pvp.retireNotSuspended', shouldFinalizePreviewLayerRetirement({
+    requestedGeneration: 3, latestGeneration: 3, isSuspended: false, ownsRequestedLayer: true }), false)
+  check('pvp.retireNotOwner', shouldFinalizePreviewLayerRetirement({
+    requestedGeneration: 3, latestGeneration: 3, isSuspended: true, ownsRequestedLayer: false }), false)
+
+  check('pvp.inFlightPaused', previewMaximumInFlight({ isPausedFrame: true, playbackLimit: 4 }), 1)
+  check('pvp.inFlightPlayback', previewMaximumInFlight({ isPausedFrame: false, playbackLimit: 4 }), 4)
+  check('pvp.inFlightZeroClamped', previewMaximumInFlight({ isPausedFrame: false, playbackLimit: 0 }), 1)
+
+  check('pvp.discardPaused', previewShouldDiscardBeforeRendering({
+    isPausedFrame: true, generation: 3, latestGeneration: 4 }), true)
+  check('pvp.discardPlaybackKept', previewShouldDiscardBeforeRendering({
+    isPausedFrame: false, generation: 3, latestGeneration: 4 }), false)
+  check('pvp.discardSameGen', previewShouldDiscardBeforeRendering({
+    isPausedFrame: true, generation: 4, latestGeneration: 4 }), false)
+
+  check('pvp.presentSameEpoch', previewShouldPresent({ jobEpochID: 5, latestEpochID: 5 }), true)
+  check('pvp.presentRetiredEpoch', previewShouldPresent({ jobEpochID: 4, latestEpochID: 5 }), false)
+
+  // ---------------- 光标分离
+  check('pvp.separateSuppressed', canSeparatePreviewCursor({
+    screenSuppression: 0.5, layerOrder: ['screen', 'cursor'], isIdentityProjection: true,
+    hasCamera: false, cursorIntersectsLaterCamera: false }), false)
+  check('pvp.separateSpotlight', canSeparatePreviewCursor({
+    screenSuppression: 0, layerOrder: ['screen', 'spotlight', 'cursor'], isIdentityProjection: true,
+    hasCamera: false, cursorIntersectsLaterCamera: false }), false)
+  check('pvp.separateIntersects', canSeparatePreviewCursor({
+    screenSuppression: 0, layerOrder: ['screen', 'cursor', 'camera'], isIdentityProjection: true,
+    hasCamera: true, cursorIntersectsLaterCamera: true }), false)
+  check('pvp.separateNoIntersect', canSeparatePreviewCursor({
+    screenSuppression: 0, layerOrder: ['screen', 'cursor', 'camera'], isIdentityProjection: true,
+    hasCamera: true, cursorIntersectsLaterCamera: false }), true)
+  check('pvp.separate3dWithCamera', canSeparatePreviewCursor({
+    screenSuppression: 0, layerOrder: ['screen', 'cursor', 'camera'], isIdentityProjection: false,
+    hasCamera: true, cursorIntersectsLaterCamera: false }), false)
+  check('pvp.separate3dNoCamera', canSeparatePreviewCursor({
+    screenSuppression: 0, layerOrder: ['screen', 'cursor'], isIdentityProjection: false,
+    hasCamera: false, cursorIntersectsLaterCamera: true }), true)
+
+  // ---------------- 矩形工具
+  const pvpUnion = previewRectUnion({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 20, width: 10, height: 5 })
+  check('pvp.unionX', pvpUnion.x, 0)
+  check('pvp.unionY', pvpUnion.y, 0)
+  check('pvp.unionW', pvpUnion.width, 15)
+  check('pvp.unionH', pvpUnion.height, 25)
+  const pvpInset = previewRectInsetBy({ x: 10, y: 10, width: 20, height: 20 }, 3)
+  check('pvp.insetX', pvpInset.x, 7)
+  check('pvp.insetW', pvpInset.width, 26)
+  const pvpOffset = previewRectOffsetBy({ x: 1, y: 2, width: 3, height: 4 }, 5, -1)
+  check('pvp.offsetX', pvpOffset.x, 6)
+  check('pvp.offsetY', pvpOffset.y, 1)
+  check('pvp.offsetW', pvpOffset.width, 3)
+  check('pvp.intersectYes', previewRectsIntersect(
+    { x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 }), true)
+  check('pvp.intersectEdgeTouching', previewRectsIntersect(
+    { x: 0, y: 0, width: 10, height: 10 }, { x: 10, y: 0, width: 10, height: 10 }), false)
+  check('pvp.intersectApart', previewRectsIntersect(
+    { x: 0, y: 0, width: 10, height: 10 }, { x: 50, y: 50, width: 10, height: 10 }), false)
+
+  // ---------------- 光标与后置相机相交
+  const pvpCursor = (over = {}) => ({
+    layout: {
+      origin: { x: 100, y: 100 },
+      size: { width: 20, height: 20 },
+      pointer: { x: 110, y: 110 },
+      clickDiameter: 40,
+      clickEffectHeight: 40,
+      clickLineWidth: 2,
+    },
+    isClicking: false,
+    clickScale: 1,
+    shadow: null,
+    ...over,
+  })
+  const pvpCamera = (over = {}) => ({
+    rect: { x: 108, y: 108, width: 200, height: 200 },
+    borderWidth: 0,
+    opacity: 1,
+    shadow: null,
+    ...over,
+  })
+  check('pvp.cursorCameraNull', previewCursorIntersectsLaterCamera({
+    cursor: null, camera: pvpCamera(), layerOrder: ['cursor', 'camera'] }), false)
+  check('pvp.cursorCameraNoCamera', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor(), camera: null, layerOrder: ['cursor', 'camera'] }), false)
+  check('pvp.cursorCameraTransparent', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor(), camera: pvpCamera({ opacity: 0 }), layerOrder: ['cursor', 'camera'] }), false)
+  check('pvp.cursorCameraOrderWrong', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor(), camera: pvpCamera(), layerOrder: ['camera', 'cursor'] }), false)
+  check('pvp.cursorCameraOverlap', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor(), camera: pvpCamera(), layerOrder: ['cursor', 'camera'] }), true)
+  check('pvp.cursorCameraApart', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor(), camera: pvpCamera({ rect: { x: 900, y: 900, width: 50, height: 50 } }),
+    layerOrder: ['cursor', 'camera'] }), false)
+  check('pvp.cursorCameraClickReaches', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor({ isClicking: true }),
+    camera: pvpCamera({ rect: { x: 150, y: 100, width: 50, height: 50 } }),
+    layerOrder: ['cursor', 'camera'] }), true)
+  check('pvp.cursorCameraBorderGrows', previewCursorIntersectsLaterCamera({
+    cursor: pvpCursor(), camera: pvpCamera({ rect: { x: 122, y: 100, width: 50, height: 50 }, borderWidth: 4 }),
+    layerOrder: ['cursor', 'camera'] }), true)
+
+  // ---------------- 光栅计划
+  const pvpRasterScene = pvpScene({ time: 3.5 })
+  const pvpRaster = previewRasterPlan({
+    presentationTime: 9, outputDuration: 12, frameRate: 60, scene: pvpRasterScene }, false)
+  check('pvp.rasterPresentationZero', pvpRaster.presentationTime, 0)
+  check('pvp.rasterDurationZero', pvpRaster.outputDuration, 0)
+  check('pvp.rasterFrameRate', pvpRaster.frameRate, 60)
+  check('pvp.rasterSceneTimeKept', pvpRaster.scene.time, 3.5)
+  check('pvp.rasterKeepsCursor', pvpRaster.scene.cursor == null, false)
+  check('pvp.rasterKeepsOrder', pvpRaster.scene.layerOrder.join(','), 'screen,camera,cursor')
+  const pvpRasterSep = previewRasterPlan({
+    presentationTime: 9, outputDuration: 12, frameRate: 60, scene: pvpRasterScene }, true)
+  check('pvp.rasterDropsCursor', pvpRasterSep.scene.cursor, null)
+  check('pvp.rasterDropsOrder', pvpRasterSep.scene.layerOrder.join(','), 'screen,camera')
+  check('pvp.rasterDoesNotMutateSource', pvpRasterScene.layerOrder.length, 3)
+
+  // ================= SharedPreviewRenderPipeline =================
+  const pvpTex = previewDrawableTextureSize({ width: 2.4, height: 1.4 })
+  check('prp.textureW', pvpTex.width, 2)
+  check('prp.textureH', pvpTex.height, 2)
+  const pvpTex2 = previewDrawableTextureSize({ width: 1920.6, height: 1080.4 })
+  check('prp.textureRoundW', pvpTex2.width, 1921)
+  check('prp.textureRoundH', pvpTex2.height, 1080)
+  check('prp.textureZeroWidth', previewDrawableTextureSize({ width: 0, height: 720 }).width, 2)
+  const pvpBounds = previewDrawableDisplayBounds({ width: 2.4, height: 1.4 })
+  check('prp.boundsKeepsFraction', pvpBounds.width, 2.4)
+  check('prp.boundsHeightFloor', pvpBounds.height, 2)
+  check('prp.boundsOriginX', pvpBounds.x, 0)
+
+  check('prp.contractFirst', previewColorContractDidChange({
+    currentContract: null, incomingContract: 'sdr' }), true)
+  check('prp.contractSame', previewColorContractDidChange({
+    currentContract: 'sdr', incomingContract: 'sdr' }), false)
+  check('prp.contractChanged', previewColorContractDidChange({
+    currentContract: 'sdr', incomingContract: 'hdr' }), true)
+
+  const prpFacts = (over = {}) => ({
+    shouldDiscardBeforeRendering: false,
+    hasDevice: true,
+    colorContractChanged: false,
+    canMakeCommandQueue: true,
+    hasContextAndQueue: true,
+    renderedFrame: true,
+    drawableAcquired: true,
+    drawableSizeMatches: true,
+    renderTaskStarted: true,
+    commandBufferAvailable: true,
+    epochStillCurrent: true,
+    ...over,
+  })
+  const prpDiscard = previewDrawableDecision(prpFacts({ shouldDiscardBeforeRendering: true }))
+  check('prp.outcomeDiscard', prpDiscard.outcome, 'discarded-stale-paused')
+  check('prp.discardSubmit', prpDiscard.submissionSucceeded, true)
+  check('prp.discardPresent', prpDiscard.presentationResult, false)
+  check('prp.discardCommit', prpDiscard.commitsCommandBuffer, false)
+  check('prp.discardEffects', prpDiscard.schedulesEffectPreparation, false)
+
+  const prpNoDevice = previewDrawableDecision(prpFacts({ hasDevice: false }))
+  check('prp.outcomeNoDevice', prpNoDevice.outcome, 'missing-device')
+  check('prp.noDeviceSubmit', prpNoDevice.submissionSucceeded, false)
+  check('prp.noDevicePresent', prpNoDevice.presentationResult, null)
+  check('prp.noDeviceCallsSubmit', prpNoDevice.callsSubmissionCompletion, true)
+
+  check('prp.outcomeQueue', previewDrawableDecision(prpFacts({
+    colorContractChanged: true, canMakeCommandQueue: false })).outcome, 'missing-command-queue')
+  check('prp.outcomeContext', previewDrawableDecision(prpFacts({
+    hasContextAndQueue: false })).outcome, 'missing-context')
+  check('prp.outcomeRender', previewDrawableDecision(prpFacts({
+    renderedFrame: false })).outcome, 'render-failed')
+  check('prp.outcomeDrawable', previewDrawableDecision(prpFacts({
+    drawableAcquired: false })).outcome, 'drawable-unavailable')
+  check('prp.outcomeDrawableSize', previewDrawableDecision(prpFacts({
+    drawableSizeMatches: false })).outcome, 'drawable-unavailable')
+  check('prp.outcomeTask', previewDrawableDecision(prpFacts({
+    renderTaskStarted: false })).outcome, 'render-task-failed')
+  check('prp.outcomeBuffer', previewDrawableDecision(prpFacts({
+    commandBufferAvailable: false })).outcome, 'command-buffer-unavailable')
+  const prpRetired = previewDrawableDecision(prpFacts({ epochStillCurrent: false }))
+  check('prp.outcomeRetired', prpRetired.outcome, 'retired-epoch')
+  check('prp.retiredSubmit', prpRetired.submissionSucceeded, true)
+  check('prp.retiredPresent', prpRetired.presentationResult, false)
+  check('prp.retiredCommit', prpRetired.commitsCommandBuffer, true)
+  check('prp.retiredEffects', prpRetired.schedulesEffectPreparation, false)
+
+  const prpPresented = previewDrawableDecision(prpFacts())
+  check('prp.outcomePresented', prpPresented.outcome, 'presented')
+  check('prp.presentedSubmit', prpPresented.submissionSucceeded, true)
+  check('prp.presentedPresent', prpPresented.presentationResult, true)
+  check('prp.presentedCommit', prpPresented.commitsCommandBuffer, true)
+  check('prp.presentedEffects', prpPresented.schedulesEffectPreparation, true)
+
+  check('prp.failOnDiscard', previewDrawableReportsFailure({
+    hasDiagnostics: true, decision: prpDiscard }), true)
+  check('prp.failOnPresented', previewDrawableReportsFailure({
+    hasDiagnostics: true, decision: prpPresented }), false)
+  check('prp.failNoDiagnostics', previewDrawableReportsFailure({
+    hasDiagnostics: false, decision: prpDiscard }), false)
+
+  check('prp.hostTimeNull', previewPresentHostTime(null), null)
+  check('prp.hostTimeValue', previewPresentHostTime(1234.5), 1234.5)
+  check('prp.isFlipped', PREVIEW_DESTINATION_IS_FLIPPED, true)
+
+  const prpTiming = previewTimingSegments({
+    queuedAt: 0, renderStarted: 0.002, graphFinished: 0.012,
+    drawableAcquired: 0.017, encodedAt: 0.021,
+  })
+  check('prp.queueMS', prpTiming.queueMS, 2)
+  check('prp.graphMS', prpTiming.graphMS, 10)
+  check('prp.drawableWaitMS', prpTiming.drawableWaitMS, 5)
+  check('prp.encodeMS', prpTiming.encodeMS, 4)
+
+  check('prp.rebuildAll', previewQueueRebuildPlan({ colorContractChanged: true }).rebuildContext, true)
+  check('prp.rebuildQueue', previewQueueRebuildPlan({ colorContractChanged: true }).recreateCommandQueue, true)
+  check('prp.rebuildClears', previewQueueRebuildPlan({ colorContractChanged: true }).clearPreparedEffectSignatures, true)
+  check('prp.rebuildNone', previewQueueRebuildPlan({ colorContractChanged: false }).rebuildContext, false)
+
+  // ================= SharedPreviewLayerRetirement =================
+  check('plr.pixelFormat', PREVIEW_METAL_LAYER_CONFIGURATION.pixelFormat, 'bgra8Unorm')
+  check('plr.framebufferOnly', PREVIEW_METAL_LAYER_CONFIGURATION.framebufferOnly, false)
+  check('plr.drawableCount', PREVIEW_METAL_LAYER_CONFIGURATION.maximumDrawableCount, 3)
+  check('plr.displaySync', PREVIEW_METAL_LAYER_CONFIGURATION.displaySyncEnabled, false)
+  check('plr.presentsWithTransaction', PREVIEW_METAL_LAYER_CONFIGURATION.presentsWithTransaction, false)
+  check('plr.drawableTimeout', PREVIEW_METAL_LAYER_CONFIGURATION.allowsNextDrawableTimeout, true)
+  check('plr.isOpaque', PREVIEW_METAL_LAYER_CONFIGURATION.isOpaque, false)
+  check('plr.background', PREVIEW_METAL_LAYER_CONFIGURATION.backgroundColor, 'clear')
+  check('plr.coreImage', PREVIEW_METAL_LAYER_CONFIGURATION.acceptsCoreImageRendering, true)
+
+  check('plr.needsDeviceRepair', previewMetalLayerNeedsDeviceRepair({ hasDevice: false }), true)
+  check('plr.noDeviceRepair', previewMetalLayerNeedsDeviceRepair({ hasDevice: true }), false)
+
+  check('plr.restoredMissingDevice', previewRestoredLayerNeedsFullReconfigure({
+    isMetalLayer: true, hasDevice: false, drawableWidth: 1920, drawableHeight: 1080,
+    isHidden: false }), true)
+  check('plr.restoredTinyDrawable', previewRestoredLayerNeedsFullReconfigure({
+    isMetalLayer: true, hasDevice: true, drawableWidth: 2, drawableHeight: 1080,
+    isHidden: false }), true)
+  check('plr.restoredHidden', previewRestoredLayerNeedsFullReconfigure({
+    isMetalLayer: true, hasDevice: true, drawableWidth: 1920, drawableHeight: 1080,
+    isHidden: true }), true)
+  check('plr.restoredHealthy', previewRestoredLayerNeedsFullReconfigure({
+    isMetalLayer: true, hasDevice: true, drawableWidth: 1920, drawableHeight: 1080,
+    isHidden: false }), false)
+  check('plr.restoredNotMetal', previewRestoredLayerNeedsFullReconfigure({
+    isMetalLayer: false, hasDevice: false, drawableWidth: 2, drawableHeight: 2,
+    isHidden: true }), false)
+
+  check('plr.tinySizeW', PREVIEW_RETIREMENT_DRAWABLE_SIZE.width, 2)
+  check('plr.tinySizeH', PREVIEW_RETIREMENT_DRAWABLE_SIZE.height, 2)
+  check('plr.clearAlpha', PREVIEW_RETIREMENT_CLEAR_COLOR.alpha, 0)
+  check('plr.clearRed', PREVIEW_RETIREMENT_CLEAR_COLOR.red, 0)
+
+  check('plr.sublayerCount', PREVIEW_CURSOR_SUBLAYER_ORDER.length, 5)
+  check('plr.sublayerFirst', PREVIEW_CURSOR_SUBLAYER_ORDER[0], 'cursorClickGradientLayer')
+  check('plr.sublayerLast', PREVIEW_CURSOR_SUBLAYER_ORDER[4], 'cursorImageLayer')
+  check('plr.restoreOrderMatchesRetire', previewRestoreSublayerOrder().join(','), previewRetireSublayerOrder().join(','))
+
+  check('plr.suspendNoLayer', previewSuspendBackingLayerDecision({
+    wantsLayer: false, isMetalLayer: true }), 'ignore')
+  check('plr.suspendMetal', previewSuspendBackingLayerDecision({
+    wantsLayer: true, isMetalLayer: true }), 'retire-metal')
+  check('plr.suspendPlainLayer', previewSuspendBackingLayerDecision({
+    wantsLayer: true, isMetalLayer: false }), 'drop-layer')
+
+  const plrTiny = (over = {}) => ({
+    generationMatches: true,
+    layerAlive: true,
+    hasDevice: true,
+    drawableAcquired: true,
+    hasCommandQueue: true,
+    hasCommandBuffer: true,
+    encoderAvailable: true,
+    ...over,
+  })
+  check('plr.tinyProceed', previewTinyRetirementStep(plrTiny()), 'proceed')
+  check('plr.tinyStaleGen', previewTinyRetirementStep(plrTiny({ generationMatches: false })), 'stale-generation')
+  check('plr.tinyDeadLayer', previewTinyRetirementStep(plrTiny({ layerAlive: false })), 'layer-deallocated')
+  check('plr.tinyNoDevice', previewTinyRetirementStep(plrTiny({ hasDevice: false })), 'missing-device')
+  check('plr.tinyNoDrawable', previewTinyRetirementStep(plrTiny({ drawableAcquired: false })), 'drawable-unavailable')
+  check('plr.tinyNoQueue', previewTinyRetirementStep(plrTiny({ hasCommandQueue: false })), 'drawable-unavailable')
+  check('plr.tinyNoBuffer', previewTinyRetirementStep(plrTiny({ hasCommandBuffer: false })), 'drawable-unavailable')
+  check('plr.tinyNoEncoder', previewTinyRetirementStep(plrTiny({ encoderAvailable: false })), 'encoder-unavailable')
+  check('plr.tinyStaleSilent', previewTinyRetirementBailsSilently('stale-generation'), true)
+  check('plr.tinyDeadSilent', previewTinyRetirementBailsSilently('layer-deallocated'), true)
+  check('plr.tinyNoDeviceNotSilent', previewTinyRetirementBailsSilently('missing-device'), false)
+
+  check('plr.finalizeOk', previewRetirementCanFinalize({
+    requestedGeneration: 5, latestGeneration: 5, isSuspended: true, stillOwnsLayer: true }), true)
+  check('plr.finalizeStale', previewRetirementCanFinalize({
+    requestedGeneration: 4, latestGeneration: 5, isSuspended: true, stillOwnsLayer: true }), false)
+  check('plr.finalizeResumed', previewRetirementCanFinalize({
+    requestedGeneration: 5, latestGeneration: 5, isSuspended: false, stillOwnsLayer: true }), false)
+  check('plr.finalizeSwapped', previewRetirementCanFinalize({
+    requestedGeneration: 5, latestGeneration: 5, isSuspended: true, stillOwnsLayer: false }), false)
+
+  check('plr.bumpSuspend', previewBumpsRetirementGeneration('suspend'), true)
+  check('plr.bumpInstall', previewBumpsRetirementGeneration('install'), true)
+  check('plr.bumpInvalidate', previewBumpsRetirementGeneration('invalidate'), false)
+  check('plr.installSteps', PREVIEW_INSTALL_STEP_ORDER.length, 6)
+  check('plr.installFirst', PREVIEW_INSTALL_STEP_ORDER[0], 'bump-retirement-generation')
+  check('plr.installBumpBeforeLayer', PREVIEW_INSTALL_STEP_ORDER.indexOf('bump-retirement-generation')
+    < PREVIEW_INSTALL_STEP_ORDER.indexOf('reconfigure-metal-layer'), true)
+
+  // ================= SharedPreviewWindowVisibility =================
+  check('pwv.cadenceBudget', PREVIEW_ANIMATION_CADENCE_FPS, 60)
+  check('pwv.watchdogSeconds', PREVIEW_RETIREMENT_WATCHDOG_SECONDS, 1)
+  check('pwv.cadence120', previewCadenceFramesPerSecond({ screenMaximumFramesPerSecond: 120 }), 60)
+  check('pwv.cadenceNull', previewCadenceFramesPerSecond({ screenMaximumFramesPerSecond: null }), 60)
+  check('pwv.cadence30', previewCadenceFramesPerSecond({ screenMaximumFramesPerSecond: 30 }), 30)
+  check('pwv.cadenceZero', previewCadenceFramesPerSecond({ screenMaximumFramesPerSecond: 0 }), 1)
+  check('pwv.cadenceNegative', previewCadenceFramesPerSecond({ screenMaximumFramesPerSecond: -5 }), 1)
+  check('pwv.cadenceCustomBudget', previewCadenceFramesPerSecond({
+    screenMaximumFramesPerSecond: 144, budgetFramesPerSecond: 90 }), 90)
+  const pwvRange = previewCadenceRange({ screenMaximumFramesPerSecond: 120 })
+  check('pwv.rangeMin', pwvRange.minimum, 60)
+  check('pwv.rangeMax', pwvRange.maximum, 60)
+  check('pwv.rangePreferred', pwvRange.preferred, 60)
+
+  check('pwv.windowNotifications', PREVIEW_VISIBILITY_WINDOW_NOTIFICATIONS.length, 8)
+  check('pwv.appNotifications', PREVIEW_VISIBILITY_APPLICATION_NOTIFICATIONS.length, 4)
+  check('pwv.notificationTotal', PREVIEW_VISIBILITY_WINDOW_NOTIFICATIONS.length
+    + PREVIEW_VISIBILITY_APPLICATION_NOTIFICATIONS.length, 12)
+
+  const pwvRoute = (name) => previewVisibilityNotificationRoute(name)
+  check('pwv.routeExpose', pwvRoute('NSWindow.didExposeNotification').route, 'resume-explicit')
+  check('pwv.routeExposeEarly', pwvRoute('NSWindow.didExposeNotification').returnsEarly, true)
+  check('pwv.routeUpdate', pwvRoute('NSWindow.didUpdateNotification').route, 'resume-implicit')
+  check('pwv.routeActive', pwvRoute('NSApplication.didBecomeActiveNotification').route, 'resume-explicit')
+  check('pwv.routeScreen', pwvRoute('NSWindow.didChangeScreenNotification').route, 'update-only')
+  check('pwv.routeScreenCadence', pwvRoute('NSWindow.didChangeScreenNotification').reconfigureCadence, true)
+  check('pwv.routeScreenNoEarly', pwvRoute('NSWindow.didChangeScreenNotification').returnsEarly, false)
+  check('pwv.routeDeminiaturize', pwvRoute('NSWindow.didDeminiaturizeNotification').route, 'update-then-async-resume')
+  check('pwv.routeDeminiaturizeExplicit', pwvRoute('NSWindow.didDeminiaturizeNotification').asyncResumeIsExplicit, true)
+  check('pwv.routeKey', pwvRoute('NSWindow.didBecomeKeyNotification').route, 'update-then-async-resume')
+  check('pwv.routeMain', pwvRoute('NSWindow.didBecomeMainNotification').route, 'update-then-async-resume')
+  check('pwv.routeOcclusion', pwvRoute('NSWindow.didChangeOcclusionStateNotification').route, 'update-only')
+  check('pwv.routeOcclusionNoCadence', pwvRoute('NSWindow.didChangeOcclusionStateNotification').reconfigureCadence, false)
+  check('pwv.routeHide', pwvRoute('NSApplication.didHideNotification').route, 'update-only')
+  check('pwv.routeResign', pwvRoute('NSApplication.didResignActiveNotification').route, 'update-only')
+  check('pwv.routeMiniaturize', pwvRoute('NSWindow.didMiniaturizeNotification').route, 'update-only')
+  check('pwv.routeUnknown', pwvRoute('something.else').route, 'update-only')
+
+  const pwvResume = (over = {}) => ({
+    isSuspended: true,
+    hasView: true,
+    hasWindow: true,
+    applicationIsActive: true,
+    applicationIsHidden: false,
+    windowIsVisible: true,
+    windowIsMiniaturized: false,
+    acceptsExplicitForegroundSignal: true,
+    occlusionStateIsVisible: false,
+    isKeyWindow: false,
+    isMainWindow: false,
+    ...over,
+  })
+  check('pwv.resumeExplicit', previewForegroundResumeAllowed(pwvResume()), true)
+  check('pwv.resumeOccluded', previewForegroundResumeAllowed(pwvResume({
+    acceptsExplicitForegroundSignal: false })), false)
+  check('pwv.resumeOcclusionVisible', previewForegroundResumeAllowed(pwvResume({
+    acceptsExplicitForegroundSignal: false, occlusionStateIsVisible: true })), true)
+  check('pwv.resumeKeyWindow', previewForegroundResumeAllowed(pwvResume({
+    acceptsExplicitForegroundSignal: false, isKeyWindow: true })), true)
+  check('pwv.resumeMainWindow', previewForegroundResumeAllowed(pwvResume({
+    acceptsExplicitForegroundSignal: false, isMainWindow: true })), true)
+  check('pwv.resumeNotSuspended', previewForegroundResumeAllowed(pwvResume({ isSuspended: false })), false)
+  check('pwv.resumeNoView', previewForegroundResumeAllowed(pwvResume({ hasView: false })), false)
+  check('pwv.resumeNoWindow', previewForegroundResumeAllowed(pwvResume({ hasWindow: false })), false)
+  check('pwv.resumeInactive', previewForegroundResumeAllowed(pwvResume({ applicationIsActive: false })), false)
+  check('pwv.resumeAppHidden', previewForegroundResumeAllowed(pwvResume({ applicationIsHidden: true })), false)
+  check('pwv.resumeWindowHidden', previewForegroundResumeAllowed(pwvResume({ windowIsVisible: false })), false)
+  check('pwv.resumeMiniaturized', previewForegroundResumeAllowed(pwvResume({ windowIsMiniaturized: true })), false)
+
+  check('pwv.updateForce', previewVisibilityUpdateDecision({
+    force: true, shouldSuspend: false, isSuspended: false }), 'force-apply')
+  check('pwv.updateSame', previewVisibilityUpdateDecision({
+    force: false, shouldSuspend: true, isSuspended: true }), 'state-unchanged')
+  check('pwv.updateDiffer', previewVisibilityUpdateDecision({
+    force: false, shouldSuspend: true, isSuspended: false }), 'apply')
+
+  check('pwv.suspendSteps', PREVIEW_SUSPEND_STEP_ORDER.length, 10)
+  check('pwv.suspendFirstStep', PREVIEW_SUSPEND_STEP_ORDER[0], 'bump-transition-revision')
+  check('pwv.suspendLastStep', PREVIEW_SUSPEND_STEP_ORDER[9], 'request-sleep-cover')
+
+  check('pwv.coverAllGood', previewCanShowSleepCoverTransition({
+    windowIsVisible: true, windowIsMiniaturized: false, applicationIsHidden: false,
+    occlusionStateIsVisible: true, hasSleepCoverHandler: true }), true)
+  check('pwv.coverNoHandler', previewCanShowSleepCoverTransition({
+    windowIsVisible: true, windowIsMiniaturized: false, applicationIsHidden: false,
+    occlusionStateIsVisible: true, hasSleepCoverHandler: false }), false)
+  check('pwv.coverHidden', previewCanShowSleepCoverTransition({
+    windowIsVisible: true, windowIsMiniaturized: false, applicationIsHidden: true,
+    occlusionStateIsVisible: true, hasSleepCoverHandler: true }), false)
+  check('pwv.coverOccluded', previewCanShowSleepCoverTransition({
+    windowIsVisible: true, windowIsMiniaturized: false, applicationIsHidden: false,
+    occlusionStateIsVisible: false, hasSleepCoverHandler: true }), false)
+
+  check('pwv.scheduleImmediate', previewSuspensionScheduling({
+    canShowTransition: false, hasSleepCoverHandler: true }), 'finish-immediately')
+  check('pwv.scheduleWatchdog', previewSuspensionScheduling({
+    canShowTransition: true, hasSleepCoverHandler: true }), 'start-watchdog')
+  check('pwv.scheduleNoHandler', previewSuspensionScheduling({
+    canShowTransition: true, hasSleepCoverHandler: false }), 'finish-immediately')
+
+  check('pwv.readyAccepted', previewFrameBecameReadyAccepted({
+    isSuspended: false, isAwaitingResumedFrame: true, epochMatches: true }), true)
+  check('pwv.readySuspended', previewFrameBecameReadyAccepted({
+    isSuspended: true, isAwaitingResumedFrame: true, epochMatches: true }), false)
+  check('pwv.readyNotAwaiting', previewFrameBecameReadyAccepted({
+    isSuspended: false, isAwaitingResumedFrame: false, epochMatches: true }), false)
+  check('pwv.readyStaleEpoch', previewFrameBecameReadyAccepted({
+    isSuspended: false, isAwaitingResumedFrame: true, epochMatches: false }), false)
+
+  check('pwv.coverRevisionMatch', previewSleepCoverRequestAccepted({
+    dispatchedRevision: 4, currentRevision: 4 }), true)
+  check('pwv.coverRevisionStale', previewSleepCoverRequestAccepted({
+    dispatchedRevision: 4, currentRevision: 5 }), false)
+
+  check('pwv.finishAllowed', previewFinishSuspensionAllowed({
+    isSuspended: true, revisionMatches: true, hasRetiredForSuspension: false }), true)
+  check('pwv.finishResumed', previewFinishSuspensionAllowed({
+    isSuspended: false, revisionMatches: true, hasRetiredForSuspension: false }), false)
+  check('pwv.finishStaleRevision', previewFinishSuspensionAllowed({
+    isSuspended: true, revisionMatches: false, hasRetiredForSuspension: false }), false)
+  check('pwv.finishAlreadyRetired', previewFinishSuspensionAllowed({
+    isSuspended: true, revisionMatches: true, hasRetiredForSuspension: true }), false)
+
+  check('pwv.linkPausedWhenSuspended', previewDisplayLinkShouldPause({
+    isSuspended: true, isPlaying: true }), true)
+  check('pwv.linkPausedWhenIdle', previewDisplayLinkShouldPause({
+    isSuspended: false, isPlaying: false }), true)
+  check('pwv.linkRunning', previewDisplayLinkShouldPause({
+    isSuspended: false, isPlaying: true }), false)
+
+  check('pwv.resumeSteps', PREVIEW_RESUME_STEP_ORDER.length, 8)
+  check('pwv.resumeAwaitBeforeRender', PREVIEW_RESUME_STEP_ORDER.indexOf('mark-awaiting-resumed-frame')
+    < PREVIEW_RESUME_STEP_ORDER.indexOf('render-current-frame'), true)
+  check('pwv.resumeInstallOnView', PREVIEW_RESUME_STEP_ORDER.includes('install-backing-layer'), true)
+  check('pwv.stopObservingBumps', previewStopObservingBumpsRevision(), true)
+  check('pwv.attachNoWindowForces', previewAttachForcesVisibilityUpdate({ hasWindow: false }), true)
+  check('pwv.attachWithWindow', previewAttachForcesVisibilityUpdate({ hasWindow: true }), false)
+
+  // ================= EditorTimelineMergedWaveform =================
+  check('mw.minSamples', MERGED_WAVEFORM_MIN_SAMPLES, 2)
+  check('mw.maxSamples', MERGED_WAVEFORM_MAX_SAMPLES, 4096)
+  check('mw.cellFractions', MERGED_WAVEFORM_CELL_FRACTIONS.join(','), '0.2,0.5,0.8')
+  check('mw.peakFloor', MERGED_WAVEFORM_PEAK_FLOOR, 0.001)
+  check('mw.runThreshold', MERGED_WAVEFORM_RUN_THRESHOLD, 0.0001)
+  check('mw.countZeroWidth', mergedWaveformSampleCount(0), 2)
+  check('mw.countTiny', mergedWaveformSampleCount(2), 2)
+  check('mw.countFour', mergedWaveformSampleCount(4), 2)
+  check('mw.countTen', mergedWaveformSampleCount(10), 5)
+  check('mw.countHundred', mergedWaveformSampleCount(100), 50)
+  check('mw.countHuge', mergedWaveformSampleCount(200000), 4096)
+
+  const mwReq = mergedWaveformRequest({
+    width: 100, outputStart: 2, outputDuration: 8,
+    channels: [{ hasData: true, hasPlan: true }, { hasData: true, hasPlan: false }],
+  })
+  check('mw.requestChannels', mwReq.channelCount, 1)
+  check('mw.requestCount', mwReq.count, 50)
+  check('mw.requestStart', mwReq.start, 2)
+  check('mw.requestDuration', mwReq.duration, 8)
+
+  check('mw.ampSilent', waveformChannelAmplitude({ gain: 0, peak: 0.9, displayGain: 1 }), 0)
+  check('mw.ampPlain', waveformChannelAmplitude({ gain: 0.5, peak: 0.8, displayGain: 1 }), 0.4)
+  check('mw.ampClampBeforeGain', waveformChannelAmplitude({ gain: 0.5, peak: 1.5, displayGain: 1 }), 0.5)
+  check('mw.ampBoost', waveformChannelAmplitude({ gain: 2, peak: 1, displayGain: 1 }), 2)
+  check('mw.ampTinyPeak', waveformChannelAmplitude({ gain: 1, peak: 0.0005, displayGain: 1 }), 0)
+  check('mw.ampNaN', waveformChannelAmplitude({ gain: 1, peak: Number.NaN, displayGain: 1 }), 0)
+  check('mw.ampNegativeGain', waveformChannelAmplitude({ gain: -1, peak: 1, displayGain: 1 }), 0)
+
+  check('mw.envelopeEmpty', sampleMergedEnvelope({
+    request: { channelCount: 0, count: 4, start: 0, duration: 4 },
+    amplitudeAt: () => 1 }).length, 0)
+  const mwEnvelope = sampleMergedEnvelope({
+    request: { channelCount: 1, count: 2, start: 0, duration: 2 },
+    amplitudeAt: (time) => time })
+  check('mw.envelopeLen', mwEnvelope.length, 2)
+  check('mw.envelopeCell0', mwEnvelope[0], 0.8)
+  check('mw.envelopeCell1', mwEnvelope[1], 1.8)
+  const mwMaxMerge = sampleMergedEnvelope({
+    request: { channelCount: 2, count: 1, start: 0, duration: 1 },
+    amplitudeAt: (time) => (time < 0.3 ? 0.2 : 0.9) })
+  check('mw.envelopeMerged', mwMaxMerge[0], 0.9)
+
+  const mwGeom0 = waveformEnvelopeGeometry({
+    sampleCount: 101, expansion: 0,
+    rect: { x: 0, y: 0, width: 100, height: 40 },
+    band: { x: 0, y: 20, width: 100, height: 20 },
+  })
+  check('mw.geomProgress0', mwGeom0.progress, 0)
+  check('mw.geomCenter0', mwGeom0.center, 30)
+  check('mw.geomCompact', mwGeom0.compactAmplitude, 7.6)
+  check('mw.geomAmp0', mwGeom0.amplitude, 7.6)
+  check('mw.geomStep', mwGeom0.step, 1)
+  const mwGeom1 = waveformEnvelopeGeometry({
+    sampleCount: 101, expansion: 1,
+    rect: { x: 0, y: 0, width: 100, height: 40 },
+    band: { x: 0, y: 20, width: 100, height: 20 },
+  })
+  check('mw.geomCenter1', mwGeom1.center, 20)
+  check('mw.geomAmp1', mwGeom1.amplitude, 12)
+  check('mw.geomProgressClamped', waveformEnvelopeGeometry({
+    sampleCount: 3, expansion: 4,
+    rect: { x: 0, y: 0, width: 10, height: 10 },
+    band: { x: 0, y: 5, width: 10, height: 5 },
+  }).progress, 1)
+  check('mw.geomProgressNegative', waveformEnvelopeGeometry({
+    sampleCount: 3, expansion: -2,
+    rect: { x: 0, y: 0, width: 10, height: 10 },
+    band: { x: 0, y: 5, width: 10, height: 5 },
+  }).progress, 0)
+  check('mw.geomSingleSampleStep', waveformEnvelopeGeometry({
+    sampleCount: 1, expansion: 0,
+    rect: { x: 0, y: 0, width: 10, height: 10 },
+    band: { x: 0, y: 5, width: 10, height: 5 },
+  }).step, 0)
+
+  check('mw.peakHeightCompact', waveformPeakHeight({ sample: 0.5, progress: 0, amplitude: 7.6 }), 3.8)
+  check('mw.peakHeightClamped', waveformPeakHeight({ sample: 1.5, progress: 0, amplitude: 7.6 }), 7.6)
+  check('mw.peakHeightExpanded', waveformPeakHeight({ sample: 1.5, progress: 1, amplitude: 12 }), 18)
+
+  check('mw.runsEmpty', waveformAmplitudeRuns([]).length, 0)
+  check('mw.runsSingle', waveformAmplitudeRuns([0.5]).length, 0)
+  const mwRuns = waveformAmplitudeRuns([0, 0.5, 0.4, 0, 0, 0.3])
+  check('mw.runsCount', mwRuns.length, 2)
+  check('mw.runsFirstStart', mwRuns[0].startIndex, 1)
+  check('mw.runsFirstEnd', mwRuns[0].endIndex, 2)
+  check('mw.runsLastStart', mwRuns[1].startIndex, 5)
+  check('mw.runsLastEnd', mwRuns[1].endIndex, 5)
+  const mwTailRuns = waveformAmplitudeRuns([0.5, 0.4, 0, 0])
+  check('mw.runsTailCount', mwTailRuns.length, 1)
+  check('mw.runsTailEnd', mwTailRuns[0].endIndex, 1)
+  check('mw.runsThreshold', waveformAmplitudeRuns([0.0001]).length, 0)
+
+  const mwEdge = waveformRunEdgePoints({
+    run: { startIndex: 2, endIndex: 5 }, step: 10, rectWidth: 1000 })
+  check('mw.edgeOpen', mwEdge.openX, 15)
+  check('mw.edgeClose', mwEdge.closeX, 55)
+  check('mw.edgeOpenClamped', waveformRunEdgePoints({
+    run: { startIndex: 0, endIndex: 1 }, step: 10, rectWidth: 1000 }).openX, 0)
+  check('mw.edgeCloseClamped', waveformRunEdgePoints({
+    run: { startIndex: 9, endIndex: 10 }, step: 10, rectWidth: 100 }).closeX, 100)
+
+  const mwAnimExpanded = mergedWaveformAnimation({ expanded: true, swapInDelay: 0.25 })
+  check('mw.animExpandedKind', mwAnimExpanded.kind, 'spring')
+  check('mw.animExpandedResponse', mwAnimExpanded.response, 0.42)
+  check('mw.animExpandedDamping', mwAnimExpanded.dampingFraction, 0.86)
+  check('mw.animExpandedDelay', mwAnimExpanded.delay, 0.25)
+  const mwAnimCollapsed = mergedWaveformAnimation({ expanded: false, swapInDelay: 0.25 })
+  check('mw.animCollapsedKind', mwAnimCollapsed.kind, 'ease-in')
+  check('mw.animCollapsedDuration', mwAnimCollapsed.duration, 0.12)
+  check('mw.animCollapsedDelay', mwAnimCollapsed.delay, 0)
+
+  const mwR1 = { channelCount: 1, count: 50, start: 2, duration: 8, expansion: 0 }
+  check('mw.reqEqual', mergedWaveformRequestsEqual(mwR1, { ...mwR1 }), true)
+  check('mw.reqExpansion', mergedWaveformRequestsEqual(mwR1, { ...mwR1, expansion: 1 }), false)
+  check('mw.reqCount', mergedWaveformRequestsEqual(mwR1, { ...mwR1, count: 51 }), false)
+  check('mw.cacheMissNull', mergedWaveformCacheAccepts({ cachedRequest: null, request: mwR1 }), false)
+  check('mw.cacheHit', mergedWaveformCacheAccepts({ cachedRequest: { ...mwR1 }, request: mwR1 }), true)
+  check('mw.cancelCheck0', mergedWaveformShouldCheckCancellation(0), true)
+  check('mw.cancelCheck128', mergedWaveformShouldCheckCancellation(128), true)
+  check('mw.cancelCheck127', mergedWaveformShouldCheckCancellation(127), false)
+
+  // ================= EditorMockupTurntable =================
+  check('mt.cardWidth', MOCKUP_TURNTABLE_CARD_WIDTH, 142)
+  check('mt.pointsPerCard', MOCKUP_TURNTABLE_POINTS_PER_CARD, 78)
+  check('mt.viewHeight', MOCKUP_TURNTABLE_VIEW_HEIGHT, 118)
+  check('mt.indicatorSelected', MOCKUP_TURNTABLE_INDICATOR_SELECTED_WIDTH, 18)
+  check('mt.indicatorWidth', MOCKUP_TURNTABLE_INDICATOR_WIDTH, 5)
+  check('mt.indicatorHeight', MOCKUP_TURNTABLE_INDICATOR_HEIGHT, 5)
+  check('mt.momentum', MOCKUP_TURNTABLE_MOMENTUM, 0.55)
+  check('mt.minimumDrag', MOCKUP_TURNTABLE_MINIMUM_DRAG, 3)
+  check('mt.hitThreshold', MOCKUP_TURNTABLE_HIT_THRESHOLD, 0.2)
+
+  check('mt.countZero', mockupTurntableCount(0), 1)
+  check('mt.countSix', mockupTurntableCount(6), 6)
+  check('mt.roundedHalfUp', mockupTurntableRounded(3.5), 4)
+  check('mt.roundedHalfDown', mockupTurntableRounded(-3.5), -4)
+  check('mt.roundedNormal', mockupTurntableRounded(2.4), 2)
+
+  check('mt.wrapEightOfSix', wrappedTurntableOffset(8, 6), 2)
+  check('mt.wrapNegativeOne', wrappedTurntableOffset(-1, 6), -1)
+  check('mt.wrapHalfTurnsLeft', wrappedTurntableOffset(3, 6), -3)
+  check('mt.wrapZero', wrappedTurntableOffset(0, 6), 0)
+  check('mt.wrapSameCard', wrappedTurntableOffset(12, 6), 0)
+  check('mt.wrapEmptyStyles', wrappedTurntableOffset(5, 0), 0)
+
+  check('mt.selectedDirect', mockupTurntableSelectedIndex({
+    styles: ['none', 'windowLight', 'devicePhone'], selected: 'windowLight',
+    selectedIsDeviceFrame: false, fallbackDeviceStyle: 'devicePhone' }), 1)
+  check('mt.selectedDeviceFallback', mockupTurntableSelectedIndex({
+    styles: ['none', 'windowLight', 'devicePhone'], selected: 'deviceTabletPortrait',
+    selectedIsDeviceFrame: true, fallbackDeviceStyle: 'devicePhone' }), 2)
+  check('mt.selectedUnknown', mockupTurntableSelectedIndex({
+    styles: ['none', 'windowLight'], selected: 'zzz',
+    selectedIsDeviceFrame: false, fallbackDeviceStyle: 'devicePhone' }), 0)
+  check('mt.selectedNoFallback', mockupTurntableSelectedIndex({
+    styles: ['none', 'windowLight'], selected: 'deviceTablet',
+    selectedIsDeviceFrame: true, fallbackDeviceStyle: 'devicePhone' }), 0)
+
+  const mtSettle = mockupTurntableSettle({ target: -1, styleCount: 6, selectedIndex: 4 })
+  check('mt.settleIndex', mtSettle.index, 5)
+  check('mt.settleRotation', mtSettle.rotation, -1)
+  check('mt.settleChanges', mtSettle.changesSelection, true)
+  check('mt.settleSame', mockupTurntableSettle({
+    target: 2, styleCount: 6, selectedIndex: 2 }).changesSelection, false)
+  check('mt.settleWrapIndex', mockupTurntableSettle({
+    target: 8, styleCount: 6, selectedIndex: 0 }).index, 2)
+
+  check('mt.arrowRight', mockupTurntableArrowTarget(3.4, 1), 4)
+  check('mt.arrowLeft', mockupTurntableArrowTarget(3.6, -1), 3)
+  check('mt.arrowLeftNegative', mockupTurntableArrowTarget(-0.6, -1), -2)
+
+  check('mt.dragDefault', mockupTurntableDragRotation({ dragStart: 2, translationX: 156 }), 0)
+  check('mt.dragCustom', mockupTurntableDragRotation({
+    dragStart: 1, translationX: 78, pointsPerCard: 39 }), -1)
+  check('mt.projected', mockupTurntableProjectedRotation({
+    base: 0, predictedEndTranslationX: 156 }), -1.1)
+  check('mt.projectedCustom', mockupTurntableProjectedRotation({
+    base: 5, predictedEndTranslationX: 0, momentum: 0 }), 5)
+
+  const mtFront = mockupTurntableCardProjection({ index: 0, rotation: 0, styleCount: 6 })
+  check('mt.frontOffset', mtFront.offset, 0)
+  check('mt.frontAngle', mtFront.angle, 0)
+  check('mt.frontFacing', mtFront.facing, 1)
+  check('mt.frontIsFront', mtFront.isFront, true)
+  check('mt.frontScale', mtFront.scale, 1)
+  check('mt.frontOffsetX', mtFront.offsetX, 0)
+  check('mt.frontOpacity', mtFront.opacity, 1)
+  check('mt.frontBrightness', mtFront.brightness, 0)
+  check('mt.frontZIndex', mtFront.zIndex, 1)
+  check('mt.frontHit', mtFront.hitTestable, true)
+  check('mt.frontRotationY', mtFront.rotationYDegrees, 0)
+  check('mt.frontRadius', mtFront.radius, 139.16)
+
+  const mtSixty = mockupTurntableCardProjection({ index: 1, rotation: 0, styleCount: 6 })
+  check('mt.sixtyAngle', mtSixty.angle, 60)
+  check('mt.sixtyFacing', mtSixty.facing, 0.5)
+  check('mt.sixtyScale', mtSixty.scale, 0.86)
+  check('mt.sixtyOpacity', mtSixty.opacity, 0.675)
+  check('mt.sixtyBrightness', mtSixty.brightness, -0.125)
+  check('mt.sixtyHit', mtSixty.hitTestable, true)
+  check('mt.sixtyRotationY', mtSixty.rotationYDegrees, -48)
+  check('mt.sixtyIsFront', mtSixty.isFront, false)
+
+  const mtBack = mockupTurntableCardProjection({ index: 3, rotation: 0, styleCount: 6 })
+  check('mt.backAngle', mtBack.angle, -180)
+  check('mt.backFacing', mtBack.facing, -1)
+  check('mt.backScale', mtBack.scale, 0.72)
+  check('mt.backOpacity', mtBack.opacity, 0)
+  check('mt.backBrightness', mtBack.brightness, -0.25)
+  check('mt.backHit', mtBack.hitTestable, false)
+  check('mt.backRotationY', mtBack.rotationYDegrees, 144)
+
+  check('mt.selectedByStyle', mockupTurntableCardIsSelected({
+    isFront: true, style: 'windowLight', selected: 'windowLight',
+    styleIsDevicePhone: false, selectedIsDeviceFrame: false }), true)
+  check('mt.selectedNotFront', mockupTurntableCardIsSelected({
+    isFront: false, style: 'windowLight', selected: 'windowLight',
+    styleIsDevicePhone: false, selectedIsDeviceFrame: false }), false)
+  check('mt.selectedDevicePhone', mockupTurntableCardIsSelected({
+    isFront: true, style: 'devicePhone', selected: 'deviceTabletPortrait',
+    styleIsDevicePhone: true, selectedIsDeviceFrame: true }), true)
+  check('mt.selectedOther', mockupTurntableCardIsSelected({
+    isFront: true, style: 'devicePhone', selected: 'none',
+    styleIsDevicePhone: true, selectedIsDeviceFrame: false }), false)
+
+  check('mt.tapTargetShortest', mockupTurntableTapTarget({
+    index: 5, rotation: 0, styleCount: 6 }), -1)
+  check('mt.tapTargetForward', mockupTurntableTapTarget({
+    index: 2, rotation: 0, styleCount: 6 }), 2)
+  check('mt.tapTargetSame', mockupTurntableTapTarget({
+    index: 3, rotation: 3, styleCount: 6 }), 3)
+
+  check('mt.syncInitial', mockupTurntableSyncAction({
+    kind: 'appear', hasPlacedInitial: false, isDragging: false, changeDelta: 0 }), 'place-initial')
+  check('mt.syncInitialTwice', mockupTurntableSyncAction({
+    kind: 'appear', hasPlacedInitial: true, isDragging: false, changeDelta: 0 }), 'skip-initial-already-placed')
+  check('mt.syncDragging', mockupTurntableSyncAction({
+    kind: 'change', hasPlacedInitial: true, isDragging: true, changeDelta: 3 }), 'skip-dragging')
+  check('mt.syncNegligible', mockupTurntableSyncAction({
+    kind: 'change', hasPlacedInitial: true, isDragging: false, changeDelta: 0.005 }), 'skip-negligible')
+  check('mt.syncAnimate', mockupTurntableSyncAction({
+    kind: 'change', hasPlacedInitial: true, isDragging: false, changeDelta: 0.5 }), 'animate-to-index')
+
+  check('mt.springReduced', mockupTurntableSettleSpring(true), null)
+  check('mt.springResponse', mockupTurntableSettleSpring(false).response, 0.62)
+  check('mt.springDamping', mockupTurntableSettleSpring(false).dampingFraction, 0.74)
+
+  check('mt.styleNameCount', Object.keys(MOCKUP_TURNTABLE_STYLE_NAMES).length, 11)
+  check('mt.styleNamePhone', mockupTurntableStyleName('devicePhone'), '自适应设备框')
+  check('mt.styleNameNone', mockupTurntableStyleName('none'), '无边框')
+  check('mt.styleNameBrowser', mockupTurntableStyleName('browserDark'), '浏览器·深色')
+  check('mt.styleNameUnknown', mockupTurntableStyleName('zzz'), '')
+  check('mt.styleNameUndefined', mockupTurntableStyleName(undefined), '')
+  check('mt.safeGetHit', mockupTurntableSafeGet([10, 20], 1), 20)
+  check('mt.safeGetOut', mockupTurntableSafeGet([10, 20], 2), undefined)
+  check('mt.safeGetNegative', mockupTurntableSafeGet([10, 20], -1), undefined)
+  check('mt.indicatorSelectedWidth', mockupTurntableIndicatorWidth(true), 18)
+  check('mt.indicatorDotWidth', mockupTurntableIndicatorWidth(false), 5)
+  check('mt.arrowLabelPrev', mockupTurntableArrowLabel('chevron.left'), '上一个样机')
+  check('mt.arrowLabelNext', mockupTurntableArrowLabel('chevron.right'), '下一个样机')
+  check('mt.helpText', MOCKUP_TURNTABLE_HELP_TEXT.includes('3D'), true)
+}
+await runPreviewSurfaceBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

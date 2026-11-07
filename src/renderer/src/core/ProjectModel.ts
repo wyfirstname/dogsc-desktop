@@ -409,6 +409,7 @@ export function decodeCameraShape(raw: unknown): CameraShape {
 // ---------------------------------------------------------------- Cursor
 
 /** Swift CursorAssetID 是 RawRepresentable 字符串结构体；TS 侧直接用字符串。 */
+export type CursorAssetID = string
 
 export const CURSOR_ASSET_SYSTEM_ARROW = 'system.arrow'
 export const CURSOR_ASSET_AUTOMATIC = 'system.automatic'
