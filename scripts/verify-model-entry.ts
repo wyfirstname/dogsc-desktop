@@ -790,3 +790,64 @@ export {
   appTypographyFace,
   appUIFont,
 } from '../src/renderer/src/core/AppTypography'
+export {
+  EDITOR_SLIDER_MINIMUM_KNEE,
+  EDITOR_SLIDER_SCALE_LINEAR,
+  EDITOR_SLIDER_TICK_MINIMUM_SPACING,
+  linearTickStep,
+  logarithmicSliderScale,
+  sliderFraction,
+  sliderScaleForValueFormat,
+  sliderTicks,
+  sliderValue,
+} from '../src/renderer/src/core/EditorSliderScale'
+export {
+  RECORDING_MARKER_DEBOUNCE_SECONDS,
+  RECORDING_MARKER_HOTKEY_ID,
+  RECORDING_MARKER_HOTKEY_KEY_CODE,
+  RECORDING_MARKER_HOTKEY_SIGNATURE,
+  canAddRecordingMarker,
+  nextRecordingMarkerNumber,
+  recordingMarkerHotKeyShouldBeRegistered,
+  recordingMarkerIsTooSoon,
+  recordingMarkerShortcutAvailable,
+  recordingMarkerToAppend,
+} from '../src/renderer/src/core/RecordingMarkers'
+export {
+  EDITOR_INTERFACE_RADIUS,
+  EDITOR_MINIMUM_WINDOW_SIZE,
+  editorChromeScaledSize,
+  editorChromeUnscaledSize,
+  editorTimelineHeight,
+  editorWorkspaceCompression,
+  editorWorkspaceMetrics,
+  editorWorkspaceValue,
+} from '../src/renderer/src/core/EditorWorkspaceLayout'
+export {
+  nextPausedFrameDecodeToken,
+  pausedCameraImageDecision,
+  pausedFrameIndex,
+  pausedFramePublicationIsCurrent,
+  pausedFrameTime,
+  shouldRefreshPausedFrames,
+} from '../src/renderer/src/core/EditorPlaybackPausedFrames'
+export {
+  EDITOR_CROP_ONLY_ACTIONS,
+  EDITOR_CROP_TOOLBAR_ACTIONS,
+  EDITOR_STANDARD_TOOLBAR_ACTIONS,
+  editorCropPresentation,
+  editorCropPresentationIsActive,
+  editorCropToolbarPermits,
+} from '../src/renderer/src/core/EditorCropPresentation'
+export {
+  SLIDER_ARROW_KEY_CODES,
+  SLIDER_KEY_CODE_DOWN,
+  SLIDER_KEY_CODE_LEFT,
+  SLIDER_KEY_CODE_RIGHT,
+  SLIDER_KEY_CODE_UP,
+  sliderAcceptsFocus,
+  sliderKeyboardStep,
+  sliderMouseDownReleasesFocus,
+  sliderShouldRequestFocus,
+  sliderStepDirection,
+} from '../src/renderer/src/core/EditorSliderKeyboardBridge'

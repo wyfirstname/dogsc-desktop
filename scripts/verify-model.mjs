@@ -5597,5 +5597,247 @@ async function runOnboardingAndChromeBatch() {
 
 await runOnboardingAndChromeBatch()
 
+async function runEditorChromeMathBatch() {
+  // ===== 滑块行程 / 录制标记 / 工作区布局 / 暂停帧 / 裁切呈现 / 键盘桥（6 文件 / 500 行）
+  const {
+    EDITOR_SLIDER_MINIMUM_KNEE, EDITOR_SLIDER_TICK_MINIMUM_SPACING, EDITOR_SLIDER_SCALE_LINEAR,
+    linearTickStep, logarithmicSliderScale, sliderFraction, sliderScaleForValueFormat, sliderTicks,
+    sliderValue,
+    RECORDING_MARKER_DEBOUNCE_SECONDS, RECORDING_MARKER_HOTKEY_ID, RECORDING_MARKER_HOTKEY_KEY_CODE,
+    RECORDING_MARKER_HOTKEY_SIGNATURE, canAddRecordingMarker,
+    nextRecordingMarkerNumber, recordingMarkerHotKeyShouldBeRegistered,
+    recordingMarkerIsTooSoon, recordingMarkerShortcutAvailable, recordingMarkerToAppend,
+    EDITOR_MINIMUM_WINDOW_SIZE, EDITOR_INTERFACE_RADIUS, editorChromeScaledSize,
+    editorChromeUnscaledSize, editorTimelineHeight, editorWorkspaceCompression,
+    editorWorkspaceMetrics, editorWorkspaceValue,
+    pausedCameraImageDecision, pausedFrameIndex, pausedFramePublicationIsCurrent, pausedFrameTime,
+    nextPausedFrameDecodeToken, shouldRefreshPausedFrames,
+    EDITOR_CROP_ONLY_ACTIONS, EDITOR_STANDARD_TOOLBAR_ACTIONS, EDITOR_CROP_TOOLBAR_ACTIONS,
+    editorCropPresentation, editorCropPresentationIsActive, editorCropToolbarPermits,
+    SLIDER_ARROW_KEY_CODES, SLIDER_KEY_CODE_DOWN, SLIDER_KEY_CODE_LEFT, SLIDER_KEY_CODE_RIGHT,
+    SLIDER_KEY_CODE_UP, sliderAcceptsFocus, sliderKeyboardStep, sliderMouseDownReleasesFocus,
+    sliderShouldRequestFocus, sliderStepDirection,
+  } = m
+
+  const noModifiers = { shift: false, command: false, control: false, option: false }
+
+  // ---------------------------------------------- EditorSliderScale.swift
+  check('ss.minimumKnee', EDITOR_SLIDER_MINIMUM_KNEE, 0.000001)
+  check('ss.tickSpacing', EDITOR_SLIDER_TICK_MINIMUM_SPACING, 38)
+  check('ss.linearKind', EDITOR_SLIDER_SCALE_LINEAR.kind, 'linear')
+  const range10 = { lower: 0, upper: 10 }
+  check('ss.linearFraction', sliderFraction(EDITOR_SLIDER_SCALE_LINEAR, 2.5, range10), 0.25)
+  check('ss.linearBelow', sliderFraction(EDITOR_SLIDER_SCALE_LINEAR, -5, range10), 0)
+  check('ss.linearAbove', sliderFraction(EDITOR_SLIDER_SCALE_LINEAR, 20, range10), 1)
+  check('ss.zeroSpan', sliderFraction(EDITOR_SLIDER_SCALE_LINEAR, 5, { lower: 5, upper: 5 }), 0)
+  check('ss.nanValue', sliderFraction(EDITOR_SLIDER_SCALE_LINEAR, NaN, range10), 0)
+  const logKnee1 = logarithmicSliderScale(1)
+  check('ss.logFractionAtKnee', sliderFraction(logKnee1, 1, range10), Math.log1p(1) / Math.log1p(10), 1e-12)
+  check('ss.logFractionZero', sliderFraction(logKnee1, 0, range10), 0)
+  check('ss.logValueRoundTrip', sliderValue(logKnee1, sliderFraction(logKnee1, 5, range10), range10), 5, 1e-9)
+  check('ss.logValueClamped', sliderValue(logKnee1, 1.5, range10), 10, 1e-9)
+  check('ss.linearValue', sliderValue(EDITOR_SLIDER_SCALE_LINEAR, 0.5, range10), 5)
+  check('ss.valueBelowZero', sliderValue(EDITOR_SLIDER_SCALE_LINEAR, -1, range10), 0)
+  check('ss.tickStep', linearTickStep(10), 5)
+  check('ss.tickStepSmall', linearTickStep(4), 1)
+  check('ss.linearTicks', sliderTicks(EDITOR_SLIDER_SCALE_LINEAR, range10, 400).join(','), '0,5,10')
+  check('ss.linearTicksFiltered', sliderTicks(EDITOR_SLIDER_SCALE_LINEAR, range10, 60).join(','), '0,10')
+  const logTicks = sliderTicks(logKnee1, { lower: 1, upper: 100 }, 500)
+  check('ss.logTickCount', logTicks.length, 7)
+  check('ss.logTickFirst', logTicks[0], 1)
+  check('ss.logTickSecond', logTicks[1], 2)
+  check('ss.logTickLast', logTicks[logTicks.length - 1], 100)
+  check('ss.degenerateTicks', sliderTicks(EDITOR_SLIDER_SCALE_LINEAR, { lower: 3, upper: 3 }, 100).join(','), '3')
+  check('ss.scaleMultiplier', sliderScaleForValueFormat('multiplier', range10).knee, 1)
+  check('ss.scaleSeconds', sliderScaleForValueFormat('seconds', range10).knee, 0.5)
+  check('ss.scalePoints', sliderScaleForValueFormat('points', { lower: 0, upper: 100 }).knee, 12.5)
+  check('ss.scalePointsFloor', sliderScaleForValueFormat('points', { lower: 0, upper: 4 }).knee, 1)
+  check('ss.scalePercentLinear', sliderScaleForValueFormat('percent', range10).kind, 'linear')
+  check('ss.scaleAngleLinear', sliderScaleForValueFormat('angle', range10).kind, 'linear')
+  check('ss.negativeRangeLinear', sliderScaleForValueFormat('multiplier', { lower: -2, upper: 2 }).kind, 'linear')
+
+  // ------------------------------------------------ RecordingMarkers.swift
+  check('rm.signature', RECORDING_MARKER_HOTKEY_SIGNATURE, 0x4447_4d4b)
+  check('rm.hotkeyID', RECORDING_MARKER_HOTKEY_ID, 1)
+  check('rm.keyCode', RECORDING_MARKER_HOTKEY_KEY_CODE, 0x4d)
+  check('rm.debounce', RECORDING_MARKER_DEBOUNCE_SECONDS, 0.3)
+  check('rm.canAdd', canAddRecordingMarker({ phase: 'recording', isPaused: false, isPauseTransitioning: false, sourceTime: 1.2 }), true)
+  check('rm.blockedPaused', canAddRecordingMarker({ phase: 'recording', isPaused: true, isPauseTransitioning: false, sourceTime: 1.2 }), false)
+  check('rm.blockedTransitioning', canAddRecordingMarker({ phase: 'recording', isPaused: false, isPauseTransitioning: true, sourceTime: 1.2 }), false)
+  check('rm.blockedSetup', canAddRecordingMarker({ phase: 'setup', isPaused: false, isPauseTransitioning: false, sourceTime: 1.2 }), false)
+  check('rm.blockedNoTime', canAddRecordingMarker({ phase: 'recording', isPaused: false, isPauseTransitioning: false, sourceTime: null }), false)
+  check('rm.tooSoon', recordingMarkerIsTooSoon([{ sourceTime: 10, number: 1 }], 10.2), true)
+  check('rm.notTooSoon', recordingMarkerIsTooSoon([{ sourceTime: 10, number: 1 }], 10.5), false)
+  check('rm.emptyNotTooSoon', recordingMarkerIsTooSoon([], 1), false)
+  check('rm.numberFromEmpty', nextRecordingMarkerNumber([]), 1)
+  check('rm.numberAfterGap', nextRecordingMarkerNumber([{ sourceTime: 1, number: 1 }, { sourceTime: 2, number: 5 }]), 6)
+  const appendedMarker = recordingMarkerToAppend(
+    { phase: 'recording', isPaused: false, isPauseTransitioning: false, sourceTime: 4.2 },
+    [{ sourceTime: 1, number: 1 }]
+  )
+  check('rm.appendNumber', appendedMarker.number, 2)
+  check('rm.appendTime', appendedMarker.sourceTime, 4.2)
+  check(
+    'rm.appendRejectedTooSoon',
+    recordingMarkerToAppend(
+      { phase: 'recording', isPaused: false, isPauseTransitioning: false, sourceTime: 1.1 },
+      [{ sourceTime: 1, number: 1 }]
+    ),
+    null
+  )
+  check(
+    'rm.appendRejectedNotFinite',
+    recordingMarkerToAppend(
+      { phase: 'recording', isPaused: false, isPauseTransitioning: false, sourceTime: NaN },
+      []
+    ),
+    null
+  )
+  check('rm.registerWhileRecording', recordingMarkerHotKeyShouldBeRegistered('recording'), true)
+  check('rm.unregisterOtherwise', recordingMarkerHotKeyShouldBeRegistered('finishing'), false)
+  check('rm.shortcutAvailable', recordingMarkerShortcutAvailable(true, true), true)
+  check('rm.shortcutUnavailable', recordingMarkerShortcutAvailable(true, false), false)
+
+  // --------------------------------------------- EditorWorkspaceLayout.swift
+  check('wl.minWidth', EDITOR_MINIMUM_WINDOW_SIZE.width, 840)
+  check('wl.minHeight', EDITOR_MINIMUM_WINDOW_SIZE.height, 600)
+  check('wl.floatingRadius', EDITOR_INTERFACE_RADIUS.floating, 20)
+  const roomy = editorWorkspaceMetrics({ width: 1440, height: 820 })
+  check('wl.roomyCompression', roomy.compression, 0)
+  check('wl.roomyCompact', roomy.isCompact, false)
+  check('wl.roomyChrome', roomy.chromeScale, 1)
+  check('wl.roomyToolbar', roomy.toolbarHeight, 72)
+  check('wl.roomyInset', roomy.outerInset, 16)
+  check('wl.roomyGap', roomy.timelineGap, 12)
+  check('wl.roomyRadius', roomy.surfaceRadius, 20)
+  check('wl.roomyInspectorLogical', roomy.inspectorLogicalWidth, 384)
+  check('wl.roomyInspector', roomy.inspectorWidth, 384)
+  check('wl.roomyRail', roomy.railWidth, 72)
+  check('wl.roomyNoCompactControls', roomy.compactTimelineControls, false)
+  const tight = editorWorkspaceMetrics({ width: 1024, height: 700 })
+  check('wl.tightCompression', tight.compression, 1)
+  check('wl.tightChrome', tight.chromeScale, 0.86)
+  check('wl.tightToolbar', tight.toolbarHeight, 56)
+  check('wl.tightInset', tight.outerInset, 10)
+  check('wl.tightGap', tight.timelineGap, 8)
+  check('wl.tightEdge', tight.workspaceEdge, 12)
+  check('wl.tightRadius', tight.surfaceRadius, 20 * 0.86, 1e-9)
+  check('wl.tightInspector', tight.inspectorWidth, 384 * 0.86, 1e-9)
+  check('wl.tightRail', tight.railWidth, 72 * 0.86, 1e-9)
+  check('wl.tightCanvasOffset', tight.canvasToolbarOffset, 46 * 0.86, 1e-9)
+  check('wl.tightCompactControls', tight.compactTimelineControls, true)
+  check('wl.tightIconOnly', tight.iconOnlyTimelineControls, true)
+  // 窗口够大但屏幕小：仍然要紧凑（1080p 上最大化也一样）
+  check(
+    'wl.screenPressure',
+    editorWorkspaceCompression({ width: 1600, height: 900, screenWidth: 1280, screenHeight: 800 }),
+    1
+  )
+  // 中间态线性插值
+  const mid = editorWorkspaceCompression({ width: 1296, height: 730 })
+  check('wl.midCompression', mid, 0.4090909090909091, 1e-9)
+  check('wl.midValue', editorWorkspaceValue(mid, 72, 56), 72 + (56 - 72) * mid, 1e-9)
+  check('wl.timelinePreferred', editorTimelineHeight(0, 300, 900), 300)
+  check('wl.timelineDefault', editorTimelineHeight(0, null, 900), 300)
+  check('wl.timelineClampedToBudget', editorTimelineHeight(0, 800, 900), 552)
+  check('wl.timelineCompactBudget', editorTimelineHeight(1, 400, 700), 308)
+  check('wl.timelineFloor', editorTimelineHeight(1, 400, 300), 170)
+  check('wl.timelineShortPreferred', editorTimelineHeight(1, 100, 300), 100)
+  // 提案先除以 scale 再问子视图：scale 0.5 时 200 的空间等于 400 的未缩放内容
+  check('wl.chromeUnscaledWidth', editorChromeUnscaledSize(0.5, { width: 200, height: null }).width, 400)
+  check('wl.chromeUnscaledNullHeight', editorChromeUnscaledSize(0.5, { width: 200, height: null }).height, null)
+  check('wl.chromeScaled', editorChromeScaledSize(0.86, { width: 100, height: 50 }).width, 86, 1e-9)
+
+  // ----------------------------------------- EditorPlaybackPausedFrames.swift
+  check('pf.refreshGate', shouldRefreshPausedFrames({ isPreviewActive: true, hasPreparedMedia: true, isPlaying: false }), true)
+  check('pf.refreshBlockedPlaying', shouldRefreshPausedFrames({ isPreviewActive: true, hasPreparedMedia: true, isPlaying: true }), false)
+  check('pf.refreshBlockedInactive', shouldRefreshPausedFrames({ isPreviewActive: false, hasPreparedMedia: true, isPlaying: false }), false)
+  check('pf.alignedTime', pausedFrameTime(1.55, 10, 30), 46 / 30, 1e-12)
+  check('pf.alignedIndex', pausedFrameIndex(1.55, 10, 30), 46)
+  check('pf.zeroRateFallsBack', pausedFrameIndex(1.55, 10, 0), 1)
+  check('pf.negativeClamped', pausedFrameIndex(-1, 10, 30), 0)
+  check('pf.overrunClamped', pausedFrameIndex(20, 10, 30), 300)
+  const ticket = { generation: 3, seekToken: 7, decodeToken: 11 }
+  check('pf.publishCurrent', pausedFramePublicationIsCurrent(ticket, { ...ticket }, false), true)
+  check('pf.publishPlaying', pausedFramePublicationIsCurrent(ticket, { ...ticket }, true), false)
+  check('pf.publishStaleDecode', pausedFramePublicationIsCurrent(ticket, { ...ticket, decodeToken: 12 }, false), false)
+  check('pf.publishStaleSeek', pausedFramePublicationIsCurrent(ticket, { ...ticket, seekToken: 8 }, false), false)
+  check('pf.publishStaleGeneration', pausedFramePublicationIsCurrent(ticket, { ...ticket, generation: 4 }, false), false)
+  check('pf.cameraSet', pausedCameraImageDecision(true, true), 'set')
+  check('pf.cameraKeep', pausedCameraImageDecision(true, false), 'keep')
+  check('pf.cameraClear', pausedCameraImageDecision(false, false), 'clear')
+  check('pf.decodeTokenWrap', nextPausedFrameDecodeToken(0xffff_ffff), 0)
+
+  // ----------------------------------------------- EditorCropPresentation.swift
+  check('cp.actionCount', EDITOR_CROP_TOOLBAR_ACTIONS.length, 6)
+  check('cp.standardActions', EDITOR_STANDARD_TOOLBAR_ACTIONS.join(','), 'changeCanvasAspectRatio,beginCrop,openScreenAppearance')
+  check('cp.cropOnlyActions', EDITOR_CROP_ONLY_ACTIONS.join(','), 'resetCrop,cancelCrop,confirmCrop')
+  const idleCrop = editorCropPresentation(null)
+  check('cp.idleToolbar', idleCrop.toolbarMode, 'standardControls')
+  check('cp.idleInspector', idleCrop.inspectorMode, 'selectedInspector')
+  check('cp.idleCanvas', idleCrop.canvasMode, 'composition')
+  check('cp.idleDraft', idleCrop.draft, null)
+  check('cp.idleActive', editorCropPresentationIsActive(idleCrop), false)
+  const halfCrop = editorCropPresentation({
+    tool: 'crop',
+    selection: 'clip',
+    crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 },
+  })
+  check('cp.needsBothSelection', halfCrop.toolbarMode, 'standardControls')
+  const activeCrop = editorCropPresentation({
+    tool: 'crop',
+    selection: 'crop',
+    crop: { x: 0.2, y: 0.2, width: 0.5, height: 0.5 },
+  })
+  check('cp.activeToolbar', activeCrop.toolbarMode, 'cropControls')
+  check('cp.activeInspector', activeCrop.inspectorMode, 'cropInspector')
+  check('cp.activeCanvas', activeCrop.canvasMode, 'cropEditor')
+  check('cp.activeDraftX', activeCrop.draft.x, 0.2)
+  check('cp.activeIsActive', editorCropPresentationIsActive(activeCrop), true)
+  const clampedActive = editorCropPresentation({
+    tool: 'crop',
+    selection: 'crop',
+    crop: { x: 1.5, y: -1, width: 0, height: 5 },
+  })
+  check('cp.clampX', clampedActive.draft.x, 0.98)
+  check('cp.clampY', clampedActive.draft.y, 0)
+  check('cp.clampWidth', clampedActive.draft.width, 0.02)
+  check('cp.clampHeight', clampedActive.draft.height, 1)
+  check('cp.standardBegin', editorCropToolbarPermits('standardControls', 'beginCrop'), true)
+  check('cp.standardConfirmBlocked', editorCropToolbarPermits('standardControls', 'confirmCrop'), false)
+  check('cp.cropConfirm', editorCropToolbarPermits('cropControls', 'confirmCrop'), true)
+  check('cp.cropBeginBlocked', editorCropToolbarPermits('cropControls', 'beginCrop'), false)
+
+  // ----------------------------------------- EditorSliderKeyboardBridge.swift
+  check('sk.left', SLIDER_KEY_CODE_LEFT, 123)
+  check('sk.right', SLIDER_KEY_CODE_RIGHT, 124)
+  check('sk.down', SLIDER_KEY_CODE_DOWN, 125)
+  check('sk.up', SLIDER_KEY_CODE_UP, 126)
+  check('sk.arrowCount', SLIDER_ARROW_KEY_CODES.length, 4)
+  check('sk.dirRight', sliderStepDirection(124), 1)
+  check('sk.dirUp', sliderStepDirection(126), 1)
+  check('sk.dirLeft', sliderStepDirection(123), -1)
+  check('sk.dirDown', sliderStepDirection(125), -1)
+  const plainStep = sliderKeyboardStep(124, noModifiers, true)
+  check('sk.stepDirection', plainStep.direction, 1)
+  check('sk.stepNotFine', plainStep.fine, false)
+  check('sk.shiftFine', sliderKeyboardStep(123, { ...noModifiers, shift: true }, true).fine, true)
+  check('sk.commandBlocked', sliderKeyboardStep(124, { ...noModifiers, command: true }, true), null)
+  check('sk.controlBlocked', sliderKeyboardStep(124, { ...noModifiers, control: true }, true), null)
+  check('sk.optionBlocked', sliderKeyboardStep(124, { ...noModifiers, option: true }, true), null)
+  check('sk.disabledBlocked', sliderKeyboardStep(124, noModifiers, false), null)
+  check('sk.nonArrowBlocked', sliderKeyboardStep(0, noModifiers, true), null)
+  check('sk.acceptsFocus', sliderAcceptsFocus(true), true)
+  check('sk.disabledNoFocus', sliderAcceptsFocus(false), false)
+  check('sk.requestOnEdge', sliderShouldRequestFocus(true, false), true)
+  check('sk.noRepeatRequest', sliderShouldRequestFocus(true, true), false)
+  check('sk.otherWindowReleases', sliderMouseDownReleasesFocus(false, true), true)
+  check('sk.outsideReleases', sliderMouseDownReleasesFocus(true, false), true)
+  check('sk.insideKeeps', sliderMouseDownReleasesFocus(true, true), false)
+
+}
+
+await runEditorChromeMathBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
