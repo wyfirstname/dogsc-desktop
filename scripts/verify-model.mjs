@@ -5839,5 +5839,182 @@ async function runEditorChromeMathBatch() {
 
 await runEditorChromeMathBatch()
 
+async function runPreviewAndAudioBatch() {
+  // ========== 提示卡 / 预览采样 / 弹出菜单 / 纯音频导出（4 文件 / 335 行）
+  const {
+    TRANSIENT_NOTICE_METRICS, TRANSIENT_NOTICE_PROJECT_OPENED_PREFIX,
+    TRANSIENT_NOTICE_SAME_TRACK_MESSAGE, TRANSIENT_NOTICE_INSUFFICIENT_TAIL_MESSAGE,
+    TRANSIENT_NOTICE_SECONDS_PER_CHARACTER, TRANSIENT_NOTICE_MINIMUM_SECONDS,
+    TRANSIENT_NOTICE_MAXIMUM_SECONDS, transientNoticeContent, transientNoticeLifetime,
+    transientNoticeAnimatesProgress, transientNoticeProgressWidth,
+    PREVIEW_ANIMATION_FRAMES_PER_SECOND, PREVIEW_ANIMATION_FRAME_DURATION,
+    PREVIEW_ZOOM_ENTRY_MAXIMUM, PREVIEW_PREWARM_CAPACITY, previewAnimationSampleTime,
+    previewAnimationIntervals, previewPrewarmTimes,
+    POPOVER_ENTRY_KEYS, POPOVER_ENTRY_VIEW_SIZE, POPOVER_EXIT_KEY,
+    POPOVER_PASSES_SPACEBAR_TO_WORKSPACE, eventTargetsPresentedContent, popoverKeyboardEntryHandles,
+    AUDIO_EXPORT_PROGRESS_POLL_MILLISECONDS, AUDIO_EXPORT_PROGRESS_CEILING, AUDIO_EXPORT_PRESET,
+    AUDIO_EXPORT_FILE_TYPE, AUDIO_EXPORT_TIME_PITCH_ALGORITHM, AudioExportError,
+    audioExportFailureKind, audioExportHasTracks, audioExportReportedProgress,
+    audioExportTimeRange, audioExportVolume,
+  } = m
+
+  // -------------------------------------------- EditorTransientNotice.swift
+  check('tn.width', TRANSIENT_NOTICE_METRICS.width, 352)
+  check('tn.padding', TRANSIENT_NOTICE_METRICS.padding, 14)
+  check('tn.corner', TRANSIENT_NOTICE_METRICS.cornerRadius, 16)
+  check('tn.progressHeight', TRANSIENT_NOTICE_METRICS.progressHeight, 2)
+  check('tn.progressLeading', TRANSIENT_NOTICE_METRICS.progressLeading, 41)
+  check('tn.perCharacter', TRANSIENT_NOTICE_SECONDS_PER_CHARACTER, 0.08)
+  const sameTrack = transientNoticeContent(TRANSIENT_NOTICE_SAME_TRACK_MESSAGE)
+  check('tn.sameTrackTitle', sameTrack.title, '这里已有片段')
+  check('tn.sameTrackDetail', sameTrack.detail, '移到空白处，或贴近边缘再粘贴')
+  const tailShort = transientNoticeContent(TRANSIENT_NOTICE_INSUFFICIENT_TAIL_MESSAGE)
+  check('tn.tailTitle', tailShort.title, '剩余空间不够')
+  check('tn.tailDetail', tailShort.detail, '移到更靠前的位置，保留完整片段')
+  const opened = transientNoticeContent(TRANSIENT_NOTICE_PROJECT_OPENED_PREFIX + '摄像头素材已重新定位。')
+  check('tn.openedTitle', opened.title, '项目已打开，需要留意')
+  check('tn.openedDetail', opened.detail, '摄像头素材已重新定位。')
+  const fallback = transientNoticeContent('保存失败')
+  check('tn.fallbackTitle', fallback.title, '操作未完成')
+  check('tn.fallbackDetail', fallback.detail, '保存失败')
+  check('tn.lifetimeFloor', transientNoticeLifetime('短提示'), 5)
+  check('tn.lifetimeMid', transientNoticeLifetime('x'.repeat(100)), 8)
+  check('tn.lifetimeCeiling', transientNoticeLifetime('x'.repeat(400)), 10)
+  check('tn.lifetimeExact', transientNoticeLifetime('x'.repeat(75)), 6)
+  check('tn.animatesWhenAllowed', transientNoticeAnimatesProgress(false), true)
+  check('tn.noAnimationOnReduceMotion', transientNoticeAnimatesProgress(true), false)
+  check('tn.progressFull', transientNoticeProgressWidth(352, 1), 283)
+  check('tn.progressHalf', transientNoticeProgressWidth(352, 0.5), 141.5)
+  check('tn.progressClamped', transientNoticeProgressWidth(352, 2), 283)
+
+  // --------------------------------------- PreviewAnimationPreparation.swift
+  check('pa.fps', PREVIEW_ANIMATION_FRAMES_PER_SECOND, 60)
+  check('pa.frameDuration', PREVIEW_ANIMATION_FRAME_DURATION, 1 / 60)
+  check('pa.zoomEntryCap', PREVIEW_ZOOM_ENTRY_MAXIMUM, 0.6)
+  check('pa.prewarmCapacity', PREVIEW_PREWARM_CAPACITY, 4)
+  check('pa.sampleExact', previewAnimationSampleTime(1), 1)
+  check('pa.sampleRounds', previewAnimationSampleTime(0.02), 1 / 60, 1e-12)
+  check('pa.sampleNegative', previewAnimationSampleTime(-5), 0)
+  check('pa.sampleNaN', previewAnimationSampleTime(NaN), 0)
+  const previewEval = {
+    outputDuration: 20,
+    opening: { isEnabled: true, duration: 2 },
+    zoomAnimations: [{ startTime: 1, effectEndTime: 3 }],
+    screenMotionClips: [{ startTime: 5, effectEndTime: 7, leadInDuration: 0.3 }],
+    cameraMotionClips: [],
+    mosaicClips: [{ startTime: 9, endTime: 10, transitionInDuration: 0.4 }],
+    stickerClips: [{ startTime: 11, endTime: 12, enterDuration: 0.5 }],
+  }
+  const previewIntervals = previewAnimationIntervals(previewEval)
+  check('pa.intervalCount', previewIntervals.length, 5)
+  check('pa.openingFirst', previewIntervals[0].isOpening, true)
+  check('pa.openingEntry', previewIntervals[0].entryDuration, 2)
+  check('pa.zoomEntryCapped', previewIntervals[1].entryDuration, 0.6)
+  check('pa.screenEntry', previewIntervals[2].entryDuration, 0.3)
+  check('pa.mosaicEntry', previewIntervals[3].entryDuration, 0.4)
+  check('pa.stickerEntry', previewIntervals[4].entryDuration, 0.5)
+  check('pa.noOpeningWhenDisabled', previewAnimationIntervals({ ...previewEval, opening: { isEnabled: false, duration: 2 } }).length, 4)
+  const prewarmEarly = previewPrewarmTimes(0, previewEval)
+  check('pa.prewarmCount', prewarmEarly.length, 4)
+  check('pa.prewarmFirst', prewarmEarly[0], 1)
+  check('pa.prewarmSecond', prewarmEarly[1], 1.3)
+  check('pa.prewarmOpeningEightyTwo', prewarmEarly[2], 1.64)
+  check('pa.prewarmLast', prewarmEarly[3], 5.15)
+  const prewarmMid = previewPrewarmTimes(4, previewEval)
+  check('pa.prewarmMidCount', prewarmMid.length, 3)
+  check('pa.prewarmMidFirst', prewarmMid[0], 5.15)
+  check('pa.prewarmMidMosaic', prewarmMid[1], 9.2)
+  check('pa.prewarmMidSticker', prewarmMid[2], 11.25)
+  // 超过容量时只保留最早的 4 个
+  const crowded = previewPrewarmTimes(0, {
+    ...previewEval,
+    outputDuration: 40,
+    stickerClips: [
+      { startTime: 0.5, endTime: 1, enterDuration: 0.1 },
+      { startTime: 2.5, endTime: 3, enterDuration: 0.1 },
+      { startTime: 3.5, endTime: 4, enterDuration: 0.1 },
+      { startTime: 4.5, endTime: 5, enterDuration: 0.1 },
+      { startTime: 5.5, endTime: 6, enterDuration: 0.1 },
+    ],
+  })
+  check('pa.prewarmCapacity', crowded.length, 4)
+
+  // -------------------------------------------------- EditorPopover.swift
+  check('po.entryKeys', POPOVER_ENTRY_KEYS.join(','), 'return,downArrow')
+  check('po.entryViewSize', POPOVER_ENTRY_VIEW_SIZE, 1)
+  check('po.exitKey', POPOVER_EXIT_KEY, 'escape')
+  check('po.spacebarGoesToWorkspace', POPOVER_PASSES_SPACEBAR_TO_WORKSPACE, true)
+  check('po.returnHandled', popoverKeyboardEntryHandles({ key: 'return', modifiers: [] }, true), true)
+  check('po.downArrowHandled', popoverKeyboardEntryHandles({ key: 'downArrow', modifiers: [] }, true), true)
+  check('po.commandIgnored', popoverKeyboardEntryHandles({ key: 'downArrow', modifiers: ['command'] }, true), false)
+  check('po.shiftIgnored', popoverKeyboardEntryHandles({ key: 'return', modifiers: ['shift'] }, true), false)
+  check('po.disabledIgnored', popoverKeyboardEntryHandles({ key: 'return', modifiers: [] }, false), false)
+  check('po.spaceIgnored', popoverKeyboardEntryHandles({ key: 'space', modifiers: [] }, true), false)
+  check(
+    'po.targetsPresented',
+    eventTargetsPresentedContent({
+      hasEventWindow: true,
+      hasResponderView: true,
+      responderHasWindow: true,
+      responderWindowIsEventWindow: false,
+    }),
+    true
+  )
+  check(
+    'po.sameWindowNotPresented',
+    eventTargetsPresentedContent({
+      hasEventWindow: true,
+      hasResponderView: true,
+      responderHasWindow: true,
+      responderWindowIsEventWindow: true,
+    }),
+    false
+  )
+  check(
+    'po.noResponder',
+    eventTargetsPresentedContent({
+      hasEventWindow: true,
+      hasResponderView: false,
+      responderHasWindow: false,
+      responderWindowIsEventWindow: false,
+    }),
+    false
+  )
+
+  // ------------------------------------------- AudioOnlyExportPipeline.swift
+  check('ae.pollInterval', AUDIO_EXPORT_PROGRESS_POLL_MILLISECONDS, 120)
+  check('ae.ceiling', AUDIO_EXPORT_PROGRESS_CEILING, 0.99)
+  check('ae.preset', AUDIO_EXPORT_PRESET, 'AVAssetExportPresetAppleM4A')
+  check('ae.fileType', AUDIO_EXPORT_FILE_TYPE, 'm4a')
+  check('ae.timePitch', AUDIO_EXPORT_TIME_PITCH_ALGORITHM, 'spectral')
+  check('ae.noTracks', audioExportHasTracks({ hasSystemAudioTrack: false, hasMicrophoneAudioTrack: false }), false)
+  check('ae.systemOnly', audioExportHasTracks({ hasSystemAudioTrack: true, hasMicrophoneAudioTrack: false }), true)
+  check('ae.micOnly', audioExportHasTracks({ hasSystemAudioTrack: false, hasMicrophoneAudioTrack: true }), true)
+  check('ae.volumePassThrough', audioExportVolume(0.5, false), 0.5)
+  check('ae.volumeClampHigh', audioExportVolume(1.4, false), 1)
+  check('ae.volumeClampLow', audioExportVolume(-1, false), 0)
+  check('ae.volumeMuted', audioExportVolume(0.5, true), 0)
+  check('ae.volumeNaN', audioExportVolume(NaN, false), 0)
+  check('ae.defaultRange', audioExportTimeRange(null, 12.5).duration, 12.5)
+  check('ae.defaultRangeStart', audioExportTimeRange(null, 12.5).start, 0)
+  check('ae.explicitRange', audioExportTimeRange({ start: 2, duration: 3 }, 12.5).start, 2)
+  check('ae.progressClampHigh', audioExportReportedProgress(1.5), 0.99)
+  check('ae.progressClampLow', audioExportReportedProgress(-1), 0)
+  check('ae.progressNaN', audioExportReportedProgress(NaN), 0)
+  check('ae.progressPassThrough', audioExportReportedProgress(0.42), 0.42)
+  check('ae.cancelledKind', audioExportFailureKind(true), 'cancelled')
+  check('ae.failedKind', audioExportFailureKind(false), 'exportFailed')
+  check('ae.errorKind', new AudioExportError('noAudioToExport').kind, 'noAudioToExport')
+  check('ae.errorMessage', new AudioExportError('noAudioToExport').message, '项目里没有可导出的音频轨。')
+  check(
+    'ae.errorMessageDetail',
+    new AudioExportError('exportFailed', '磁盘已满').message,
+    '音频导出失败。（磁盘已满）'
+  )
+
+}
+
+await runPreviewAndAudioBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

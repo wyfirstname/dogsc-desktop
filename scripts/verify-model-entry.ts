@@ -851,3 +851,46 @@ export {
   sliderShouldRequestFocus,
   sliderStepDirection,
 } from '../src/renderer/src/core/EditorSliderKeyboardBridge'
+export {
+  TRANSIENT_NOTICE_INSUFFICIENT_TAIL_MESSAGE,
+  TRANSIENT_NOTICE_MAXIMUM_SECONDS,
+  TRANSIENT_NOTICE_METRICS,
+  TRANSIENT_NOTICE_MINIMUM_SECONDS,
+  TRANSIENT_NOTICE_PROJECT_OPENED_PREFIX,
+  TRANSIENT_NOTICE_SAME_TRACK_MESSAGE,
+  TRANSIENT_NOTICE_SECONDS_PER_CHARACTER,
+  transientNoticeAnimatesProgress,
+  transientNoticeContent,
+  transientNoticeLifetime,
+  transientNoticeProgressWidth,
+} from '../src/renderer/src/core/EditorTransientNotice'
+export {
+  PREVIEW_ANIMATION_FRAMES_PER_SECOND,
+  PREVIEW_ANIMATION_FRAME_DURATION,
+  PREVIEW_PREWARM_CAPACITY,
+  PREVIEW_ZOOM_ENTRY_MAXIMUM,
+  previewAnimationIntervals,
+  previewAnimationSampleTime,
+  previewPrewarmTimes,
+} from '../src/renderer/src/core/PreviewAnimationPreparation'
+export {
+  POPOVER_ENTRY_KEYS,
+  POPOVER_ENTRY_VIEW_SIZE,
+  POPOVER_EXIT_KEY,
+  POPOVER_PASSES_SPACEBAR_TO_WORKSPACE,
+  eventTargetsPresentedContent,
+  popoverKeyboardEntryHandles,
+} from '../src/renderer/src/core/EditorPopover'
+export {
+  AUDIO_EXPORT_FILE_TYPE,
+  AUDIO_EXPORT_PRESET,
+  AUDIO_EXPORT_PROGRESS_CEILING,
+  AUDIO_EXPORT_PROGRESS_POLL_MILLISECONDS,
+  AUDIO_EXPORT_TIME_PITCH_ALGORITHM,
+  AudioExportError,
+  audioExportFailureKind,
+  audioExportHasTracks,
+  audioExportReportedProgress,
+  audioExportTimeRange,
+  audioExportVolume,
+} from '../src/renderer/src/core/AudioOnlyExportPipeline'

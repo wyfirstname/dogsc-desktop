@@ -126,7 +126,11 @@
     "Sources/DogSCApp/EditorWorkspaceLayout.swift": "src/renderer/src/core/EditorWorkspaceLayout.ts",
     "Sources/DogSCApp/EditorPlaybackPausedFrames.swift": "src/renderer/src/core/EditorPlaybackPausedFrames.ts",
     "Sources/DogSCApp/EditorCropPresentation.swift": "src/renderer/src/core/EditorCropPresentation.ts",
-    "Sources/DogSCApp/EditorSliderKeyboardBridge.swift": "src/renderer/src/core/EditorSliderKeyboardBridge.ts"
+    "Sources/DogSCApp/EditorSliderKeyboardBridge.swift": "src/renderer/src/core/EditorSliderKeyboardBridge.ts",
+    "Sources/DogSCApp/EditorTransientNotice.swift": "src/renderer/src/core/EditorTransientNotice.ts",
+    "Sources/DogSCApp/PreviewAnimationPreparation.swift": "src/renderer/src/core/PreviewAnimationPreparation.ts",
+    "Sources/DogSCApp/EditorPopover.swift": "src/renderer/src/core/EditorPopover.ts",
+    "Sources/DogSCApp/AudioOnlyExportPipeline.swift": "src/renderer/src/core/AudioOnlyExportPipeline.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }
