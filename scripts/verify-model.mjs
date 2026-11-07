@@ -9162,5 +9162,616 @@ async function runHoverAndInputBatch() {
 
 await runHoverAndInputBatch()
 
+
+async function runCaptureWindowBatch() {
+  // ========== 6 文件 / 1038 行：录制支撑 / 帧规格归一 / 窗口几何 /
+  //            窗口层级与卡片 / 调色面板 / 场景预设弹窗
+  const {
+    // ---- CaptureRecordingSupport.swift
+    cameraRecorderErrorMessage, MOVIE_CAPTURE_ROLES, movieCaptureRoleDisplayName,
+    movieCaptureRoleInputDeviceRole, microphoneRecorderErrorMessage,
+    recorderSetupErrorRecoveryForMessage, isPermissionMessage, isSurfaceUpdateErrorMessage,
+    CaptureCancellationFlag, captureActivityRecordingRequestID,
+    captureActivityOwnsRecordingOutput, captureActivityIsRecording, captureFinishOutcome,
+    captureSampleHostTime, formatArguments,
+    // ---- CameraSampleWriterFrameNormalizer.swift
+    CAMERA_FRAME_SCALING_MODE, CAMERA_FRAME_REALTIME, cameraFrameOutputDimensions,
+    cameraFrameNeedsNormalization, cameraFrameContract, cameraFrameNormalizeAction,
+    CAMERA_FRAME_ERROR_TEXT, cameraFramePoolAllocationMessage, cameraFrameTransferMessage,
+    cameraFrameSessionCreationMessage, cameraFrameSessionConfigurationMessage,
+    cameraFrameShouldCreateSession, CameraSampleFrameNormalizer,
+    // ---- CaptureWindowGeometry.swift
+    CAPTURE_WINDOW_GEOMETRY_OPTIONS, CAPTURE_WINDOW_POLL_INTERVAL_MS,
+    CAPTURE_WINDOW_RECORDING_POLL_INTERVAL_MS, captureWindowHoverSelection,
+    captureWindowLockedWindow, resolveCaptureWindowGeometry, captureWindowGeometryEqual,
+    captureWindowLookupPublication, CaptureWindowGeometryRuntime,
+    // ---- CaptureWindowPresentationPolicy.swift
+    NS_WINDOW_LEVEL_FLOATING, NS_WINDOW_LEVEL_CAPTURE_OVERLAY,
+    NS_WINDOW_LEVEL_ACTIVE_RECORDER, captureWindowLevel, captureOverlayKeyScreenIndex,
+    captureLargestIntersectionIndex, CAPTURE_SELECTION_CARD_EDGE_INSET,
+    CAPTURE_SELECTION_CARD_ATTACHMENT_GAP, captureSelectionCardGlobalCenter,
+    captureSelectionCardLocalCenter, clampCenter, RECORDER_CAPTURE_SOURCE_ACCESSIBILITY_IDS,
+    recorderCaptureSourceAccessibilityID, CAMERA_PREVIEW_WINDOW_IDENTIFIER,
+    recorderAnchorFrame, rectIntersection,
+    // ---- EditorColorPalette.swift
+    COLOR_PALETTE_WIDTH, COLOR_PALETTE_PADDING, COLOR_PALETTE_PLANE_HEIGHT,
+    COLOR_PALETTE_THUMB_SIZE, COLOR_PALETTE_THUMB_RADIUS, COLOR_PALETTE_HUE_STRIP_INSET,
+    COLOR_PALETTE_HUE_STRIP_HEIGHT, COLOR_PALETTE_BRIGHTNESS_STEP,
+    COLOR_PALETTE_HUE_STEP, COLOR_PALETTE_HUE_RETAIN_THRESHOLD, COLOR_PALETTE_INVALID_HINT,
+    hsbToRgb, hsbFromRgb, colorPaletteRebase, colorPalettePlanePoint,
+    colorPalettePlaneDragValue, colorPaletteHueTravel, colorPaletteHueThumbOffset,
+    colorPaletteHueDragValue, colorPaletteHueGradientHues, colorPaletteHexIsValid,
+    colorPaletteHexPreview, colorPaletteSubmitText, colorPalettePlaneAccessibilityValue,
+    colorPaletteHueAccessibilityValue, colorPaletteHexAccessibilityLabel,
+    colorPaletteHexFromHsb,
+    // ---- EditorScenePresetSheet.swift
+    scenePresetSheetTitle, scenePresetSaveTitle, SCENE_PRESET_SHEET_SUBTITLE,
+    SCENE_PRESET_NAME_PLACEHOLDER, SCENE_PRESET_CONFLICT_HINT, SCENE_PRESET_FOOTNOTE,
+    SCENE_PRESET_SAVING_LABEL, SCENE_PRESET_APPLY_LABEL, SCENE_PRESET_SHEET_WIDTH,
+    SCENE_PRESET_SHEET_PADDING, SCENE_PRESET_PREVIEW_WIDTH, SCENE_PRESET_CONFIGURATION_ROWS,
+    scenePresetSaveEnabled, scenePresetPreviewSize, sceneCropSummary,
+    normalizedCropIsFull, scenePresetOutlineRect, scenePresetDimensionSummary,
+    SCENE_PRESET_PREVIEW_TEXTS,
+  } = m
+
+  // ---------------------------------------------------------------------------
+  // CaptureRecordingSupport.swift（168 行）
+  // ---------------------------------------------------------------------------
+  check('crs.cameraPermission',
+    cameraRecorderErrorMessage('permissionDenied', ['摄像头']), '没有摄像头采集权限。')
+  check('crs.cameraConfigure',
+    cameraRecorderErrorMessage('cannotConfigure', ['摄像头']), '无法配置摄像头录制。')
+  check('crs.cameraRecording',
+    cameraRecorderErrorMessage('recordingFailed', ['摄像头', '设备忙']), '摄像头录制失败：设备忙')
+  check('crs.movieRoles', MOVIE_CAPTURE_ROLES.join(','), 'camera,iosDevice')
+  check('crs.movieRoleCamera', movieCaptureRoleDisplayName('camera'), '摄像头')
+  check('crs.movieRoleIOS', movieCaptureRoleDisplayName('iosDevice'), 'iPhone/iPad 屏幕')
+  check('crs.movieRoleInputCamera', movieCaptureRoleInputDeviceRole('camera'), 'camera')
+  check('crs.movieRoleInputIOS', movieCaptureRoleInputDeviceRole('iosDevice'), 'iosDevice')
+  check('crs.micPermission',
+    microphoneRecorderErrorMessage('permissionDenied', []), '没有麦克风权限。')
+  check('crs.micRecording',
+    microphoneRecorderErrorMessage('recordingFailed', ['设备被占用']), '麦克风录制失败：设备被占用')
+  check('crs.formatArguments', formatArguments('%@录制失败：%@', ['摄像头', '超时']), '摄像头录制失败：超时')
+
+  check('crs.recoveryProjectFolder',
+    recorderSetupErrorRecoveryForMessage('保存目录不可用：/x'), 'projectFolder')
+  check('crs.recoveryCamera',
+    recorderSetupErrorRecoveryForMessage('没有摄像头采集权限。'), 'camera')
+  check('crs.recoveryMicrophone',
+    recorderSetupErrorRecoveryForMessage('没有麦克风权限。'), 'microphone')
+  check('crs.recoveryOther', recorderSetupErrorRecoveryForMessage('磁盘已满'), 'none')
+  check('crs.recoveryLocalizedCamera',
+    recorderSetupErrorRecoveryForMessage('Camera access denied', {
+      cameraPermissionMessage: 'Camera access denied',
+    }), 'camera')
+  check('crs.recoveryLocalizedMic',
+    recorderSetupErrorRecoveryForMessage('Microphone access denied', {
+      microphonePermissionMessage: 'Microphone access denied',
+    }), 'microphone')
+
+  check('crs.permissionContains',
+    isPermissionMessage('需要屏幕录制权限'), true)
+  check('crs.permissionCamera', isPermissionMessage('没有摄像头采集权限。'), true)
+  check('crs.permissionScreen',
+    isPermissionMessage('没有屏幕录制权限。请在系统设置中允许后重新启动。'), true)
+  check('crs.permissionUnrelated', isPermissionMessage('文件写入失败'), false)
+  check('crs.surfaceErrorPrefix', isSurfaceUpdateErrorMessage('无法更新录制画面：设备断开'), true)
+  check('crs.surfaceErrorPlain', isSurfaceUpdateErrorMessage('无法更新录制画面'), true)
+  check('crs.surfaceErrorOther', isSurfaceUpdateErrorMessage('导出失败'), false)
+
+  {
+    const flag = new CaptureCancellationFlag()
+    check('crs.flagInitial', flag.isCancelled, false)
+    flag.cancel()
+    check('crs.flagCancelled', flag.isCancelled, true)
+    flag.cancel()
+    check('crs.flagIdempotent', flag.isCancelled, true)
+  }
+
+  check('crs.idleNoRequest', captureActivityRecordingRequestID({ kind: 'idle' }), null)
+  check('crs.idleNoOutput', captureActivityOwnsRecordingOutput({ kind: 'idle' }), false)
+  check('crs.previewNoRequest',
+    captureActivityRecordingRequestID({ kind: 'livePreview', requestID: 'p1' }), null)
+  check('crs.previewNoOutput', captureActivityOwnsRecordingOutput({ kind: 'livePreview', requestID: 'p1' }), false)
+  check('crs.startingRequest',
+    captureActivityRecordingRequestID({ kind: 'starting', requestID: 'r1' }), 'r1')
+  check('crs.startingOwnsOutput', captureActivityOwnsRecordingOutput({ kind: 'starting', requestID: 'r1' }), true)
+  check('crs.startingNotRecording', captureActivityIsRecording({ kind: 'starting', requestID: 'r1' }), false)
+  check('crs.recordingIsRecording', captureActivityIsRecording({ kind: 'recording', requestID: 'r1' }), true)
+  check('crs.stoppingOwnsOutput', captureActivityOwnsRecordingOutput({ kind: 'stopping', requestID: 'r1' }), true)
+  check('crs.stoppingNotRecording', captureActivityIsRecording({ kind: 'stopping', requestID: 'r1' }), false)
+
+  {
+    const clean = captureFinishOutcome({ hasError: false, successfullyFinishedFlag: false })
+    check('crs.finishClean', clean.succeeded, true)
+    check('crs.finishCleanReason', clean.failureReason, '未知错误')
+    const benign = captureFinishOutcome({
+      hasError: true, successfullyFinishedFlag: true, errorDescription: 'benign',
+    })
+    check('crs.finishBenignSucceeded', benign.succeeded, true)
+    check('crs.finishBenignReason', benign.failureReason, 'benign')
+    const failed = captureFinishOutcome({ hasError: true, successfullyFinishedFlag: false, errorDescription: 'disk full' })
+    check('crs.finishFailed', failed.succeeded, false)
+    check('crs.finishFailedReason', failed.failureReason, 'disk full')
+  }
+
+  check('crs.hostTimeNotNumeric',
+    captureSampleHostTime({ presentationSeconds: 1, presentationIsNumeric: false, convertedSeconds: null }), null)
+  check('crs.hostTimeNoMaster',
+    captureSampleHostTime({ presentationSeconds: 12.5, presentationIsNumeric: true, convertedSeconds: null }), 12.5)
+  check('crs.hostTimeConverted',
+    captureSampleHostTime({ presentationSeconds: 1, presentationIsNumeric: true, convertedSeconds: 99.25 }), 99.25)
+  check('crs.hostTimeConvertedInvalid',
+    captureSampleHostTime({ presentationSeconds: 1, presentationIsNumeric: true, convertedSeconds: Number.NaN, convertedIsNumeric: false }), null)
+  check('crs.hostTimeConvertedNaN',
+    captureSampleHostTime({ presentationSeconds: 1, presentationIsNumeric: true, convertedSeconds: Number.NaN }), null)
+
+  // ---------------------------------------------------------------------------
+  // CameraSampleWriterFrameNormalizer.swift（168 行）
+  // ---------------------------------------------------------------------------
+  check('csw.scalingMode', CAMERA_FRAME_SCALING_MODE, 'trim')
+  check('csw.realtime', CAMERA_FRAME_REALTIME, true)
+  {
+    const configured = cameraFrameOutputDimensions({
+      configuredWidth: 1280, configuredHeight: 720, sourceWidth: 1920, sourceHeight: 1080,
+    })
+    check('csw.dimsConfigured', `${configured.width},${configured.height}`, '1280,720')
+    const missing = cameraFrameOutputDimensions({
+      configuredWidth: null, configuredHeight: 720, sourceWidth: 1920, sourceHeight: 1080,
+    })
+    check('csw.dimsSourceFallback', `${missing.width},${missing.height}`, '1920,1080')
+    const zero = cameraFrameOutputDimensions({
+      configuredWidth: 0, configuredHeight: 0, sourceWidth: 0, sourceHeight: 0,
+    })
+    check('csw.dimsFloorOne', `${zero.width},${zero.height}`, '1,1')
+    const negative = cameraFrameOutputDimensions({
+      configuredWidth: -4, configuredHeight: -2, sourceWidth: 640, sourceHeight: 480,
+    })
+    check('csw.dimsNegativeIgnored', `${negative.width},${negative.height}`, '640,480')
+  }
+  check('csw.needsWidth',
+    cameraFrameNeedsNormalization({ contractWidth: 1280, contractHeight: 720, contractPixelFormat: 1, sourceWidth: 1920, sourceHeight: 720, sourcePixelFormat: 1 }), true)
+  check('csw.needsHeight',
+    cameraFrameNeedsNormalization({ contractWidth: 1280, contractHeight: 720, contractPixelFormat: 1, sourceWidth: 1280, sourceHeight: 480, sourcePixelFormat: 1 }), true)
+  check('csw.needsPixelFormat',
+    cameraFrameNeedsNormalization({ contractWidth: 1280, contractHeight: 720, contractPixelFormat: 1, sourceWidth: 1280, sourceHeight: 720, sourcePixelFormat: 2 }), true)
+  check('csw.needsNothing',
+    cameraFrameNeedsNormalization({ contractWidth: 1280, contractHeight: 720, contractPixelFormat: 1, sourceWidth: 1280, sourceHeight: 720, sourcePixelFormat: 1 }), false)
+
+  check('csw.contractRequiresSession',
+    cameraFrameContract({ width: 1280, height: 720, pixelFormat: 1, sourceWidth: 1920, sourceHeight: 1080, sourcePixelFormat: 1 }).requiresTransferSession, true)
+  check('csw.contractNoSession',
+    cameraFrameContract({ width: 1280, height: 720, pixelFormat: 1, sourceWidth: 1280, sourceHeight: 720, sourcePixelFormat: 1 }).requiresTransferSession, false)
+
+  check('csw.actionNoContract',
+    cameraFrameNormalizeAction({ hasContract: false, contractWidth: 0, contractHeight: 0, contractPixelFormat: 0, sourceWidth: 10, sourceHeight: 10, sourcePixelFormat: 1 }).kind, 'passThrough')
+  check('csw.actionSame',
+    cameraFrameNormalizeAction({ hasContract: true, contractWidth: 1280, contractHeight: 720, contractPixelFormat: 1, sourceWidth: 1280, sourceHeight: 720, sourcePixelFormat: 1 }).kind, 'passThrough')
+  {
+    const action = cameraFrameNormalizeAction({ hasContract: true, contractWidth: 1280, contractHeight: 720, contractPixelFormat: 1, sourceWidth: 1920, sourceHeight: 1080, sourcePixelFormat: 1 })
+    check('csw.actionTransfer', action.kind, 'transfer')
+    check('csw.actionTransferSize', `${action.width},${action.height}`, '1280,720')
+  }
+
+  check('csw.poolMessage', cameraFramePoolAllocationMessage(-6680), '无法申请摄像头等比裁切缓冲（-6680）')
+  check('csw.transferMessage', cameraFrameTransferMessage(1920, 1080, -1), '无法把摄像头画面等比转换为 1920x1080（-1）')
+  check('csw.creationMessage', cameraFrameSessionCreationMessage(-1), '无法创建摄像头画面规格转换器（-1）')
+  check('csw.configMessage', cameraFrameSessionConfigurationMessage(0, -1), '无法配置摄像头等比裁切（0/-1）')
+  check('csw.poolNotReadyText', CAMERA_FRAME_ERROR_TEXT.poolNotReady, '摄像头画面规格转换缓冲池尚未准备')
+  check('csw.shouldCreate', cameraFrameShouldCreateSession(false), true)
+  check('csw.shouldReuse', cameraFrameShouldCreateSession(true), false)
+
+  {
+    const normalizer = new CameraSampleFrameNormalizer()
+    check('csw.normalizerInitialWidth', normalizer.width, null)
+    check('csw.normalizerInitialPrepared', normalizer.isPrepared, false)
+    const plan = normalizer.prepareContract({
+      width: 1280, height: 720, pixelFormat: 875704422,
+      sourceWidth: 1920, sourceHeight: 1080, sourcePixelFormat: 875704422,
+    })
+    check('csw.normalizerContract', `${normalizer.width},${normalizer.height}`, '1280,720')
+    check('csw.normalizerPixelFormat', normalizer.pixelFormat, 875704422)
+    check('csw.normalizerPrepared', normalizer.isPrepared, plan.requiresTransferSession)
+    check('csw.normalizerSamePassThrough',
+      normalizer.normalizeAction({ sourceWidth: 1280, sourceHeight: 720, sourcePixelFormat: 875704422 }).kind, 'passThrough')
+    check('csw.normalizerDifferentTransfer',
+      normalizer.normalizeAction({ sourceWidth: 640, sourceHeight: 480, sourcePixelFormat: 875704422 }).kind, 'transfer')
+    normalizer.reset()
+    check('csw.normalizerReset', normalizer.width, null)
+    check('csw.normalizerResetAction',
+      normalizer.normalizeAction({ sourceWidth: 100, sourceHeight: 100, sourcePixelFormat: 1 }).kind, 'passThrough')
+  }
+
+  // ---------------------------------------------------------------------------
+  // CaptureWindowGeometry.swift（169 行）
+  // ---------------------------------------------------------------------------
+  check('cwg.options', CAPTURE_WINDOW_GEOMETRY_OPTIONS.join(','), 'optionIncludingWindow,excludeDesktopElements')
+  check('cwg.pollInterval', CAPTURE_WINDOW_POLL_INTERVAL_MS, 75)
+  check('cwg.recordingPollInterval', CAPTURE_WINDOW_RECORDING_POLL_INTERVAL_MS, 250)
+
+  check('cwg.hoverKeepsInside',
+    captureWindowHoverSelection({ previous: 'A', pointerIsInsideRecorderWindow: true, frontmostCandidate: 'B' }), 'A')
+  check('cwg.hoverFollowsOutside',
+    captureWindowHoverSelection({ previous: 'A', pointerIsInsideRecorderWindow: false, frontmostCandidate: 'B' }), 'B')
+  check('cwg.hoverClearsOutside',
+    captureWindowHoverSelection({ previous: 'A', pointerIsInsideRecorderWindow: false, frontmostCandidate: null }), null)
+
+  {
+    const catalog = [{ id: 3 }, { id: 5 }]
+    check('cwg.lockedNoGeometry',
+      captureWindowLockedWindow({ id: 3, catalog, geometry: null }), null)
+    check('cwg.lockedWrongGeometry',
+      captureWindowLockedWindow({ id: 3, catalog, geometry: { windowID: 5, frame: { x: 0, y: 0, width: 1, height: 1 } } }), null)
+    check('cwg.lockedFound',
+      captureWindowLockedWindow({ id: 5, catalog, geometry: { windowID: 5, frame: { x: 0, y: 0, width: 1, height: 1 } } }).id, 5)
+    check('cwg.lockedNotInCatalog',
+      captureWindowLockedWindow({ id: 9, catalog, geometry: { windowID: 9, frame: { x: 0, y: 0, width: 1, height: 1 } } }), null)
+  }
+
+  check('cwg.resolveNotFound',
+    resolveCaptureWindowGeometry({ windowID: 1, descriptions: [], mainDisplayHeight: 1000 }), null)
+  check('cwg.resolveWrongLayer',
+    resolveCaptureWindowGeometry({
+      windowID: 1,
+      descriptions: [{ number: 1, layer: 1, bounds: { x: 0, y: 0, width: 10, height: 10 } }],
+      mainDisplayHeight: 1000,
+    }), null)
+  check('cwg.resolveNoBounds',
+    resolveCaptureWindowGeometry({
+      windowID: 1, descriptions: [{ number: 1, layer: 0, bounds: null }], mainDisplayHeight: 1000,
+    }), null)
+  check('cwg.resolveZeroSize',
+    resolveCaptureWindowGeometry({
+      windowID: 1,
+      descriptions: [{ number: 1, layer: 0, bounds: { x: 0, y: 0, width: 0, height: 10 } }],
+      mainDisplayHeight: 1000,
+    }), null)
+  {
+    const geometry = resolveCaptureWindowGeometry({
+      windowID: 7,
+      descriptions: [{ number: 7, layer: 0, bounds: { x: 10, y: 200, width: 300, height: 400 } }],
+      mainDisplayHeight: 1000,
+    })
+    check('cwg.resolveWindowID', geometry.windowID, 7)
+    check('cwg.resolveFlippedY', geometry.frame.y, 400)
+    check('cwg.resolveKeepsX', geometry.frame.x, 10)
+    check('cwg.resolveKeepsSize', `${geometry.frame.width},${geometry.frame.height}`, '300,400')
+  }
+
+  check('cwg.equalBothNull', captureWindowGeometryEqual(null, null), true)
+  check('cwg.equalOneNull', captureWindowGeometryEqual(null, { windowID: 1, frame: { x: 0, y: 0, width: 1, height: 1 } }), false)
+  check('cwg.equalSame',
+    captureWindowGeometryEqual(
+      { windowID: 1, frame: { x: 1, y: 2, width: 3, height: 4 } },
+      { windowID: 1, frame: { x: 1, y: 2, width: 3, height: 4 } }), true)
+  check('cwg.equalDifferent',
+    captureWindowGeometryEqual(
+      { windowID: 1, frame: { x: 1, y: 2, width: 3, height: 4 } },
+      { windowID: 1, frame: { x: 1, y: 2, width: 3, height: 5 } }), false)
+
+  check('cwg.publishNull', captureWindowLookupPublication(null, 3), null)
+  check('cwg.publishOtherWindow',
+    captureWindowLookupPublication({ windowID: 4, frame: { x: 0, y: 0, width: 1, height: 1 } }, 3), null)
+  {
+    const replacement = { windowID: 3, frame: { x: 5, y: 6, width: 7, height: 8 } }
+    check('cwg.publishAccepted', captureWindowLookupPublication(replacement, 3) === replacement, true)
+  }
+
+  {
+    const runtime = new CaptureWindowGeometryRuntime()
+    const seen = []
+    runtime.setOnChange((geometry) => seen.push(geometry === null ? 'null' : geometry.windowID))
+    const started = runtime.start({ windowID: 4, initialFrame: { x: 0, y: 10, width: 100, height: 50 } })
+    check('cwg.runtimePolls', started.polls, true)
+    check('cwg.runtimeGeneration', started.generation, 1)
+    check('cwg.runtimeNotified', seen.join(','), '4')
+    check('cwg.runtimeFrame', runtime.frameFor(4).y, 10)
+    check('cwg.runtimeFrameOtherWindow', runtime.frameFor(5), null)
+    check('cwg.runtimePublishDedupes', runtime.applyPoll({ windowID: 4, frame: { x: 0, y: 10, width: 100, height: 50 } }, 4), undefined)
+    check('cwg.runtimeNotifiedOnce', seen.join(','), '4')
+    runtime.applyPoll({ windowID: 4, frame: { x: 0, y: 20, width: 100, height: 50 } }, 4)
+    check('cwg.runtimeNotifiedTwice', seen.join(','), '4,4')
+    runtime.applyPoll({ windowID: 9, frame: { x: 0, y: 0, width: 1, height: 1 } }, 4)
+    check('cwg.runtimeOtherWindowClears', runtime.geometry, null)
+    check('cwg.runtimeAcceptPoll', runtime.shouldAcceptPoll({ generation: 1, windowID: 4 }), true)
+    check('cwg.runtimeRejectGeneration', runtime.shouldAcceptPoll({ generation: 0, windowID: 4 }), false)
+    check('cwg.runtimeRejectWindow', runtime.shouldAcceptPoll({ generation: 1, windowID: 5 }), false)
+    runtime.stop()
+    check('cwg.runtimeStoppedWindow', runtime.windowID, null)
+    check('cwg.runtimeStoppedFrame', runtime.frameFor(4), null)
+    check('cwg.runtimeStopGeneration', runtime.activeGeneration, 2)
+  }
+  {
+    const manual = new CaptureWindowGeometryRuntime({ pollIntervalMs: null })
+    check('cwg.runtimeNoPoll',
+      manual.start({ windowID: 1, initialFrame: { x: 0, y: 0, width: 1, height: 1 } }).polls, false)
+    const overridden = new CaptureWindowGeometryRuntime({ pollIntervalMs: null })
+    check('cwg.runtimeOverridePoll',
+      overridden.start({ windowID: 1, initialFrame: { x: 0, y: 0, width: 1, height: 1 }, pollIntervalMs: 250 }).polls, true)
+  }
+
+  // ---------------------------------------------------------------------------
+  // CaptureWindowPresentationPolicy.swift（178 行）
+  // ---------------------------------------------------------------------------
+  check('cwp.floating', NS_WINDOW_LEVEL_FLOATING, 3)
+  check('cwp.overlay', NS_WINDOW_LEVEL_CAPTURE_OVERLAY, 4)
+  check('cwp.activeRecorder', NS_WINDOW_LEVEL_ACTIVE_RECORDER, 5)
+  check('cwp.levelMemo', captureWindowLevel({ kind: 'recorderMemo' }), 6)
+  check('cwp.levelSelectionOverlay', captureWindowLevel({ kind: 'selectionOverlay' }), 4)
+  check('cwp.levelGuide', captureWindowLevel({ kind: 'recordingGuideOverlay' }), 4)
+  check('cwp.levelSetupActive',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'setup', selectionActive: true }), 5)
+  check('cwp.levelSetupIdle',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'setup', selectionActive: false }), 3)
+  check('cwp.levelPreparing',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'preparing', selectionActive: false }), 5)
+  check('cwp.levelRecording',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'recording', selectionActive: false }), 5)
+  check('cwp.levelFinishing',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'finishing', selectionActive: true }), 3)
+  check('cwp.levelEditor',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'editor', selectionActive: false }), 3)
+  check('cwp.levelComplete',
+    captureWindowLevel({ kind: 'recorderPanel', phase: 'recordingComplete', selectionActive: false }), 3)
+
+  {
+    const frames = [
+      { x: 0, y: 0, width: 1000, height: 800 },
+      { x: 1000, y: 0, width: 1000, height: 800 },
+    ]
+    check('cwp.keyScreenFirst', captureOverlayKeyScreenIndex({ x: 10, y: 10 }, frames), 0)
+    check('cwp.keyScreenSecond', captureOverlayKeyScreenIndex({ x: 1500, y: 100 }, frames), 1)
+    check('cwp.keyScreenFallback', captureOverlayKeyScreenIndex({ x: -50, y: -50 }, frames), 0)
+    check('cwp.keyScreenEmpty', captureOverlayKeyScreenIndex({ x: 0, y: 0 }, []), null)
+
+    check('cwp.largestFirst',
+      captureLargestIntersectionIndex({ x: 0, y: 0, width: 100, height: 100 }, frames), 0)
+    check('cwp.largestSecond',
+      captureLargestIntersectionIndex({ x: 900, y: 0, width: 300, height: 100 }, frames), 1)
+    check('cwp.largestNone',
+      captureLargestIntersectionIndex({ x: 5000, y: 0, width: 100, height: 100 }, frames), null)
+    // 面积并列时保留先出现的（复刻 `if area > bestArea` 的严格大于）
+    check('cwp.largestTieKeepsFirst',
+      captureLargestIntersectionIndex({ x: 500, y: 0, width: 1000, height: 100 },
+        [frames[1], frames[0]]), 0)
+  }
+
+  check('cwp.edgeInset', CAPTURE_SELECTION_CARD_EDGE_INSET, 16)
+  check('cwp.attachmentGap', CAPTURE_SELECTION_CARD_ATTACHMENT_GAP, 12)
+  {
+    const visibleFrame = { x: 0, y: 0, width: 1000, height: 800 }
+    const cardSize = { width: 200, height: 100 }
+    const centered = captureSelectionCardGlobalCenter({ anchorFrame: null, cardSize, visibleFrame })
+    check('cwp.cardNoAnchor', `${centered.x},${centered.y}`, '500,400')
+    const below = captureSelectionCardGlobalCenter({
+      anchorFrame: { x: 400, y: 300, width: 200, height: 50 }, cardSize, visibleFrame,
+    })
+    check('cwp.cardBelowX', below.x, 500)
+    check('cwp.cardBelowY', below.y, 238)
+    const above = captureSelectionCardGlobalCenter({
+      anchorFrame: { x: 400, y: 20, width: 200, height: 50 }, cardSize, visibleFrame,
+    })
+    check('cwp.cardAboveY', above.y, 132)
+    const tooTall = captureSelectionCardGlobalCenter({
+      anchorFrame: { x: 400, y: 5, width: 200, height: 50 },
+      cardSize: { width: 200, height: 800 },
+      visibleFrame,
+    })
+    check('cwp.cardInvertedClampY', tooTall.y, 400)
+    const farRight = captureSelectionCardGlobalCenter({
+      anchorFrame: { x: 980, y: 300, width: 20, height: 50 }, cardSize, visibleFrame,
+    })
+    check('cwp.cardClampedRight', farRight.x, 884)
+
+    const local = captureSelectionCardLocalCenter({
+      anchorFrame: { x: 400, y: 300, width: 200, height: 50 },
+      cardSize,
+      screenFrame: { x: 0, y: 0, width: 1000, height: 800 },
+      visibleFrame,
+    })
+    check('cwp.cardLocalX', local.x, 500)
+    check('cwp.cardLocalY', local.y, 562)
+    const offsetLocal = captureSelectionCardLocalCenter({
+      anchorFrame: { x: 400, y: 300, width: 200, height: 50 },
+      cardSize,
+      screenFrame: { x: 100, y: 50, width: 1000, height: 800 },
+      visibleFrame: { x: 100, y: 50, width: 1000, height: 800 },
+    })
+    check('cwp.cardLocalOffsetX', offsetLocal.x, 400)
+  }
+
+  check('cwp.clampInside', clampCenter(5, 0, 10), 5)
+  check('cwp.clampLow', clampCenter(-5, 0, 10), 0)
+  check('cwp.clampHigh', clampCenter(50, 0, 10), 10)
+  check('cwp.clampInverted', clampCenter(0, 10, 4), 7)
+
+  check('cwp.a11yDisplay', recorderCaptureSourceAccessibilityID('display'), 'recorder.capture-source.display')
+  check('cwp.a11yWindow', recorderCaptureSourceAccessibilityID('window'), 'recorder.capture-source.window')
+  check('cwp.a11yArea', recorderCaptureSourceAccessibilityID('area'), 'recorder.capture-source.area')
+  check('cwp.a11yDevice', recorderCaptureSourceAccessibilityID('device'), 'recorder.capture-source.device')
+  check('cwp.a11yKeys', Object.keys(RECORDER_CAPTURE_SOURCE_ACCESSIBILITY_IDS).join(','),
+    'display,window,area,device')
+  check('cwp.cameraPreviewID', CAMERA_PREVIEW_WINDOW_IDENTIFIER, 'cn.laogou.dogsc.camera-preview')
+  check('cwp.anchorNull', recorderAnchorFrame(null), null)
+  check('cwp.anchorZero',
+    recorderAnchorFrame({ x: 0, y: 0, width: 0, height: 40 }), null)
+  check('cwp.anchorOk',
+    recorderAnchorFrame({ x: 1, y: 2, width: 3, height: 4 }).width, 3)
+
+  check('cwp.rectIntersectNull',
+    rectIntersection({ x: 0, y: 0, width: 10, height: 10 }, { x: 20, y: 20, width: 10, height: 10 }), null)
+  {
+    const overlap = rectIntersection({ x: 0, y: 0, width: 10, height: 10 }, { x: 5, y: 5, width: 10, height: 10 })
+    check('cwp.rectIntersect', `${overlap.x},${overlap.y},${overlap.width},${overlap.height}`, '5,5,5,5')
+  }
+
+  // ---------------------------------------------------------------------------
+  // EditorColorPalette.swift（178 行）
+  // ---------------------------------------------------------------------------
+  check('cp.width', COLOR_PALETTE_WIDTH, 272)
+  check('cp.padding', COLOR_PALETTE_PADDING, 16)
+  check('cp.planeHeight', COLOR_PALETTE_PLANE_HEIGHT, 164)
+  check('cp.thumb', `${COLOR_PALETTE_THUMB_SIZE},${COLOR_PALETTE_THUMB_RADIUS}`, '16,8')
+  check('cp.hueStrip', `${COLOR_PALETTE_HUE_STRIP_INSET},${COLOR_PALETTE_HUE_STRIP_HEIGHT}`, '8,20')
+  check('cp.brightnessStep', COLOR_PALETTE_BRIGHTNESS_STEP, 0.05)
+  check('cp.hueStep', COLOR_PALETTE_HUE_STEP, 0.025)
+  check('cp.hueThreshold', COLOR_PALETTE_HUE_RETAIN_THRESHOLD, 0.0001)
+  check('cp.invalidHint', COLOR_PALETTE_INVALID_HINT, '请输入六位色值，例如 #EDA647')
+
+  {
+    const red = hsbFromRgb({ red: 1, green: 0, blue: 0 })
+    check('cp.hsbRedHue', red.hue, 0)
+    check('cp.hsbRedSaturation', red.saturation, 1)
+    check('cp.hsbRedBrightness', red.brightness, 1)
+    const green = hsbFromRgb({ red: 0, green: 1, blue: 0 })
+    check('cp.hsbGreenHue', green.hue, 1 / 3)
+    const blue = hsbFromRgb({ red: 0, green: 0, blue: 1 })
+    check('cp.hsbBlueHue', blue.hue, 2 / 3)
+    const gray = hsbFromRgb({ red: 0.5, green: 0.5, blue: 0.5 })
+    check('cp.hsbGraySaturation', gray.saturation, 0)
+    check('cp.hsbGrayHue', gray.hue, 0)
+    const black = hsbFromRgb({ red: 0, green: 0, blue: 0 })
+    check('cp.hsbBlackBrightness', black.brightness, 0)
+    check('cp.hsbBlackSaturation', black.saturation, 0)
+  }
+  {
+    const back = hsbToRgb({ hue: 0, saturation: 1, brightness: 1 })
+    check('cp.hsvToRgbRed', `${back.red},${back.green},${back.blue}`, '1,0,0')
+    const white = hsbToRgb({ hue: 0.3, saturation: 0, brightness: 1 })
+    check('cp.hsvToRgbWhite', `${white.red},${white.green},${white.blue}`, '1,1,1')
+    const wrapped = hsbToRgb({ hue: 1.25, saturation: 1, brightness: 1 })
+    check('cp.hsvWrapHue', wrapped.green, 1)
+  }
+
+  check('cp.rebaseKeepsHue',
+    colorPaletteRebase({ hue: 0.7, saturation: 0.5, brightness: 0.5 }, { hue: 0, saturation: 0, brightness: 0 }).hue, 0.7)
+  check('cp.rebaseTakesHue',
+    colorPaletteRebase({ hue: 0.7, saturation: 0.5, brightness: 0.5 }, { hue: 0.2, saturation: 0.4, brightness: 0.9 }).hue, 0.2)
+  check('cp.rebaseThresholdBoundary',
+    colorPaletteRebase({ hue: 0.7, saturation: 0, brightness: 0 }, { hue: 0.2, saturation: 0.0001, brightness: 0.5 }).hue, 0.7)
+
+  {
+    const point = colorPalettePlanePoint({ saturation: 0.5, brightness: 1, width: 200, height: 100 })
+    check('cp.planePointX', point.x, 100)
+    check('cp.planePointYClamped', point.y, 8)
+    const maxPoint = colorPalettePlanePoint({ saturation: 1, brightness: 0, width: 200, height: 100 })
+    check('cp.planePointXMax', maxPoint.x, 192)
+    check('cp.planePointYMax', maxPoint.y, 92)
+    const drag = colorPalettePlaneDragValue({ x: 100, y: 50, width: 200, height: 100 })
+    check('cp.planeDragSaturation', drag.saturation, 0.5)
+    check('cp.planeDragBrightness', drag.brightness, 0.5)
+    const zero = colorPalettePlaneDragValue({ x: 100, y: 50, width: 0, height: 0 })
+    check('cp.planeDragZeroWidth', zero.saturation, 1)
+    check('cp.planeDragZeroHeight', zero.brightness, 0)
+  }
+
+  check('cp.hueTravel', colorPaletteHueTravel(200), 184)
+  check('cp.hueTravelFloor', colorPaletteHueTravel(4), 1)
+  check('cp.hueThumbHalf', colorPaletteHueThumbOffset(0.5, 200), 92)
+  check('cp.hueDragStart', colorPaletteHueDragValue(8, 200), 0)
+  check('cp.hueDragEnd', colorPaletteHueDragValue(192, 200), 1)
+  check('cp.hueDragMiddle', colorPaletteHueDragValue(100, 200), 0.5)
+  check('cp.hueDragNegative', colorPaletteHueDragValue(0, 200), 0)
+  check('cp.hueGradient', colorPaletteHueGradientHues().join(','), '0,0.16666666666666666,0.3333333333333333,0.5,0.6666666666666666,0.8333333333333334,1')
+
+  check('cp.hexValidHash', colorPaletteHexIsValid('#EDA647'), true)
+  check('cp.hexValidPlain', colorPaletteHexIsValid('EDA647'), true)
+  check('cp.hexInvalidShort', colorPaletteHexIsValid('#EDA64'), false)
+  check('cp.hexInvalidEmpty', colorPaletteHexIsValid(''), false)
+  check('cp.hexPreviewNull', colorPaletteHexPreview('#EDA64'), null)
+  check('cp.hexPreviewValue', colorPaletteHexPreview('#EDA647').hexString, '#EDA647')
+  check('cp.submitText', colorPaletteSubmitText(colorPaletteHexPreview('#123456')), '#123456')
+
+  check('cp.planeA11y',
+    colorPalettePlaneAccessibilityValue({ hue: 0.1, saturation: 0.5, brightness: 0.8 }),
+    '饱和度 50%，亮度 80%')
+  check('cp.hueA11y', colorPaletteHueAccessibilityValue(0.5), '180 度')
+  check('cp.hexA11y', colorPaletteHexAccessibilityLabel('文字颜色'), '文字颜色十六进制值')
+  check('cp.hexFromHsb', colorPaletteHexFromHsb({ hue: 0, saturation: 1, brightness: 1 }).hexString, '#FF0000')
+  check('cp.hexFromHsbBlack', colorPaletteHexFromHsb({ hue: 0.5, saturation: 0, brightness: 0 }).hexString, '#000000')
+
+  // ---------------------------------------------------------------------------
+  // EditorScenePresetSheet.swift（179 行）
+  // ---------------------------------------------------------------------------
+  check('sps.titleSave', scenePresetSheetTitle(false), '保存场景预设')
+  check('sps.titleUpdate', scenePresetSheetTitle(true), '更新场景预设')
+  check('sps.saveTitleSave', scenePresetSaveTitle(false), '保存预设')
+  check('sps.saveTitleUpdate', scenePresetSaveTitle(true), '更新预设')
+  check('sps.subtitle', SCENE_PRESET_SHEET_SUBTITLE, '把这套配置留给下一次录制。')
+  check('sps.placeholder', SCENE_PRESET_NAME_PLACEHOLDER, '例如：全屏上下裁切')
+  check('sps.conflictHint',
+    SCENE_PRESET_CONFLICT_HINT, '这个名称已存在，请换一个名称；更新已有预设请使用“更新此预设”。')
+  check('sps.savingLabel', SCENE_PRESET_SAVING_LABEL, '正在保存背景与配置…')
+  check('sps.applyLabel', SCENE_PRESET_APPLY_LABEL, '应用预设')
+  check('sps.footnotePrefix', SCENE_PRESET_FOOTNOTE.startsWith('保留当前项目的素材'), true)
+  check('sps.sheetWidth', SCENE_PRESET_SHEET_WIDTH, 480)
+  check('sps.sheetPadding', SCENE_PRESET_SHEET_PADDING, 24)
+  check('sps.previewWidth', SCENE_PRESET_PREVIEW_WIDTH, 500)
+  check('sps.rowCount', SCENE_PRESET_CONFIGURATION_ROWS.length, 4)
+  check('sps.rowTitles',
+    SCENE_PRESET_CONFIGURATION_ROWS.map((r) => r.title).join(','),
+    '画布与屏幕,摄像头,光标与运镜,声音与背景')
+  check('sps.rowIcons',
+    SCENE_PRESET_CONFIGURATION_ROWS.map((r) => r.icon).join(','),
+    'rectangle.inset.filled,person.crop.rectangle,cursorarrow.motionlines,speaker.wave.2')
+  check('sps.previewTexts',
+    `${SCENE_PRESET_PREVIEW_TEXTS.title}|${SCENE_PRESET_PREVIEW_TEXTS.thumbnailUnavailable}`,
+    '检查裁切适配|预览暂不可用，可取消后稍后重试。')
+
+  check('sps.saveEnabled',
+    scenePresetSaveEnabled({ isSaving: false, nameConflict: false, name: '场景 A' }), true)
+  check('sps.saveBlockedSaving',
+    scenePresetSaveEnabled({ isSaving: true, nameConflict: false, name: '场景 A' }), false)
+  check('sps.saveBlockedConflict',
+    scenePresetSaveEnabled({ isSaving: false, nameConflict: true, name: '场景 A' }), false)
+  check('sps.saveBlockedBlank',
+    scenePresetSaveEnabled({ isSaving: false, nameConflict: false, name: '   ' }), false)
+  check('sps.saveBlockedEmpty',
+    scenePresetSaveEnabled({ isSaving: false, nameConflict: false, name: '' }), false)
+  check('sps.saveAllowsInnerSpace',
+    scenePresetSaveEnabled({ isSaving: false, nameConflict: false, name: ' 场景 A ' }), true)
+
+  {
+    const landscape = scenePresetPreviewSize({ width: 1920, height: 1080 })
+    check('sps.previewLandscapeWidth', landscape.width, 452)
+    check('sps.previewLandscapeHeight', landscape.height, 254.25)
+    const portrait = scenePresetPreviewSize({ width: 1080, height: 1920 })
+    check('sps.previewPortraitWidth', portrait.width, 146.25)
+    check('sps.previewPortraitHeight', portrait.height, 260)
+    const square = scenePresetPreviewSize({ width: 500, height: 500 })
+    check('sps.previewSquare', `${square.width},${square.height}`, '260,260')
+    const zero = scenePresetPreviewSize({ width: 0, height: 0 })
+    check('sps.previewZero', `${zero.width},${zero.height}`, '260,260')
+  }
+
+  check('sps.cropSummaryFull',
+    sceneCropSummary({ x: 0, y: 0, width: 1, height: 1 }, { width: 1000, height: 500 }), '完整画面')
+  check('sps.cropSummaryInsets',
+    sceneCropSummary({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 }, { width: 1000, height: 500 }),
+    '上 50 · 下 50 · 左 100 · 右 100 px')
+  check('sps.cropSummaryRoundsDown',
+    sceneCropSummary({ x: 0.1, y: 0.1049, width: 0.8, height: 0.8 }, { width: 1000, height: 500 }).startsWith('上 52'),
+    true)
+  check('sps.cropSummaryRoundsUp',
+    sceneCropSummary({ x: 0.1, y: 0.105, width: 0.8, height: 0.8 }, { width: 1000, height: 500 }).startsWith('上 53'),
+    true)
+  check('sps.fullCropDetected', normalizedCropIsFull({ x: 0, y: 0, width: 1, height: 1 }), true)
+  check('sps.notFullCrop', normalizedCropIsFull({ x: 0, y: 0, width: 0.9, height: 1 }), false)
+  {
+    const rect = scenePresetOutlineRect({ x: 0.1, y: 0.2, width: 0.5, height: 0.4 }, { width: 1000, height: 500 })
+    check('sps.outlineRect', `${rect.x},${rect.y},${rect.width},${rect.height}`, '100,100,500,200')
+  }
+  check('sps.dimensionSummaryNull',
+    scenePresetDimensionSummary({ sourceDimensions: null, currentSize: { width: 100, height: 50 } }), null)
+  check('sps.dimensionSummary',
+    scenePresetDimensionSummary({
+      sourceDimensions: { width: 2880, height: 1620 },
+      currentSize: { width: 1920, height: 1080 },
+    }), '2880 × 1620 → 1920 × 1080')
+}
+
+await runCaptureWindowBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)

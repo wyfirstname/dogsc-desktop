@@ -1488,3 +1488,123 @@ export {
   CAPTURE_DEVICE_CONNECTION_NOTIFICATIONS,
   CaptureDeviceLifecycle,
 } from '../src/renderer/src/core/CaptureDeviceLifecycle'
+
+// ---- 批次 26（录制支撑 / 帧规格归一 / 窗口几何 / 窗口层级与卡片 /
+//      调色面板 / 场景预设弹窗）----
+export {
+  cameraRecorderErrorMessage,
+  MOVIE_CAPTURE_ROLES,
+  movieCaptureRoleDisplayName,
+  movieCaptureRoleInputDeviceRole,
+  microphoneRecorderErrorMessage,
+  recorderSetupErrorRecoveryForMessage,
+  isPermissionMessage,
+  isSurfaceUpdateErrorMessage,
+  CaptureCancellationFlag,
+  captureActivityRecordingRequestID,
+  captureActivityOwnsRecordingOutput,
+  captureActivityIsRecording,
+  captureFinishOutcome,
+  captureSampleHostTime,
+  formatArguments,
+} from '../src/renderer/src/core/CaptureRecordingSupport'
+
+export {
+  CAMERA_FRAME_SCALING_MODE,
+  CAMERA_FRAME_REALTIME,
+  cameraFrameOutputDimensions,
+  cameraFrameNeedsNormalization,
+  cameraFrameContract,
+  cameraFrameNormalizeAction,
+  CAMERA_FRAME_ERROR_TEXT,
+  cameraFramePoolAllocationMessage,
+  cameraFrameTransferMessage,
+  cameraFrameSessionCreationMessage,
+  cameraFrameSessionConfigurationMessage,
+  cameraFrameShouldCreateSession,
+  CameraSampleFrameNormalizer,
+} from '../src/renderer/src/core/CameraSampleWriterFrameNormalizer'
+
+export {
+  CAPTURE_WINDOW_GEOMETRY_OPTIONS,
+  CAPTURE_WINDOW_POLL_INTERVAL_MS,
+  CAPTURE_WINDOW_RECORDING_POLL_INTERVAL_MS,
+  captureWindowHoverSelection,
+  captureWindowLockedWindow,
+  resolveCaptureWindowGeometry,
+  captureWindowGeometryEqual,
+  captureWindowLookupPublication,
+  CaptureWindowGeometryRuntime,
+} from '../src/renderer/src/core/CaptureWindowGeometry'
+
+export {
+  NS_WINDOW_LEVEL_FLOATING,
+  NS_WINDOW_LEVEL_CAPTURE_OVERLAY,
+  NS_WINDOW_LEVEL_ACTIVE_RECORDER,
+  captureWindowLevel,
+  captureOverlayKeyScreenIndex,
+  captureLargestIntersectionIndex,
+  CAPTURE_SELECTION_CARD_EDGE_INSET,
+  CAPTURE_SELECTION_CARD_ATTACHMENT_GAP,
+  captureSelectionCardGlobalCenter,
+  captureSelectionCardLocalCenter,
+  clampCenter,
+  RECORDER_CAPTURE_SOURCE_ACCESSIBILITY_IDS,
+  recorderCaptureSourceAccessibilityID,
+  CAMERA_PREVIEW_WINDOW_IDENTIFIER,
+  recorderAnchorFrame,
+  // rectIntersection 已在 EditorTextInputHitTesting 导出（批次 14），此处不重复，
+  // 否则 esbuild 报 Multiple exports with the same name。
+} from '../src/renderer/src/core/CaptureWindowPresentationPolicy'
+
+export {
+  COLOR_PALETTE_WIDTH,
+  COLOR_PALETTE_PADDING,
+  COLOR_PALETTE_PLANE_HEIGHT,
+  COLOR_PALETTE_THUMB_SIZE,
+  COLOR_PALETTE_THUMB_RADIUS,
+  COLOR_PALETTE_HUE_STRIP_INSET,
+  COLOR_PALETTE_HUE_STRIP_HEIGHT,
+  COLOR_PALETTE_BRIGHTNESS_STEP,
+  COLOR_PALETTE_HUE_STEP,
+  COLOR_PALETTE_HUE_RETAIN_THRESHOLD,
+  COLOR_PALETTE_INVALID_HINT,
+  hsbToRgb,
+  hsbFromRgb,
+  colorPaletteRebase,
+  colorPalettePlanePoint,
+  colorPalettePlaneDragValue,
+  colorPaletteHueTravel,
+  colorPaletteHueThumbOffset,
+  colorPaletteHueDragValue,
+  colorPaletteHueGradientHues,
+  colorPaletteHexIsValid,
+  colorPaletteHexPreview,
+  colorPaletteSubmitText,
+  colorPalettePlaneAccessibilityValue,
+  colorPaletteHueAccessibilityValue,
+  colorPaletteHexAccessibilityLabel,
+  colorPaletteHexFromHsb,
+} from '../src/renderer/src/core/EditorColorPalette'
+
+export {
+  scenePresetSheetTitle,
+  scenePresetSaveTitle,
+  SCENE_PRESET_SHEET_SUBTITLE,
+  SCENE_PRESET_NAME_PLACEHOLDER,
+  SCENE_PRESET_CONFLICT_HINT,
+  SCENE_PRESET_FOOTNOTE,
+  SCENE_PRESET_SAVING_LABEL,
+  SCENE_PRESET_APPLY_LABEL,
+  SCENE_PRESET_SHEET_WIDTH,
+  SCENE_PRESET_SHEET_PADDING,
+  SCENE_PRESET_PREVIEW_WIDTH,
+  SCENE_PRESET_CONFIGURATION_ROWS,
+  scenePresetSaveEnabled,
+  scenePresetPreviewSize,
+  sceneCropSummary,
+  normalizedCropIsFull,
+  scenePresetOutlineRect,
+  scenePresetDimensionSummary,
+  SCENE_PRESET_PREVIEW_TEXTS,
+} from '../src/renderer/src/core/EditorScenePresetSheet'

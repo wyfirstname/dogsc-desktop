@@ -615,3 +615,20 @@ Electron 侧由 React 持有视图状态，本批只搬「取值与公式」。
 - `core/ProjectMediaExchange.ts`（164 行）：文件名只把 `/` 与 `:` 换成 `-` 再 trim（用户的项目名里可以有中文、空格、括号），空则「未命名录制」；去重目录名从 `-2` 开始（第二份才叫「第二份」）；扩展名回退认「麦克风/microphone」两个基名，`.hidden` 与 `b.` 都回退；素材校验三条（有轨 / 有限 / > 0.01s）缺一不可。SRC-003：外部摄像头文件是**独立**辅助源，不需要音轨也不需要与屏幕同长 —— 短一点就按自己的时长结束。
 - `core/CaptureDeviceLifecycle.ts`（165 行）：代次 `&+ 1` 后回绕到 0 时改 1（0 是「从未开始」的哨兵，被当代次会让所有未开始的域都判为有效）。刷新爆发是累计时刻 `0/250/500/1k/2k/3k/5k`，每次调度都取消上一轮**并**换代次（只 cancel 不换代次，取消落在检查点之后时那一轮还会再刷一次）。通知必须校验会话 id —— `stop()` 时通知可能已经排在队列里。
 - verify-model 断言 3151 → 3526（+375）：悬浮预览（tick 空/夹取/六个字段、允许悬浮四态、目标夹取、调度四态、结束计划六种组合、发布四重门、在飞计数、状态机十三步）；配色（rgb 往返、白化、alpha 两档、五条轨的 hex 与三段映射、页签全主轨、选择映射九态、wash 两档）；波形缓存（版本/上限/目录拼接、样本五判、包络四态、九段身份字段与两段区间可区分、位模式四例、溢出淘汰三态与最旧先删、条目资格三态）；旋钮（四常量、跟踪选项、命中三态、收尾三态、指针五态、按下两件事、滚轮九态与反向翻转、轮次代次、收尾计划两态）；本地化（语言解析七态、快照、缓存只解一次、store 切换不发布/发布、`%@` 替换三例、窗口标题三例）；动作菜单（九个常量、宽度七例含图标列与夹取、计高四例、行高/图标/对勾、前景三档、点位五态、偏移缩放各三态、Return 三态、无障碍两例）；源文件交换（九个常量、消毒六例、目录去重三例、扩展名七例、校验五例、两条错误文案、三条消息、导出计划四例）；设备生命周期（四域、代次三例、延迟表、通知三态、继续三态、类生命周期十四步）。
+
+## 三十二、录制支撑 / 摄像头帧规范化 / 窗口几何与层级 / 调色面板 / 场景预设（6 文件 / 1,040 行）
+
+这一批全是「录制侧的外围件」加上两个编辑器面板。它们的共同点是：真正难的部分不在
+UI，而在**崩溃之后能不能把话说清楚**（错误文案分级、取消与失败的区分），以及
+**多屏坐标怎么换算**（macOS 原点在左下、Windows 在左上，y 只要翻一次就不该再翻第二次）。
+TS 侧 1,623 行。
+
+- `core/CaptureRecordingSupport.ts`（289 行）：`recorderSetupErrorRecoveryForMessage` 是双形态的 —— 中文前缀（"权限"/"摄像头"…）走一套固定建议，其它语言按当前语言的规范文案匹配；这是上游为了兼容「系统抛来的本地化错误串」和「自己拼的串」两条来源而做的妥协。`isPermissionMessage` 用 `includes('权限')` 是**有意宽松**：宁可多认一次权限问题，也不要在真权限失败时给「请检查设备连接」的误导。`captureFinishOutcome` 的 `succeeded = !hasError || successfullyFinishedFlag` 保留了一个不对称：有错误但成功标志已置位算成功（停止时先报 finished 再报 error 的竞态），反之不成立。`captureActivityRecordingRequestID` 刻意**不**认 `livePreview` 的请求 id —— 悬浮预览不是录制请求，拿它去配会误停录制。
+- `core/CameraSampleWriterFrameNormalizer.ts`（263 行）：`cameraFrameOutputDimensions` 源尺寸为 0 时兜底 1（否则下游除零）；`cameraFrameNeedsNormalization` 把**像素格式不同**也算作需要规范化 —— 尺寸一致但 BGRA vs 420f 仍必须过 `VTPixelTransferSession`。类里五条错误文案按「建 session 失败 / 建 buffer 失败 / 建池失败 / 转换失败 / 回调失败」分级，前三条是配置问题（重试无用），后两条是运行时问题。
+- `core/CaptureWindowGeometry.ts`（261 行）：`resolveCaptureWindowGeometry` 的 y 翻转只有一处 `mainDisplayHeight − (bounds.y + bounds.height)`，并且只用**主屏**高度而不是目标屏 —— 这是 `CGWindowListCopyWindowInfo` 给的是「全局左上原点」坐标，而 AppKit 窗口给的是「主屏左下原点」坐标，两个参考系只能靠主屏高度桥接。`captureWindowLookupPublication` 查到窗口不属于自己就返回 null（不发布），避免把别的进程的同名窗口当成自己的。`CaptureWindowGeometryRuntime` 带代次，轮询回包晚于 resize 时丢弃。
+- `core/CaptureWindowPresentationPolicy.ts`（272 行）：层级四档 `floating = 3`（`NSFloatingWindowLevel` 的真实数值）→ overlay `+1` → activeRecorder `+2` → memo `+3`，Windows 侧用 `setAlwaysOnTop(true, level)` 的档位表达相对关系。`captureSelectionCardGlobalCenter` 优先放下方、放不下再翻上方 —— 上游注释说明「锚在录制条整体而非单个来源按钮」是因为 Display/Device 两个按钮在条的最左侧，锚单个按钮会让卡片明显左飘。`clampCenter` 在上下界颠倒时给中点而不是硬夹（否则卡片会飞到屏幕外）。几何相交**复用** `EditorTextInputHitTesting.rectIntersection`：本批原写了一份同名实现，esbuild 直接报 `Multiple exports with the same name`，顺手改成单一实现 —— 两份几何一旦漂移就会出现「命中测试说相交、卡片定位说不相交」。
+- `core/EditorColorPalette.ts`（300 行）：`hsbFromRgb` / `hsbToRgb` 是自算的 HSV ⇄ RGB。这里踩到一个真实 bug：把 RGB 分量的归一化写成 `value % 1`，于是 `1 % 1 === 0`，纯红 `(1,0,0)` 直接变全黑。修法是拆成两个函数 —— 色相用 `wrapUnit`（环绕，`1.25 → 0.25`），分量用 `clampUnit`（钳制，保留 1）。`colorPaletteRebase` 只有饱和度 > 0.0001 才采用新色相，注释那句「黑白灰没有有意义的色相，保留用户色相，否则提高亮度/饱和度会突然跳红」是这条规则的全部理由。饱和亮度面的拖拽分母用 `max(size, 1)`，无障碍值输出「饱和度 50%，亮度 80%」。
+- `core/EditorScenePresetSheet.ts`（238 行）：`scenePresetSaveEnabled` 三条同时成立才可保存（有名字 / 有变化 / 不是在预设模式下）—— 「有变化」用与基线做深比较，避免用同名预设覆盖自己。`scenePresetPreviewSize` 是双 `min` 公式（先按宽比、再按高比），所以预览永远不裁切。`sceneCropSummary` 输出「上 50 · 下 50 · 左 100 · 右 100 px」，四边全 0 时输出「完整画面」。
+- verify-model 断言 3526 → 3785（+259）：录制支撑（三态文案、角色显示名、双形态恢复建议、权限判定四例、取消标志、活动 id 五例、完成结果四态、采样时基）；帧规范化（尺寸兜底、三态判定、动作五态、五条文案、类生命周期）；窗口几何（y 翻转两例、主屏高度、发布三态、代次轮询）；层级策略（四档数值、角色映射七态、关键屏三态、最大相交三态、卡片定位四例含翻转、夹取三态）；调色面板（rgb 往返四色、环绕、十六进制大写、rebase 三态、面拖拽、无障碍串）；场景预设（保存三条件、预览尺寸两例、裁切摘要四例含取整）。
+
+至此 `Sources/DogSCApp/**` 已转写 175 个文件（映射表 175 / 285）。
