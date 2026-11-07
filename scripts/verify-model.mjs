@@ -3970,5 +3970,209 @@ async function runExportStatusBatch() {
 
 await runExportStatusBatch()
 
+async function runZoomEnvelopeBatch() {
+  const {
+    ENVELOPE_HEIGHT, ENVELOPE_HOVER_RADIUS, ENVELOPE_DRAG_RADIUS, ENVELOPE_MAX_SCALE,
+    ENVELOPE_MINIMUM_PEAK, ENVELOPE_MINIMUM_SPAN_LABEL_WIDTH, ENVELOPE_NODES,
+    ENVELOPE_PLOT_INSETS, ENVELOPE_RULE_LEVELS, envelopeAxisSpans,
+    envelopeCurveCacheKeyEquals, envelopeCurveDuration, envelopeCurvePoints,
+    envelopeCurveSteps, envelopeEffectiveEnter, envelopeMagnificationAt,
+    envelopeMagnificationAtY, envelopeMoveResult, envelopeNearestNode,
+    envelopeNodePoint, envelopePlayheadPoint, envelopePlotRect, envelopeRuleLines,
+    envelopeTimeAtX, envelopeTotal, envelopeVisibleNodes, envelopeX, envelopeY,
+  } = m
+
+  // ================================================ EditorZoomEnvelope（Swift 345 行）
+  check('ze.height', ENVELOPE_HEIGHT, 156)
+  check('ze.insetTop', ENVELOPE_PLOT_INSETS.top, 16)
+  check('ze.insetLeading', ENVELOPE_PLOT_INSETS.leading, 12)
+  check('ze.insetBottom', ENVELOPE_PLOT_INSETS.bottom, 26)
+  check('ze.maxScale', ENVELOPE_MAX_SCALE, 6)
+  check('ze.minimumPeak', ENVELOPE_MINIMUM_PEAK, 1.05)
+  check('ze.hoverRadius', ENVELOPE_HOVER_RADIUS, 22)
+  check('ze.dragRadius', ENVELOPE_DRAG_RADIUS, 26)
+  check('ze.ruleCount', ENVELOPE_RULE_LEVELS.length, 5)
+  check('ze.ruleLast', ENVELOPE_RULE_LEVELS[4], 6)
+  check('ze.minSpan', ENVELOPE_MINIMUM_SPAN_LABEL_WIDTH, 30)
+
+  const plot = envelopePlotRect({ width: 300, height: 156 })
+  check('ze.plotX', plot.x, 12)
+  check('ze.plotY', plot.y, 16)
+  check('ze.plotWidth', plot.width, 276)
+  check('ze.plotHeight', plot.height, 114)
+  const tinyPlot = envelopePlotRect({ width: 4, height: 4 })
+  check('ze.plotMinWidth', tinyPlot.width, 1)
+  check('ze.plotMinHeight', tinyPlot.height, 1)
+
+  const makeEnvelopeClip = (overrides = {}) => ({
+    id: 'clip-1',
+    startTime: 0,
+    endTime: 2,
+    scale: 2,
+    focus: { x: 0.5, y: 0.5 },
+    origin: 'manual',
+    easing: '弹簧',
+    customCurve: { x1: 0.3, y1: 0.8, x2: 0.3, y2: 1 },
+    enterDuration: 0.5,
+    exitDuration: 0.6,
+    enterProgressOffset: 0,
+    exitProgressOffset: 0,
+    ...overrides
+  })
+  const envelopeClip = makeEnvelopeClip()
+  check('ze.curveDuration', envelopeCurveDuration(envelopeClip), 2.6)
+  check('ze.totalDefault', envelopeTotal(2.6, null), 2.6)
+  check('ze.totalFrozen', envelopeTotal(2.6, 5), 5)
+  check('ze.totalFloor', envelopeTotal(0, null), 0.001)
+  check('ze.effectiveEnterOwn', envelopeEffectiveEnter(envelopeClip, false, 0.7), 0.5)
+  // 进入为 0 且左侧有相邻片段 → 用工程默认过渡时长
+  check('ze.effectiveEnterHandoff', envelopeEffectiveEnter(makeEnvelopeClip({ enterDuration: 0 }), true, 0.7), 0.7)
+  // 但不能超过片段自身时长
+  check(
+    'ze.effectiveEnterClampedByDuration',
+    envelopeEffectiveEnter(makeEnvelopeClip({ enterDuration: 0, endTime: 0.4 }), true, 0.7),
+    0.4
+  )
+  check('ze.effectiveEnterZeroNoNeighbour', envelopeEffectiveEnter(makeEnvelopeClip({ enterDuration: 0 }), false, 0.7), 0)
+  check('ze.visibleNodesAll', envelopeVisibleNodes(envelopeClip).length, 3)
+  check('ze.visibleNodesMinimal', envelopeVisibleNodes(makeEnvelopeClip({ exitDuration: 0 })).length, 2)
+
+  // 坐标映射
+  check('ze.xStart', envelopeX(0, 2, plot), 12)
+  check('ze.xMid', envelopeX(1, 2, plot), 150)
+  check('ze.xEnd', envelopeX(3, 2, plot), 288)
+  check('ze.xNegativeClamped', envelopeX(-1, 2, plot), 12)
+  check('ze.yOne', envelopeY(1, plot), 130)
+  check('ze.yMax', envelopeY(6, plot), 16)
+  const lnRatio = Math.log(2) / Math.log(6)
+  check('ze.yTwo', envelopeY(2, plot), 130 - lnRatio * 114, 1e-9)
+  check('ze.timeAtX', envelopeTimeAtX(150, 2, plot), 1)
+  check('ze.magAtBottom', envelopeMagnificationAtY(130, plot), 1, 1e-9)
+  check('ze.magAtTop', envelopeMagnificationAtY(16, plot), 6, 1e-9)
+  check('ze.magRoundTrip', envelopeMagnificationAtY(envelopeY(3, plot), plot), 3, 1e-9)
+  // 0.9 下限：低于 1× 也允许画到轴下
+  check('ze.yBelowOneClamped', envelopeY(0.5, plot), 130 - (Math.log(0.9) / Math.log(6)) * 114, 1e-9)
+
+  // 节点位置：退出终点恒为 1×
+  const constantSampler = () => 2
+  const exitPoint = envelopeNodePoint('exitEnd', envelopeClip, 0.5, 2.6, plot, 2.6, constantSampler)
+  check('ze.exitNodeX', exitPoint.x, 288)
+  check('ze.exitNodeY', exitPoint.y, 130)
+  const enterPoint = envelopeNodePoint('enterEnd', envelopeClip, 0.5, 2.6, plot, 2.6, constantSampler)
+  check('ze.enterNodeX', enterPoint.x, 12 + (0.5 / 2.6) * 276, 1e-9)
+  check('ze.enterNodeY', enterPoint.y, 130 - lnRatio * 114, 1e-9)
+  const holdPoint = envelopeNodePoint('holdEnd', envelopeClip, 0.5, 2.6, plot, 2.6, constantSampler)
+  check('ze.holdNodeX', holdPoint.x, 12 + (2 / 2.6) * 276, 1e-9)
+
+  // 命中测试
+  const candidates = [
+    { node: 'enterEnd', point: enterPoint },
+    { node: 'holdEnd', point: holdPoint },
+    { node: 'exitEnd', point: exitPoint }
+  ]
+  check('ze.nearestExact', envelopeNearestNode(enterPoint, candidates, 22), 'enterEnd')
+  check(
+    'ze.nearestWithin',
+    envelopeNearestNode({ x: enterPoint.x + 10, y: enterPoint.y }, candidates, 22),
+    'enterEnd'
+  )
+  check(
+    'ze.nearestOutside',
+    envelopeNearestNode({ x: enterPoint.x + 40, y: enterPoint.y - 40 }, candidates, 22),
+    null
+  )
+  // 两个都在半径内时取更近的
+  const closeCandidates = [
+    { node: 'enterEnd', point: { x: 100, y: 100 } },
+    { node: 'holdEnd', point: { x: 105, y: 100 } }
+  ]
+  check('ze.nearestPicksClosest', envelopeNearestNode({ x: 104, y: 100 }, closeCandidates, 22), 'holdEnd')
+
+  // 拖拽夹取
+  const enterDrag = envelopeMoveResult('enterEnd', { x: envelopeX(1, 2.6, plot), y: envelopeY(3, plot) }, envelopeClip, 2.6, plot)
+  check('ze.dragEnterValue', enterDrag.enter, 1)
+  check('ze.dragEnterScale', enterDrag.scale, 3, 1e-9)
+  const enterTooLong = envelopeMoveResult(
+    'enterEnd',
+    { x: envelopeX(2.5, 2.6, plot), y: envelopeY(2, plot) },
+    envelopeClip,
+    2.6,
+    plot
+  )
+  check('ze.dragEnterClampedByDuration', enterTooLong.enter, 2) // min(duration, 3)
+  const holdDrag = envelopeMoveResult('holdEnd', { x: 100, y: envelopeY(4, plot) }, envelopeClip, 2.6, plot)
+  check('ze.dragHoldScale', holdDrag.scale, 4, 1e-9)
+  check('ze.dragHoldNoEnter', holdDrag.enter, undefined)
+  const exitDrag = envelopeMoveResult(
+    'exitEnd',
+    { x: envelopeX(2.5, 2.6, plot), y: envelopeY(1, plot) },
+    envelopeClip,
+    2.6,
+    plot
+  )
+  check('ze.dragExitValue', exitDrag.exit, 0.5)
+  const exitTooLong = envelopeMoveResult(
+    'exitEnd',
+    { x: envelopeX(2.6, 2.6, plot), y: envelopeY(1, plot) },
+    makeEnvelopeClip({ endTime: 0.2, exitDuration: 0 }),
+    2.6,
+    plot
+  )
+  check('ze.dragExitClampedThree', exitTooLong.exit, 2.4)
+  // 峰值上下限
+  const highPeak = envelopeMoveResult('holdEnd', { x: 100, y: 0 }, envelopeClip, 2.6, plot)
+  check('ze.dragPeakMax', highPeak.scale, 6)
+  const lowPeak = envelopeMoveResult('holdEnd', { x: 100, y: 400 }, envelopeClip, 2.6, plot)
+  check('ze.dragPeakMin', lowPeak.scale, 1.05)
+
+  // 曲线采样
+  check('ze.stepsWide', envelopeCurveSteps(276), 92)
+  check('ze.stepsNarrow', envelopeCurveSteps(30), 24)
+  const curvePoints = envelopeCurvePoints(envelopeClip, 2.6, 8, plot, 2.6, constantSampler)
+  check('ze.curvePointCount', curvePoints.length, 9)
+  check('ze.curveFlatY', curvePoints[0].y, 130 - lnRatio * 114, 1e-9)
+  check('ze.curveStartX', curvePoints[0].x, 12)
+  check('ze.curveEndX', curvePoints[8].x, 288)
+
+  // 播放头
+  const playheadInside = envelopePlayheadPoint(1, envelopeClip, 2.6, plot, 2.6, constantSampler)
+  check('ze.playheadX', playheadInside.x, 12 + (1 / 2.6) * 276, 1e-9)
+  check('ze.playheadBefore', envelopePlayheadPoint(-0.5, envelopeClip, 2.6, plot, 2.6, constantSampler), null)
+  check('ze.playheadAfter', envelopePlayheadPoint(3, envelopeClip, 2.6, plot, 2.6, constantSampler), null)
+  check('ze.playheadAtStart', envelopePlayheadPoint(0, envelopeClip, 2.6, plot, 2.6, constantSampler).x, 12)
+
+  // 参考线
+  const rules = envelopeRuleLines(plot)
+  check('ze.rulesCount', rules.length, 5)
+  check('ze.rulesOne', rules[0], 130)
+  check('ze.rulesSix', rules[4], 16)
+
+  // 阶段标签：跨度 > 30pt 才显示
+  const spans = envelopeAxisSpans(envelopeClip, 0.5, 2.6, plot)
+  check('ze.spanEnterVisible', spans[0].visible, true)
+  check('ze.spanHoldMidpoint', spans[1].midpoint, (12 + (0.5 / 2.6) * 276 + 12 + (2 / 2.6) * 276) / 2, 1e-9)
+  check('ze.spanLabels', spans.map((s) => s.label).join(','), '进入,保持,退出')
+  const narrowSpans = envelopeAxisSpans(envelopeClip, 0.5, 2.6, envelopePlotRect({ width: 100, height: 156 }))
+  check('ze.spanEnterHidden', narrowSpans[0].visible, false)
+
+  // 缓存键
+  const keyA = {
+    trackID: 't1',
+    animationID: 'a1',
+    motionKey: 'm1',
+    steps: 92,
+    plot,
+    total: 2.6
+  }
+  check('ze.cacheSame', envelopeCurveCacheKeyEquals(keyA, { ...keyA }), true)
+  check('ze.cacheStepsDiffer', envelopeCurveCacheKeyEquals(keyA, { ...keyA, steps: 24 }), false)
+  check('ze.cachePlotDiffer', envelopeCurveCacheKeyEquals(keyA, { ...keyA, plot: { ...plot, width: 200 } }), false)
+  check('ze.cacheNull', envelopeCurveCacheKeyEquals(null, null), true)
+  check('ze.cacheNullVsValue', envelopeCurveCacheKeyEquals(null, keyA), false)
+
+}
+
+await runZoomEnvelopeBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
