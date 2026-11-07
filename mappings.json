@@ -130,7 +130,19 @@
     "Sources/DogSCApp/EditorTransientNotice.swift": "src/renderer/src/core/EditorTransientNotice.ts",
     "Sources/DogSCApp/PreviewAnimationPreparation.swift": "src/renderer/src/core/PreviewAnimationPreparation.ts",
     "Sources/DogSCApp/EditorPopover.swift": "src/renderer/src/core/EditorPopover.ts",
-    "Sources/DogSCApp/AudioOnlyExportPipeline.swift": "src/renderer/src/core/AudioOnlyExportPipeline.ts"
+    "Sources/DogSCApp/AudioOnlyExportPipeline.swift": "src/renderer/src/core/AudioOnlyExportPipeline.ts",
+    "Sources/DogSCApp/EscapeDismissibleWindow.swift": "src/renderer/src/core/EscapeDismissibleWindow.ts",
+    "Sources/DogSCApp/EditorZoomPhaseBar.swift": "src/renderer/src/core/EditorZoomPhaseBar.ts",
+    "Sources/DogSCApp/PermissionTourFlow.swift": "src/renderer/src/core/PermissionTourFlow.ts",
+    "Sources/DogSCApp/AppUpdateController.swift": "src/renderer/src/core/AppUpdateController.ts",
+    "Sources/DogSCApp/EditorWallpaperAccordion.swift": "src/renderer/src/core/EditorWallpaperAccordion.ts",
+    "Sources/DogSCApp/EditorPlaybackScrubbing.swift": "src/renderer/src/core/EditorPlaybackScrubbing.ts",
+    "Sources/DogSCApp/EditorWindowChromeInteraction.swift": "src/renderer/src/core/EditorWindowChromeInteraction.ts",
+    "Sources/DogSCApp/CoreImageFrameColorProfile.swift": "src/renderer/src/core/CoreImageFrameColorProfile.ts",
+    "Sources/DogSCApp/EditorViewCropAndPreset.swift": "src/renderer/src/core/EditorViewCropAndPreset.ts",
+    "Sources/DogSCApp/EditorInspectorScopeControls.swift": "src/renderer/src/core/EditorInspectorScopeControls.ts",
+    "Sources/DogSCApp/EditorInspectorTabBar.swift": "src/renderer/src/core/EditorInspectorTabBar.ts",
+    "Sources/DogSCApp/WindowAppearanceTransition.swift": "src/renderer/src/core/WindowAppearanceTransition.ts"
   },
   "filePolicy": "一个 Swift 源文件对应一个（或一组明确合并的）TS 文件；上游 diff 中的每个改动文件都能在此表定位转写目标。MediaAsset.ts / CompositionGeometry.ts / BackgroundRender.ts（部分条目）/ BackgroundLayer.tsx / CursorOverlay.tsx 是本地实现：渲染语义来自对应 Swift 文件，但 UI 载体为 CSS/React，与上游 SwiftUI 实现一一注释对照。"
 }

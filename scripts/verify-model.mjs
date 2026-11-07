@@ -6016,5 +6016,669 @@ async function runPreviewAndAudioBatch() {
 
 await runPreviewAndAudioBatch()
 
+async function runInspectorAndChromeBatch() {
+  // ========== 12 文件 / 990 行：转义关窗 / 缩放相位条 / 权限引导 / 更新器 /
+  //            壁纸手风琴 / 拖动刷帧 / 标题栏交互 / 色彩配置 / 裁切命令 /
+  //            检查器派生 / 页签栏 / 窗口淡化
+  const {
+    escapeDismissalAction,
+    ZOOM_PHASE_BAR_HEIGHT, ZOOM_PHASE_SEAM_HEIGHT, ZOOM_PHASE_LABEL_MINIMUM_WIDTH,
+    ZOOM_PHASE_EDGE_OPACITY, ZOOM_PHASE_SEAM_OPACITY, ZOOM_PHASE_LABELS,
+    zoomPhaseSegments, zoomPhaseGradientStops, zoomPhaseSeamVisible,
+    zoomPhaseLabelVisible, zoomPhaseLabelFrame,
+    PermissionTourFlow, permissionFirstRequiredStep, permissionAccessAllGranted,
+    permissionAccessGrants,
+    APP_FORMAL_BUNDLE_IDENTIFIER, APP_UPDATE_PLACEHOLDER, APP_UPDATE_TEXT,
+    appIsFormalRelease, appUpdateVersionDescription, appUpdateAvailabilityDescription,
+    appUpdateStartDecision, appUpdateCheckAllowed, APP_UPDATE_CHECK_SEQUENCE,
+    AppUpdateController,
+    WALLPAPER_ACCORDION_SPACING, WALLPAPER_ACCORDION_HEIGHT, WALLPAPER_HOVER_WEIGHT,
+    WALLPAPER_SELECTED_WEIGHT, WALLPAPER_IDLE_WEIGHT, WALLPAPER_LABEL_MINIMUM_WIDTH,
+    wallpaperAccordionWeight, wallpaperAccordionLayout, wallpaperSliceState,
+    SCRUB_SEEK_TIMESCALE, playbackClampedTime, ScrubSeekCoalescer, EditorScrubbingSession,
+    titlebarDoubleClickAction, chromeClickKind, titlebarDoubleClickEffect,
+    EDITOR_CHROME_ACCEPTS_FIRST_RESPONDER, EDITOR_CHROME_ACCEPTS_FIRST_MOUSE,
+    FRAME_COLOR_PROFILE_ERRORS, FrameColorProfileError, resolveFrameColorProfile,
+    frameColorProfileContextOptions, frameColorProfileMetalContextOptions,
+    FRAME_COLOR_VIDEO_PROPERTIES, avVideoColorProperties, frameColorProfileAttachments,
+    EDITOR_WINDOW_IDENTIFIER, CROP_FULL, cropCommandPlan, cropDraftValue,
+    cropDraftUpdateAllowed, selectionAfterExternalAction, performEditorCommand,
+    editorCropPresentation,
+    BACKGROUND_BLUR_RANGE, backgroundBlurSectionVisible, zoomTransitionAvailability,
+    zoomPhaseSecondsText, zoomTransitionConstrainedLine, ZOOM_TRANSITION_TEXTS,
+    SEGMENT_AUDIO_TEXTS, segmentAudioScopeText, segmentAudioHeader, segmentAudioRangeText,
+    segmentAudioRestoreVisible, segmentAudioOutsideWarningVisible, segmentAudioSourceDetail,
+    selectedAudioContextVerticalPadding, selectedAudioContextRowSpacing,
+    INSPECTOR_TAB_BAR_HEIGHT, INSPECTOR_TAB_MINIMUM_TARGET, INSPECTOR_TABS,
+    INSPECTOR_TAB_BAR_DISABLED_OPACITY, INSPECTOR_TAB_UNAVAILABLE_OPACITY,
+    inspectorTabAvailable, inspectorTabHelp, inspectorTabAccessibilityIdentifier,
+    inspectorTabPresentations, inspectorTabSelectionChanges,
+    APPEARANCE_CROSSFADE_DURATION, WINDOW_CROSSFADE_DURATION, SNAPSHOT_FADE_DELAY,
+    CROSSFADE_TIMING, appearanceTransitionPlan, crossfadePlan,
+    SNAPSHOT_ACCEPTS_HIT_TESTING, WINDOW_SERVER_CAPTURE_ARGUMENTS,
+  } = m
+
+  // ---------------------------------------------- EscapeDismissibleWindow.swift
+  check('esc.withSheet', escapeDismissalAction(true), 'deferToSuper')
+  check('esc.withoutSheet', escapeDismissalAction(false), 'close')
+
+  // ------------------------------------------------ EditorZoomPhaseBar.swift
+  check('zpb.height', ZOOM_PHASE_BAR_HEIGHT, 28)
+  check('zpb.seamHeight', ZOOM_PHASE_SEAM_HEIGHT, 14)
+  check('zpb.labels', ZOOM_PHASE_LABELS.map(l => l.title).join('/'), '进入/保持/退出')
+  check('zpb.edgeOpacity', ZOOM_PHASE_EDGE_OPACITY, 0.28)
+  {
+    const seg = zoomPhaseSegments(300, { duration: 6, enterDuration: 1.5, exitDuration: 1.5 })
+    check('zpb.total', seg.total, 7.5)
+    check('zpb.enter', seg.enter, 60)
+    check('zpb.hold', seg.hold, 180)
+    check('zpb.exit', seg.exit, 60)
+    const stops = zoomPhaseGradientStops(300, seg)
+    check('zpb.stopCount', stops.length, 4)
+    check('zpb.stopLocations', stops.map(s => s.location).join(','), '0,0.2,0.8,1')
+    check('zpb.stopEdge', stops[3].opacity, 0.28)
+    check('zpb.stopTop', stops[1].opacity, 1)
+  }
+  {
+    // 全零片段：0.001 兜底，整条退化为纯退出段，不产生 NaN
+    const seg = zoomPhaseSegments(200, { duration: 0, enterDuration: 0, exitDuration: 0 })
+    check('zpb.zeroTotal', seg.total, 0.001)
+    check('zpb.zeroEnter', seg.enter, 0)
+    check('zpb.zeroHold', seg.hold, 0)
+    check('zpb.zeroExit', seg.exit, 200)
+    check('zpb.zeroFinite', Number.isFinite(seg.enter + seg.hold + seg.exit), true)
+  }
+  {
+    // 进入段被时长挤压：hold 必须归零而不是负数
+    const seg = zoomPhaseSegments(120, { duration: 1, enterDuration: 2, exitDuration: 0 })
+    check('zpb.squeezedEnter', seg.enter, 120)
+    check('zpb.squeezedHold', seg.hold, 0)
+    check('zpb.squeezedExit', seg.exit, 0)
+  }
+  check('zpb.seamVisible', zoomPhaseSeamVisible(60, 180), true)
+  check('zpb.seamHiddenLeft', zoomPhaseSeamVisible(0, 180), false)
+  check('zpb.seamHiddenRight', zoomPhaseSeamVisible(60, 0), false)
+  check('zpb.seamOpacity', ZOOM_PHASE_SEAM_OPACITY, 0.22)
+  check('zpb.labelAtThreshold', zoomPhaseLabelVisible(ZOOM_PHASE_LABEL_MINIMUM_WIDTH), false)
+  check('zpb.labelOverThreshold', zoomPhaseLabelVisible(58.5), true)
+  check('zpb.labelFrame', zoomPhaseLabelFrame(60), 59)
+  check('zpb.labelFrameFloor', zoomPhaseLabelFrame(0), 0)
+
+  // ---------------------------------------------------- PermissionTourFlow.swift
+  check('pt.allGrantedBoth', permissionAccessAllGranted({ screen: true, accessibility: true }), true)
+  check('pt.allGrantedOne', permissionAccessAllGranted({ screen: true, accessibility: false }), false)
+  check('pt.firstScreen', permissionFirstRequiredStep({ screen: false, accessibility: false }), 'screen')
+  check('pt.firstAccessibility', permissionFirstRequiredStep({ screen: true, accessibility: false }), 'accessibility')
+  check('pt.firstReady', permissionFirstRequiredStep({ screen: true, accessibility: true }), 'ready')
+  check('pt.grantsScreen', permissionAccessGrants({ screen: true, accessibility: false }, 'screen'), true)
+  check('pt.grantsReadyNeedsBoth', permissionAccessGrants({ screen: true, accessibility: false }, 'ready'), false)
+  {
+    const flow = new PermissionTourFlow({ screen: false, accessibility: false }, false)
+    check('pt.initialStep', flow.currentStep, 'screen')
+    check('pt.primaryOpenSettings', flow.primaryAction().kind, 'openSettings')
+    check('pt.primaryTarget', flow.primaryAction().step, 'screen')
+  }
+  {
+    // 复盘模式从第一步开始，即使权限已全齐
+    const flow = new PermissionTourFlow({ screen: true, accessibility: true }, true)
+    check('pt.reviewStartsAtScreen', flow.currentStep, 'screen')
+    check('pt.reviewPrimaryAdvance', flow.primaryAction().kind, 'advance')
+    flow.advance()
+    check('pt.reviewAdvance', flow.currentStep, 'accessibility')
+    flow.previous()
+    check('pt.reviewPrevious', flow.currentStep, 'screen')
+  }
+  {
+    const flow = new PermissionTourFlow({ screen: true, accessibility: true }, false)
+    check('pt.readyStep', flow.currentStep, 'ready')
+    check('pt.readyEnter', flow.primaryAction().kind, 'enter')
+  }
+  {
+    // 系统设置期间保留来源步骤：轮询看到成功也不跳步
+    const flow = new PermissionTourFlow({ screen: false, accessibility: false }, false)
+    flow.openedSettings('screen')
+    check('pt.settingsStep', flow.settingsStep, 'screen')
+    flow.update({ screen: true, accessibility: false })
+    check('pt.heldStep', flow.currentStep, 'screen')
+    flow.returnedFromSettings({ screen: true, accessibility: false })
+    check('pt.returnedAdvance', flow.currentStep, 'accessibility')
+    check('pt.settingsCleared', flow.settingsStep, null)
+  }
+  {
+    // 返回时仍未授权：停在原步
+    const flow = new PermissionTourFlow({ screen: false, accessibility: false }, false)
+    flow.openedSettings('screen')
+    flow.returnedFromSettings({ screen: false, accessibility: false })
+    check('pt.returnedHeld', flow.currentStep, 'screen')
+  }
+  {
+    // 未授予时 advance 是空操作（guard primaryAction === 'advance'）
+    const flow = new PermissionTourFlow({ screen: false, accessibility: false }, false)
+    flow.advance()
+    check('pt.advanceBlocked', flow.currentStep, 'screen')
+    check('pt.advanceBlockedAction', flow.primaryAction().kind, 'openSettings')
+  }
+  {
+    // 复盘模式连按两次 advance 到 ready；权限齐时停在 ready
+    const flow = new PermissionTourFlow({ screen: true, accessibility: true }, true)
+    flow.advance()
+    flow.advance()
+    check('pt.advanceToReady', flow.currentStep, 'ready')
+    check('pt.advanceReadyEnter', flow.primaryAction().kind, 'enter')
+  }
+  {
+    const flow = new PermissionTourFlow({ screen: false, accessibility: false }, false)
+    flow.openedSettings('ready')
+    check('pt.readyRejectsSettings', flow.settingsStep, null)
+  }
+  {
+    // 权限被撤销时 ready 必须退回
+    const flow = new PermissionTourFlow({ screen: true, accessibility: true }, false)
+    flow.update({ screen: false, accessibility: true })
+    check('pt.revokedFallsBack', flow.currentStep, 'screen')
+  }
+  {
+    const flow = new PermissionTourFlow({ screen: true, accessibility: false }, false)
+    const before = flow.currentStep
+    flow.previous()
+    check('pt.previousWithoutReview', flow.currentStep, before)
+  }
+
+  // --------------------------------------------------- AppUpdateController.swift
+  check('up.formalId', APP_FORMAL_BUNDLE_IDENTIFIER, 'cn.laogou.dogsc')
+  check('up.isFormal', appIsFormalRelease('cn.laogou.dogsc'), true)
+  check('up.isDev', appIsFormalRelease('cn.laogou.dogsc.dev'), false)
+  check('up.isNull', appIsFormalRelease(null), false)
+  check('up.placeholder', APP_UPDATE_PLACEHOLDER, '—')
+  check('up.version', appUpdateVersionDescription('1.2', '34'), '1.2（34）')
+  check('up.versionMissingBoth', appUpdateVersionDescription(null, null), '—（—）')
+  check('up.versionMissingBuild', appUpdateVersionDescription('1.2', null), '1.2（—）')
+  check('up.availabilityAuto', appUpdateAvailabilityDescription({ isFormalRelease: true, automaticallyChecksForUpdates: true }), APP_UPDATE_TEXT.automaticOn)
+  check('up.availabilityManual', appUpdateAvailabilityDescription({ isFormalRelease: true, automaticallyChecksForUpdates: false }), APP_UPDATE_TEXT.automaticOff)
+  check('up.availabilityDev', appUpdateAvailabilityDescription({ isFormalRelease: false, automaticallyChecksForUpdates: true }), APP_UPDATE_TEXT.development)
+  check('up.decisionStarted', appUpdateStartDecision({ didStart: true, isFormalRelease: true }), 'alreadyStarted')
+  check('up.decisionDev', appUpdateStartDecision({ didStart: false, isFormalRelease: false }), 'development')
+  check('up.decisionStart', appUpdateStartDecision({ didStart: false, isFormalRelease: true }), 'start')
+  check('up.checkAllowedDev', appUpdateCheckAllowed(false), false)
+  check('up.checkSequence', APP_UPDATE_CHECK_SEQUENCE.join('>'), 'startIfEligible>activateApplication>checkForUpdates')
+  {
+    const calls = []
+    const port = {
+      readAutomaticallyChecksForUpdates: () => true,
+      startUpdater: () => calls.push('start'),
+      checkForUpdates: () => calls.push('check'),
+      activateApplication: () => calls.push('activate'),
+      writeAutomaticallyChecksForUpdates: (v) => calls.push(`write:${v}`),
+    }
+    const controller = new AppUpdateController(port, false)
+    controller.startIfEligible()
+    controller.startIfEligible()
+    controller.checkForUpdates()
+    check('up.devNeverStarts', calls.length, 0)
+    check('up.devDidStartRecorded', controller.snapshot.didStart, true)
+    check('up.devNotReady', controller.snapshot.isReady, false)
+  }
+  {
+    const calls = []
+    const port = {
+      readAutomaticallyChecksForUpdates: () => true,
+      startUpdater: () => calls.push('start'),
+      checkForUpdates: () => calls.push('check'),
+      activateApplication: () => calls.push('activate'),
+      writeAutomaticallyChecksForUpdates: (v) => calls.push(`write:${v}`),
+    }
+    const controller = new AppUpdateController(port, true)
+    controller.startIfEligible()
+    check('up.formalStarts', calls.join(','), 'start')
+    check('up.formalReady', controller.snapshot.isReady, true)
+    check('up.formalAutoState', controller.snapshot.automaticallyChecksForUpdates, true)
+    controller.checkForUpdates()
+    check('up.formalActivateThenCheck', calls.join(','), 'start,activate,check')
+    controller.setAutomaticallyChecksForUpdates(false)
+    check('up.formalWrite', calls[calls.length - 1], 'write:false')
+    check('up.formalAutoFalse', controller.snapshot.automaticallyChecksForUpdates, false)
+    check('up.formalAvailability', controller.availabilityDescription, APP_UPDATE_TEXT.automaticOff)
+  }
+
+  // ---------------------------------------------- EditorWallpaperAccordion.swift
+  check('wa.spacing', WALLPAPER_ACCORDION_SPACING, 4)
+  check('wa.height', WALLPAPER_ACCORDION_HEIGHT, 124)
+  check('wa.weights', [WALLPAPER_HOVER_WEIGHT, WALLPAPER_SELECTED_WEIGHT, WALLPAPER_IDLE_WEIGHT].join('/'), '5/3.4/1')
+  check('wa.weightHovered', wallpaperAccordionWeight({ id: 'a', hoveredID: 'a', selectedGroupID: null }), 5)
+  check('wa.weightSelected', wallpaperAccordionWeight({ id: 'a', hoveredID: null, selectedGroupID: 'a' }), 3.4)
+  // 指针在别的切片上时，选中片退回 1 —— 否则两条同时张开
+  check('wa.weightSelectedWhileOtherHovered', wallpaperAccordionWeight({ id: 'a', hoveredID: 'b', selectedGroupID: 'a' }), 1)
+  {
+    const layout = wallpaperAccordionLayout({ width: 400, ids: ['a', 'b', 'c'], hoveredID: null, selectedGroupID: null })
+    check('wa.layoutAvailable', layout.available, 392)
+    check('wa.layoutTotalWeight', layout.totalWeight, 3)
+    check('wa.layoutEven', Math.round(layout.widths[0] * 1000) / 1000, 130.667)
+  }
+  {
+    const layout = wallpaperAccordionLayout({ width: 400, ids: ['a', 'b', 'c'], hoveredID: 'a', selectedGroupID: 'b' })
+    check('wa.layoutHoverTotal', layout.totalWeight, 7)
+    check('wa.layoutHoverWidth', layout.widths[0], 280)
+    check('wa.layoutIdleWidth', Math.round(layout.widths[1] * 100) / 100, 56)
+  }
+  {
+    const layout = wallpaperAccordionLayout({ width: 10, ids: [], hoveredID: null, selectedGroupID: null })
+    check('wa.layoutEmptyAvailable', layout.available, 10)
+    check('wa.layoutEmptyTotal', layout.totalWeight, 1)
+    check('wa.layoutEmptyWidths', layout.widths.length, 0)
+  }
+  {
+    const open = wallpaperSliceState({ id: 'a', width: 100, hoveredID: null, selectedGroupID: 'a' })
+    check('wa.openSelected', open.isOpen, true)
+    check('wa.openShowsLabel', open.showsLabel, true)
+    check('wa.openOffset', open.labelOffsetY, 0)
+    check('wa.openOpacity', open.opacity, 1)
+    check('wa.openBorder', open.borderWidth, 2)
+    check('wa.openAccent', open.borderIsAccent, true)
+  }
+  {
+    const narrow = wallpaperSliceState({ id: 'a', width: 60, hoveredID: 'a', selectedGroupID: 'a' })
+    check('wa.narrowNoLabel', narrow.showsLabel, false)
+    check('wa.narrowStillOpen', narrow.isOpen, true)
+  }
+  {
+    const idle = wallpaperSliceState({ id: 'a', width: 100, hoveredID: null, selectedGroupID: 'b' })
+    check('wa.idleClosed', idle.isOpen, false)
+    check('wa.idleOffset', idle.labelOffsetY, 5)
+    check('wa.idleOpacity', idle.opacity, 0.82)
+    check('wa.idleBorder', idle.borderWidth, 0.75)
+    check('wa.idleNotAccent', idle.borderIsAccent, false)
+    check('wa.labelMinWidth', WALLPAPER_LABEL_MINIMUM_WIDTH, 72)
+  }
+
+  // --------------------------------------------- EditorPlaybackScrubbing.swift
+  check('sc.timescale', SCRUB_SEEK_TIMESCALE, 60000)
+  check('sc.clampNaN', playbackClampedTime(NaN, 10), 0)
+  check('sc.clampBelow', playbackClampedTime(-5, 10), 0)
+  check('sc.clampAbove', playbackClampedTime(12, 10), 10)
+  check('sc.clampNegativeDuration', playbackClampedTime(3, -1), 0)
+  {
+    const coalescer = new ScrubSeekCoalescer()
+    coalescer.update(1)
+    coalescer.update(2)
+    check('sc.coalesceLatest', coalescer.pendingTarget, 2)
+    check('sc.takeOnce', coalescer.takePending(), 2)
+    check('sc.takeClears', coalescer.pendingTarget, null)
+    coalescer.update(3)
+    coalescer.cancel()
+    check('sc.cancelClears', coalescer.takePending(), null)
+  }
+  {
+    // 单飞：第二次 update 在前一次 seek 未完成时不再发起新 seek
+    const seeks = []
+    let resolvers = []
+    const primary = {
+      pauseTransport: () => {},
+      cancelPendingSeeks: () => {},
+      seekTransport: (seconds) => {
+        seeks.push(seconds)
+        return new Promise((resolve) => resolvers.push(resolve))
+      },
+    }
+    const state = { finished: [], anchors: [] }
+    const session = new EditorScrubbingSession({
+      primaryPlayer: primary,
+      cameraPlayer: null,
+      outputTime: () => 0,
+      endHoverPreview: () => {},
+      clearPausedFrames: () => {},
+      cancelPausedFrameDecode: () => {},
+      resetPlaybackAnchor: (t) => state.anchors.push(t),
+      synchronizeCamera: () => {},
+      advanceDiscontinuity: () => {},
+      seekFinally: (t) => state.finished.push(t),
+    })
+    session.begin()
+    check('sc.beginActive', session.state.isScrubbing, true)
+    session.update(2, 10)
+    session.update(4, 10)
+    check('sc.singleFlightSeeks', seeks.length, 1)
+    check('sc.singleFlightFirstTarget', seeks[0], 2)
+    check('sc.latestClock', session.state.latestOutputTime, 4)
+    check('sc.anchorCalls', state.anchors.join(','), '2,4')
+    resolvers.shift()(true)
+    await Promise.resolve()
+    await Promise.resolve()
+    check('sc.chasedLatest', seeks.length, 2)
+    check('sc.chasedTarget', seeks[1], 4)
+    check('sc.previewAfterFirst', session.state.previewTime, 2)
+    resolvers.shift()(true)
+    await Promise.resolve()
+    await Promise.resolve()
+    check('sc.previewChased', session.state.previewTime, 4)
+    session.end()
+    check('sc.endInactive', session.state.isScrubbing, false)
+    check('sc.endFinalSeek', state.finished.join(','), '4')
+  }
+  {
+    // 松手时优先用未消化的待办目标
+    const finals = []
+    const primary = { pauseTransport: () => {}, cancelPendingSeeks: () => {}, seekTransport: () => new Promise(() => {}) }
+    const session = new EditorScrubbingSession({
+      primaryPlayer: primary,
+      cameraPlayer: null,
+      outputTime: () => 1.5,
+      endHoverPreview: () => {},
+      clearPausedFrames: () => {},
+      cancelPausedFrameDecode: () => {},
+      resetPlaybackAnchor: () => {},
+      synchronizeCamera: () => {},
+      advanceDiscontinuity: () => {},
+      seekFinally: (t) => finals.push(t),
+    })
+    session.begin()
+    session.update(6, 10)
+    session.update(7, 10)
+    session.end()
+    check('sc.endUsesPending', finals[0], 7)
+  }
+  {
+    // 会话代次变了：迟到的 seek 结果不得回写预览帧
+    let resolveSeek
+    const primary = {
+      pauseTransport: () => {},
+      cancelPendingSeeks: () => {},
+      seekTransport: () => new Promise((resolve) => { resolveSeek = resolve }),
+    }
+    const session = new EditorScrubbingSession({
+      primaryPlayer: primary,
+      cameraPlayer: null,
+      outputTime: () => 0,
+      endHoverPreview: () => {},
+      clearPausedFrames: () => {},
+      cancelPausedFrameDecode: () => {},
+      resetPlaybackAnchor: () => {},
+      synchronizeCamera: () => {},
+      advanceDiscontinuity: () => {},
+      seekFinally: () => {},
+    })
+    session.begin()
+    session.update(3, 10)
+    session.end()
+    resolveSeek(true)
+    await Promise.resolve()
+    await Promise.resolve()
+    check('sc.staleSeekDiscarded', session.state.previewTime, null)
+    check('sc.staleEndedAt', session.state.latestOutputTime, 3)
+  }
+  {
+    // 没有主播放器时 update 不启动会话
+    const session = new EditorScrubbingSession({
+      primaryPlayer: null,
+      cameraPlayer: null,
+      outputTime: () => 0,
+      endHoverPreview: () => {},
+      clearPausedFrames: () => {},
+      cancelPausedFrameDecode: () => {},
+      resetPlaybackAnchor: () => {},
+      synchronizeCamera: () => {},
+      advanceDiscontinuity: () => {},
+      seekFinally: () => {},
+    })
+    session.update(5, 10)
+    check('sc.noPlayerStaysIdle', session.state.isScrubbing, false)
+  }
+
+  // ------------------------------------------ EditorWindowChromeInteraction.swift
+  check('wc.acceptsFirstResponder', EDITOR_CHROME_ACCEPTS_FIRST_RESPONDER, false)
+  check('wc.acceptsFirstMouse', EDITOR_CHROME_ACCEPTS_FIRST_MOUSE, true)
+  check('wc.minimizeToken', titlebarDoubleClickAction({ actionString: 'Minimize' }), 'minimize')
+  check('wc.miniaturizeToken', titlebarDoubleClickAction({ actionString: ' miniaturize ' }), 'minimize')
+  check('wc.doNothingToken', titlebarDoubleClickAction({ actionString: 'Do Nothing' }), 'none')
+  check('wc.zoomToken', titlebarDoubleClickAction({ actionString: 'maximize' }), 'zoom')
+  check('wc.fillToken', titlebarDoubleClickAction({ actionString: 'fill' }), 'zoom')
+  check('wc.unknownFallsBackToLegacy', titlebarDoubleClickAction({ actionString: 'whatever', miniaturizeOnDoubleClick: true }), 'minimize')
+  check('wc.legacyFalseZooms', titlebarDoubleClickAction({ actionString: null, miniaturizeOnDoubleClick: false }), 'zoom')
+  check('wc.defaultZoom', titlebarDoubleClickAction({}), 'zoom')
+  check('wc.clickDouble', chromeClickKind(2), 'doubleClick')
+  check('wc.clickSingle', chromeClickKind(1), 'drag')
+  check('wc.clickTriple', chromeClickKind(3), 'drag')
+  check('wc.effectZoom', titlebarDoubleClickEffect('zoom'), 'zoom')
+  check('wc.effectNone', titlebarDoubleClickEffect('none'), null)
+
+  // ----------------------------------------- CoreImageFrameColorProfile.swift
+  check('cc.unsupportedText', FRAME_COLOR_PROFILE_ERRORS.unsupported, '当前版本只支持桌面 SDR 成片。')
+  check('cc.unavailableText', FRAME_COLOR_PROFILE_ERRORS.unavailableColorSpace, '系统无法建立 sRGB 色彩空间。')
+  {
+    const profile = resolveFrameColorProfile('sdrDesktop')
+    check('cc.working', profile.workingColorSpace, 'linear-srgb')
+    check('cc.output', profile.outputColorSpace, 'srgb')
+    const options = frameColorProfileContextOptions(profile, false)
+    check('cc.cacheFlag', options.cacheIntermediates, false)
+    check('cc.optionsWorking', options.workingColorSpace, 'linear-srgb')
+    const metal = frameColorProfileMetalContextOptions(profile, true)
+    check('cc.metalQueue', metal.commandQueueRequired, true)
+    check('cc.metalCache', metal.cacheIntermediates, true)
+    check('cc.videoPrimaries', avVideoColorProperties(profile).colorPrimaries, 'ITU_R_709_2')
+    check('cc.videoTransfer', avVideoColorProperties(profile).transferFunction, 'sRGB')
+    check('cc.videoMatrix', avVideoColorProperties(profile).yCbCrMatrix, 'ITU_R_709_2')
+    check('cc.attachmentCount', frameColorProfileAttachments(profile).length, 3)
+    check('cc.attachmentPropagate', frameColorProfileAttachments(profile).every((a) => a.propagate), true)
+    check('cc.propertiesConst', FRAME_COLOR_VIDEO_PROPERTIES.transferFunction, 'sRGB')
+  }
+  {
+    let caught = null
+    try {
+      resolveFrameColorProfile('hdr10')
+    } catch (error) {
+      caught = error
+    }
+    check('cc.thrown', caught instanceof FrameColorProfileError, true)
+    check('cc.thrownKind', caught.kind, 'unsupported')
+    check('cc.thrownContract', caught.contract, 'hdr10')
+    check('cc.thrownMessage', caught.message, FRAME_COLOR_PROFILE_ERRORS.unsupported)
+  }
+
+  // ------------------------------------------- EditorViewCropAndPreset.swift
+  check('cv.windowId', EDITOR_WINDOW_IDENTIFIER, 'cn.laogou.dogsc.editor-window')
+  check('cv.fullCrop', JSON.stringify(CROP_FULL), '{"x":0,"y":0,"width":1,"height":1}')
+  {
+    const standard = editorCropPresentation(null)
+    check('cv.standardToolbar', standard.toolbarMode, 'standardControls')
+    const begin = cropCommandPlan(standard, 'beginCrop')
+    check('cv.beginRuns', begin.kind, 'run')
+    check('cv.beginStopsPlayback', begin.stopsPlayback, true)
+    check('cv.beginCrossfades', begin.crossfadesWindow, true)
+    check('cv.beginKeepsSelection', begin.resetsSelectionToScreen, false)
+    check('cv.confirmBlockedInStandard', cropCommandPlan(standard, 'confirmCrop').kind, 'ignored')
+    check('cv.resetBlockedInStandard', cropCommandPlan(standard, 'resetCrop').kind, 'ignored')
+  }
+  {
+    const cropping = editorCropPresentation({ tool: 'crop', selection: 'crop', crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } })
+    check('cv.cropToolbar', cropping.toolbarMode, 'cropControls')
+    check('cv.beginBlockedInCrop', cropCommandPlan(cropping, 'beginCrop').kind, 'ignored')
+    const confirm = cropCommandPlan(cropping, 'confirmCrop')
+    check('cv.confirmRuns', confirm.kind, 'run')
+    check('cv.confirmResetsSelection', confirm.resetsSelectionToScreen, true)
+    check('cv.confirmKeepsPlayback', confirm.stopsPlayback, false)
+    const reset = cropCommandPlan(cropping, 'resetCrop')
+    check('cv.resetNoCrossfade', reset.crossfadesWindow, false)
+  }
+  {
+    const cropping = editorCropPresentation({ tool: 'crop', selection: 'crop', crop: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 } })
+    const draft = cropDraftValue(cropping, { x: 0, y: 0, width: 1, height: 1 })
+    check('cv.draftPreferred', draft.width, 0.5)
+    const fromProject = cropDraftValue(editorCropPresentation(null), { x: -1, y: 0, width: 3, height: 1 })
+    check('cv.projectClamped', fromProject.x, 0)
+    check('cv.projectClampedWidth', fromProject.width, 1)
+    check('cv.draftAllowedWhileCropping', cropDraftUpdateAllowed(cropping), true)
+    check('cv.draftBlockedIdle', cropDraftUpdateAllowed(editorCropPresentation(null)), false)
+  }
+  check('cv.selectionCropToScreen', selectionAfterExternalAction({ wasCropping: true, selection: 'crop' }), 'screen')
+  check('cv.selectionKept', selectionAfterExternalAction({ wasCropping: true, selection: 'segment' }), 'segment')
+  check('cv.selectionUntouched', selectionAfterExternalAction({ wasCropping: false, selection: 'crop' }), 'crop')
+  {
+    const errors = []
+    check('cv.commandOk', performEditorCommand(() => {}, (msg) => errors.push(msg)), true)
+    check('cv.commandNoError', errors.length, 0)
+    check('cv.commandFails', performEditorCommand(() => { throw new Error('裁切失败') }, (msg) => errors.push(msg)), false)
+    check('cv.commandReported', errors[0], '裁切失败')
+    check('cv.commandNonError', performEditorCommand(() => { throw 'x' }, (msg) => errors.push(msg)), false)
+    check('cv.commandStringReported', errors[1], 'x')
+  }
+
+  // --------------------------------------- EditorInspectorScopeControls.swift
+  check('is.blurRange', `${BACKGROUND_BLUR_RANGE.lower}-${BACKGROUND_BLUR_RANGE.upper}`, '0-80')
+  check('is.blurHiddenPattern', backgroundBlurSectionVisible({ kind: 'pattern', patternPreset: '黑曜石网格' }), false)
+  check('is.blurShownImage', backgroundBlurSectionVisible({ kind: 'systemImage', absolutePath: '/w.png' }), true)
+  check('is.blurShownVideo', backgroundBlurSectionVisible({ kind: 'projectVideo', relativePath: 'media/bg.mp4' }), true)
+  {
+    const fits = zoomTransitionAvailability(
+      { enterDuration: 0.6, exitDuration: 0.45, endTime: 3 },
+      { enterDuration: 0.6, exitDuration: 0.45, endTime: 3 }
+    )
+    check('is.zoomFits', fits.kind, 'fits')
+    const enterDiff = zoomTransitionAvailability(
+      { enterDuration: 0.602, exitDuration: 0.45, endTime: 3 },
+      { enterDuration: 0.6, exitDuration: 0.45, endTime: 3 }
+    )
+    check('is.zoomEnterConstrained', enterDiff.kind, 'constrained')
+    const endDiff = zoomTransitionAvailability(
+      { enterDuration: 0.6, exitDuration: 0.45, endTime: 2.5 },
+      { enterDuration: 0.6, exitDuration: 0.45, endTime: 3 }
+    )
+    check('is.zoomEndConstrained', endDiff.kind, 'constrained')
+    check('is.zoomMissing', zoomTransitionAvailability(null, { enterDuration: 1, exitDuration: 1, endTime: 1 }).kind, 'fits')
+    check('is.zoomLine', zoomTransitionConstrainedLine({ enterDuration: 1.25, exitDuration: 0.75, endTime: 2 }), '实际进入 1.25s · 退出 0.75s')
+    check('is.zoomTitle', ZOOM_TRANSITION_TEXTS.constrainedTitle, '已按可用时间适配')
+    check('is.zoomNote', ZOOM_TRANSITION_TEXTS.constrainedNote, '保留上方设定；片尾前完成退出，相邻动画紧接时连续衔接。')
+    check('is.zoomFitsText', ZOOM_TRANSITION_TEXTS.fits, '设定时长均可完整播放。')
+  }
+  check('is.secondsText', zoomPhaseSecondsText(1.5), '1.50s')
+  check('is.secondsTextNaN', zoomPhaseSecondsText(NaN), '0.00s')
+  check('is.scopeInherits', segmentAudioScopeText(false), '继承全片声音设置')
+  check('is.scopeOverrides', segmentAudioScopeText(true), '已覆盖此段的声音设置')
+  check('is.headerNumbered', segmentAudioHeader({ index: 2, hasOverrides: false, compact: false }), '第 3 段')
+  check('is.headerCompact', segmentAudioHeader({ index: 0, hasOverrides: true, compact: true }), SEGMENT_AUDIO_TEXTS.overrides)
+  check('is.range', segmentAudioRangeText(0.5, 2.1), '00:00.50 – 00:02.10')
+  check('is.restoreVisible', segmentAudioRestoreVisible(true), true)
+  check('is.restoreHidden', segmentAudioRestoreVisible(false), false)
+  check('is.outsideBefore', segmentAudioOutsideWarningVisible({ playbackTime: 0.5, outputStart: 1, outputEnd: 3 }), true)
+  check('is.outsideAtEnd', segmentAudioOutsideWarningVisible({ playbackTime: 3, outputStart: 1, outputEnd: 3 }), true)
+  check('is.inside', segmentAudioOutsideWarningVisible({ playbackTime: 2, outputStart: 1, outputEnd: 3 }), false)
+  check('is.detailBoth', segmentAudioSourceDetail({ volume: 0.5, mute: false }), '仅此片段，自定义设置')
+  check('is.detailVolumeOnly', segmentAudioSourceDetail({ volume: 0.5, mute: null }), '继承全片设置')
+  check('is.detailNone', segmentAudioSourceDetail({ volume: null, mute: null }), SEGMENT_AUDIO_TEXTS.inheritDetail)
+  check('is.paddingCompact', selectedAudioContextVerticalPadding(true), 0)
+  check('is.paddingRegular', selectedAudioContextVerticalPadding(false), 4)
+  check('is.spacingCompact', selectedAudioContextRowSpacing(true), 6)
+  check('is.spacingRegular', selectedAudioContextRowSpacing(false), 9)
+
+  // ------------------------------------------------ EditorInspectorTabBar.swift
+  check('it.height', INSPECTOR_TAB_BAR_HEIGHT, 60)
+  check('it.target', INSPECTOR_TAB_MINIMUM_TARGET, 44)
+  check('it.count', INSPECTOR_TABS.length, 6)
+  check('it.order', INSPECTOR_TABS.map((t) => t.key).join(','), 'frame,opening,zoom,cursor,camera,audio')
+  check('it.labels', INSPECTOR_TABS.map((t) => t.label).join('/'), '画面/开场/运镜/光标/摄像头/声音')
+  check('it.icons', INSPECTOR_TABS[4].icon, 'video')
+  check('it.cameraUnavailable', inspectorTabAvailable('camera', { cameraAvailable: false, audioAvailable: true, cursorAvailable: true }), false)
+  check('it.audioAvailable', inspectorTabAvailable('audio', { cameraAvailable: false, audioAvailable: true, cursorAvailable: false }), true)
+  check('it.cursorAvailable', inspectorTabAvailable('cursor', { cameraAvailable: false, audioAvailable: false, cursorAvailable: true }), true)
+  check('it.frameAlways', inspectorTabAvailable('frame', { cameraAvailable: false, audioAvailable: false, cursorAvailable: false }), true)
+  check('it.zoomAlways', inspectorTabAvailable('zoom', { cameraAvailable: false, audioAvailable: false, cursorAvailable: false }), true)
+  check('it.helpCamera', inspectorTabHelp('camera', false), '当前项目没有摄像头素材')
+  check('it.helpAudio', inspectorTabHelp('audio', false), '当前项目没有系统声音或麦克风素材')
+  check('it.helpCursor', inspectorTabHelp('cursor', false), '当前项目没有记录鼠标事件')
+  check('it.helpAvailable', inspectorTabHelp('zoom', true), '运镜')
+  check('it.a11yFrame', inspectorTabAccessibilityIdentifier('frame'), 'editor.workspace.tool.画面')
+  check('it.a11yCamera', inspectorTabAccessibilityIdentifier('camera'), 'editor.workspace.tool.摄像头')
+  {
+    const rows = inspectorTabPresentations({
+      selection: 'frame',
+      hoveredTab: null,
+      isCropping: false,
+      cameraAvailable: false,
+      audioAvailable: true,
+      cursorAvailable: true,
+    })
+    check('it.selectedRow', rows[0].selected, true)
+    check('it.selectedShowsLabel', rows[0].showsLabel, true)
+    check('it.selectedLeading', rows[0].leadingPadding, 14)
+    check('it.selectedTrailing', rows[0].trailingPadding, 16)
+    check('it.unselectedHidesLabel', rows[1].showsLabel, false)
+    check('it.unselectedPadding', rows[1].leadingPadding, 0)
+    check('it.cameraDimmed', rows[4].opacity, INSPECTOR_TAB_UNAVAILABLE_OPACITY)
+    check('it.frameFullOpacity', rows[0].opacity, 1)
+  }
+  {
+    const rows = inspectorTabPresentations({
+      selection: 'zoom',
+      hoveredTab: 'zoom',
+      isCropping: true,
+      cameraAvailable: true,
+      audioAvailable: true,
+      cursorAvailable: true,
+    })
+    check('it.croppingOpacity', rows[0].opacity, INSPECTOR_TAB_BAR_DISABLED_OPACITY)
+    check('it.croppingDimmedUnavailable', rows[4].opacity, INSPECTOR_TAB_BAR_DISABLED_OPACITY)
+    // 选中页签不算 hover（选中态已由胶囊表达）
+    check('it.selectedNotHovered', rows[2].hovered, false)
+  }
+  {
+    const rows = inspectorTabPresentations({
+      selection: 'frame',
+      hoveredTab: 'zoom',
+      isCropping: false,
+      cameraAvailable: true,
+      audioAvailable: true,
+      cursorAvailable: true,
+    })
+    check('it.hoveredOther', rows[2].hovered, true)
+    check('it.hoverKeepsLabelOff', rows[2].showsLabel, false)
+  }
+  check('it.selectChanges', inspectorTabSelectionChanges('frame', 'zoom'), true)
+  check('it.selectSame', inspectorTabSelectionChanges('frame', 'frame'), false)
+
+  // ---------------------------------------- WindowAppearanceTransition.swift
+  check('wt.appearanceDuration', APPEARANCE_CROSSFADE_DURATION, 0.34)
+  check('wt.crossfadeDuration', WINDOW_CROSSFADE_DURATION, 0.26)
+  check('wt.snapshotDelay', SNAPSHOT_FADE_DELAY, 0.05)
+  check('wt.timing', CROSSFADE_TIMING.join(','), '0.4,0,0.2,1')
+  check('wt.noHitTesting', SNAPSHOT_ACCEPTS_HIT_TESTING, false)
+  check('wt.serverCaptureOption', WINDOW_SERVER_CAPTURE_ARGUMENTS.windowListOption, 8)
+  {
+    const base = {
+      previousAppearance: 'dark', nextAppearance: 'light',
+      applicationActive: true, applicationHidden: false,
+      windowVisible: true, windowMiniaturized: false, windowOccluded: false,
+      reduceMotion: false,
+    }
+    check('wt.changedAnimates', appearanceTransitionPlan(base).animate, true)
+    check('wt.changedDuration', appearanceTransitionPlan(base).duration, 0.34)
+    check('wt.sameAppearance', appearanceTransitionPlan({ ...base, nextAppearance: 'dark' }).animate, false)
+    check('wt.occludedSkips', appearanceTransitionPlan({ ...base, windowOccluded: true }).animate, false)
+    check('wt.miniaturizedSkips', appearanceTransitionPlan({ ...base, windowMiniaturized: true }).animate, false)
+    check('wt.inactiveSkips', appearanceTransitionPlan({ ...base, applicationActive: false }).animate, false)
+    check('wt.reduceMotionSkips', appearanceTransitionPlan({ ...base, reduceMotion: true }).animate, false)
+    check('wt.alwaysApplies', appearanceTransitionPlan({ ...base, reduceMotion: true }).applyAppearance, true)
+  }
+  {
+    const base = {
+      hasWindow: true, hasContentView: true, windowVisible: true, windowOccluded: false,
+      reduceMotion: false, boundsWidth: 800, boundsHeight: 600,
+      windowServerImageAvailable: true, bitmapRepresentationAvailable: true,
+    }
+    check('wt.serverSnapshot', crossfadePlan(base).mode, 'snapshotWindowServer')
+    check('wt.redrawFallback', crossfadePlan({ ...base, windowServerImageAvailable: false }).mode, 'snapshotRedraw')
+    check('wt.noImage', crossfadePlan({ ...base, windowServerImageAvailable: false, bitmapRepresentationAvailable: false }).mode, 'directChange')
+    check('wt.noWindow', crossfadePlan({ ...base, hasWindow: false }).mode, 'directChange')
+    check('wt.hiddenWindow', crossfadePlan({ ...base, windowVisible: false }).mode, 'directChange')
+    check('wt.occludedWindow', crossfadePlan({ ...base, windowOccluded: true }).mode, 'directChange')
+    check('wt.reduceMotionDirect', crossfadePlan({ ...base, reduceMotion: true }).mode, 'directChange')
+    check('wt.tinyWindow', crossfadePlan({ ...base, boundsWidth: 1 }).mode, 'directChange')
+    check('wt.planDelay', crossfadePlan(base).delay, 0.05)
+    check('wt.planDuration', crossfadePlan(base).duration, 0.26)
+    check('wt.customDuration', crossfadePlan(base, 0.34).duration, 0.34)
+    check('wt.directNoDelay', crossfadePlan({ ...base, reduceMotion: true }).delay, 0)
+  }
+
+}
+
+await runInspectorAndChromeBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
