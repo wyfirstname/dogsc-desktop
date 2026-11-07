@@ -1020,3 +1020,107 @@ export {
   appearanceTransitionPlan,
   crossfadePlan,
 } from '../src/renderer/src/core/WindowAppearanceTransition'
+export {
+  MARKER_BOOKMARK_GLYPH_WIDTH,
+  MARKER_BOOKMARK_HIT_WIDTH,
+  MARKER_BOOKMARK_RULER_INSET,
+  MARKER_BOOKMARK_RGB,
+  MARKER_SCROLL_CENTER_FRACTION,
+  MARKER_SCROLL_MARGIN,
+  RECORDING_MARKER_MENU_TEXT,
+  makeEditorRecordingMarker,
+  recordingMarkerHelpText,
+  recordingMarkerOffsetX,
+  recordingMarkerRulerHidden,
+  recordingMarkerScrollPlan,
+  recordingMarkerTimestamp,
+  visibleRecordingMarkerIndices,
+} from '../src/renderer/src/core/EditorTimelineRecordingMarkers'
+export {
+  EDITOR_PERSISTENCE_ACCESSIBILITY,
+  EDITOR_PERSISTENCE_BADGE_COLORS,
+  EDITOR_PERSISTENCE_BADGE_METRICS,
+  EDITOR_PERSISTENCE_IDENTIFIERS,
+  EDITOR_PERSISTENCE_TITLES,
+  EDITOR_SAVE_DOT,
+  editorPersistenceBadgeState,
+  editorPersistenceMarker,
+  editorSaveDotFrame,
+} from '../src/renderer/src/core/EditorPersistenceIndicator'
+export { ProjectWorkspace } from '../src/renderer/src/core/ProjectWorkspace'
+export {
+  CAPTURE_DEVICE_ERROR_MESSAGES,
+  CAPTURE_INPUT_DEVICE_ROLES,
+  CaptureInputDeviceResolutionError,
+  captureDeviceResolutionErrorMessage,
+  captureInputDeviceRequest,
+  captureInputDeviceRequestRole,
+  captureInputDeviceRequestedUniqueID,
+  resolveCaptureInputDevice,
+} from '../src/renderer/src/core/CaptureDeviceResolution'
+export {
+  CAMERA_CADENCE_FPS_DELTA,
+  CAMERA_CADENCE_MINIMUM_SAMPLES,
+  CAMERA_CADENCE_WINDOW_CAPACITY,
+  CameraRuntimeFormatMonitor,
+  RollingHostTimeWindow,
+  fourCC,
+} from '../src/renderer/src/core/CameraRuntimeFormatMonitor'
+export {
+  FRAME_PREVIEW_CHROME_BAR_HEIGHT,
+  FRAME_PREVIEW_DEVICE_BEZEL,
+  FRAME_PREVIEW_HEIGHT,
+  FRAME_PREVIEW_MINIMUM_CONTENT_SIDE,
+  FRAME_PREVIEW_TRAFFIC_LIGHTS,
+  framePreviewAddressBarColor,
+  framePreviewChromeBarBackground,
+  framePreviewIsDark,
+  framePreviewScreenGeometry,
+  framePreviewScreenPosition,
+  framePreviewWallpaperBlur,
+} from '../src/renderer/src/core/EditorFramePreview'
+export {
+  DRAG_GRIP_ACCESSIBILITY_IDENTIFIER,
+  DRAG_GRIP_DOT_DIAMETER,
+  DRAG_GRIP_DOTS_PER_COLUMN,
+  DRAG_GRIP_HEIGHT,
+  DRAG_GRIP_LABEL,
+  DRAG_GRIP_WIDTH,
+  ISLAND_INTERACTION_VIEW_ACCEPTS_HIT_TEST,
+  PANEL_POINTER_EVENTS,
+  RECORDER_HOSTING_ACCEPTS_FIRST_MOUSE,
+  panelPointerDecision,
+  panelPointerMonitorAction,
+  roundedRectContains,
+} from '../src/renderer/src/core/RecorderPanelInteraction'
+export {
+  EDITOR_SHORTCUT_GROUPS,
+  SHORTCUT_KEYCAP,
+  SHORTCUT_KEY_COLUMN_MINIMUM,
+  SHORTCUT_KEY_COLUMN_PADDING,
+  SHORTCUT_PANEL_EXPLANATION_WIDTH,
+  SHORTCUT_PANEL_HEIGHT,
+  SHORTCUT_PANEL_TEXT,
+  shortcutEntryCount,
+  shortcutKeyColumnWidth,
+  shortcutPanelWidth,
+} from '../src/renderer/src/core/EditorShortcutCheatsheet'
+export {
+  EDITOR_BUSY_MESSAGE,
+  canCrossSaveBarrier,
+  openProjectDecision,
+  phaseObservationAction,
+  projectSaveFailureMessage,
+  restoreEditorState,
+  saveBarrierOutcome,
+} from '../src/renderer/src/core/RecordingProjectEditor'
+export {
+  TIMELINE_CLIP_CHROME_ANIMATION,
+  TIMELINE_CLIP_CHROME_HIT_TESTING,
+  primaryTimelineSurface,
+  resolveTimelineClipEmphasis,
+  timelineClipChromeStyle,
+  timelineClipEmphasisMetrics,
+  timelineClipShowsHandles,
+  timelineClipSurface,
+} from '../src/renderer/src/core/EditorTimelineClipChrome'

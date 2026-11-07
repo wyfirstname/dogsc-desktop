@@ -6680,5 +6680,524 @@ async function runInspectorAndChromeBatch() {
 
 await runInspectorAndChromeBatch()
 
+async function runRecordingShellBatch() {
+  // ========== 10 文件 / 1,255 行：录制标记 / 保存徽章 / 工程工作区 / 设备解析 /
+  //            摄像头节奏 / 画面预览 / 录制条交互 / 快捷键表 / 工程替换 / 片段外观
+  const {
+    MARKER_BOOKMARK_GLYPH_WIDTH, MARKER_BOOKMARK_HIT_WIDTH, MARKER_BOOKMARK_RULER_INSET,
+    MARKER_BOOKMARK_RGB, MARKER_SCROLL_MARGIN, MARKER_SCROLL_CENTER_FRACTION,
+    recordingMarkerTimestamp, makeEditorRecordingMarker, visibleRecordingMarkerIndices,
+    recordingMarkerOffsetX, recordingMarkerRulerHidden, recordingMarkerScrollPlan,
+    recordingMarkerHelpText, RECORDING_MARKER_MENU_TEXT,
+    editorPersistenceBadgeState, EDITOR_PERSISTENCE_TITLES, EDITOR_PERSISTENCE_ACCESSIBILITY,
+    EDITOR_PERSISTENCE_IDENTIFIERS, EDITOR_PERSISTENCE_BADGE_METRICS,
+    EDITOR_PERSISTENCE_BADGE_COLORS, EDITOR_SAVE_DOT, editorSaveDotFrame,
+    editorPersistenceMarker,
+    ProjectWorkspace,
+    captureInputDeviceRequest, captureInputDeviceRequestRole, captureInputDeviceRequestedUniqueID,
+    CAPTURE_DEVICE_ERROR_MESSAGES, captureDeviceResolutionErrorMessage,
+    CaptureInputDeviceResolutionError, resolveCaptureInputDevice, CAPTURE_INPUT_DEVICE_ROLES,
+    CAMERA_CADENCE_WINDOW_CAPACITY, CAMERA_CADENCE_MINIMUM_SAMPLES, CAMERA_CADENCE_FPS_DELTA,
+    RollingHostTimeWindow, CameraRuntimeFormatMonitor, fourCC,
+    FRAME_PREVIEW_HEIGHT, FRAME_PREVIEW_CHROME_BAR_HEIGHT, FRAME_PREVIEW_DEVICE_BEZEL,
+    FRAME_PREVIEW_MINIMUM_CONTENT_SIDE, FRAME_PREVIEW_TRAFFIC_LIGHTS,
+    framePreviewIsDark, framePreviewScreenGeometry, framePreviewScreenPosition,
+    framePreviewWallpaperBlur, framePreviewAddressBarColor, framePreviewChromeBarBackground,
+    DRAG_GRIP_WIDTH, DRAG_GRIP_HEIGHT, DRAG_GRIP_DOT_DIAMETER, DRAG_GRIP_DOTS_PER_COLUMN,
+    DRAG_GRIP_ACCESSIBILITY_IDENTIFIER, DRAG_GRIP_LABEL,
+    panelPointerDecision, roundedRectContains, PANEL_POINTER_EVENTS, panelPointerMonitorAction,
+    ISLAND_INTERACTION_VIEW_ACCEPTS_HIT_TEST, RECORDER_HOSTING_ACCEPTS_FIRST_MOUSE,
+    EDITOR_SHORTCUT_GROUPS, SHORTCUT_KEY_COLUMN_MINIMUM, SHORTCUT_KEY_COLUMN_PADDING,
+    SHORTCUT_PANEL_EXPLANATION_WIDTH, SHORTCUT_PANEL_HEIGHT, SHORTCUT_KEYCAP,
+    shortcutKeyColumnWidth, shortcutPanelWidth, shortcutEntryCount, SHORTCUT_PANEL_TEXT,
+    EDITOR_BUSY_MESSAGE, projectSaveFailureMessage, canCrossSaveBarrier, openProjectDecision,
+    phaseObservationAction, saveBarrierOutcome, restoreEditorState,
+    resolveTimelineClipEmphasis, timelineClipShowsHandles, timelineClipEmphasisMetrics,
+    timelineClipSurface, primaryTimelineSurface, timelineClipChromeStyle,
+    TIMELINE_CLIP_CHROME_ANIMATION, TIMELINE_CLIP_CHROME_HIT_TESTING,
+  } = m
+
+  // ------------------------------------- EditorTimelineRecordingMarkers.swift
+  check('mk.glyph', `${MARKER_BOOKMARK_GLYPH_WIDTH}x${MARKER_BOOKMARK_HIT_WIDTH}`, '8x18')
+  check('mk.rulerInset', MARKER_BOOKMARK_RULER_INSET, 21)
+  check('mk.rgb', `${MARKER_BOOKMARK_RGB.red}/${MARKER_BOOKMARK_RGB.green}/${MARKER_BOOKMARK_RGB.blue}`, '0.65/0.47/0.22')
+  check('mk.menuSeek', RECORDING_MARKER_MENU_TEXT.seek, '跳转到标记')
+  check('mk.menuRemove', RECORDING_MARKER_MENU_TEXT.remove, '删除录制标记')
+  check('mk.ts.zero', recordingMarkerTimestamp(0), '00:00.00')
+  check('mk.ts.frac', recordingMarkerTimestamp(1.239), '00:01.23')
+  check('mk.ts.minute', recordingMarkerTimestamp(65.5), '01:05.50')
+  check('mk.ts.negative', recordingMarkerTimestamp(-3), '00:00.00')
+  check('mk.ts.long', recordingMarkerTimestamp(6000), '100:00.00')
+  {
+    const marker = makeEditorRecordingMarker({ id: 'm1', number: 3 }, 12.34)
+    check('mk.label', marker.label, '标记 3')
+    check('mk.timestamp', marker.timestamp, '00:12.34')
+    check('mk.idKept', marker.id, 'm1')
+    check('mk.help', recordingMarkerHelpText(marker, (t) => `t${t}`), '标记 3 · t12.34')
+  }
+  check(
+    'mk.visibleIndices',
+    visibleRecordingMarkerIndices([{ outputTime: 1 }, { outputTime: 5 }, { outputTime: 9 }], { lower: 2, upper: 9 }).join(','),
+    '1,2'
+  )
+  check('mk.offset', recordingMarkerOffsetX({ outputTime: 5, duration: 10, width: 200 }), 91)
+  check('mk.offsetZeroDuration', recordingMarkerOffsetX({ outputTime: 5, duration: 0, width: 200 }), 999991)
+  check('mk.hiddenRestore', recordingMarkerRulerHidden({ isRestoreCutMode: true, hasTrimDraft: false, hasReorderDraft: false }), true)
+  check('mk.hiddenTrim', recordingMarkerRulerHidden({ isRestoreCutMode: false, hasTrimDraft: true, hasReorderDraft: false }), true)
+  check('mk.hiddenReorder', recordingMarkerRulerHidden({ isRestoreCutMode: false, hasTrimDraft: false, hasReorderDraft: true }), true)
+  check('mk.visibleNormal', recordingMarkerRulerHidden({ isRestoreCutMode: false, hasTrimDraft: false, hasReorderDraft: false }), false)
+  {
+    const visible = recordingMarkerScrollPlan({
+      outputTime: 5, timelineDuration: 10, timelineContentWidth: 1000,
+      viewportMinX: 400, viewportMaxX: 900, viewportWidth: 500, documentWidth: 1000,
+    })
+    check('mk.noScrollWhenVisible', visible.scrolls, false)
+    const left = recordingMarkerScrollPlan({
+      outputTime: 1, timelineDuration: 10, timelineContentWidth: 1000,
+      viewportMinX: 400, viewportMaxX: 900, viewportWidth: 500, documentWidth: 1000,
+    })
+    check('mk.scrollLeft', left.scrolls, true)
+    check('mk.scrollLeftClamped', left.targetX, 0)
+    const right = recordingMarkerScrollPlan({
+      outputTime: 9, timelineDuration: 10, timelineContentWidth: 1000,
+      viewportMinX: 400, viewportMaxX: 900, viewportWidth: 500, documentWidth: 1000,
+    })
+    check('mk.scrollRight', right.targetX, 500)
+    check('mk.margin', MARKER_SCROLL_MARGIN, 24)
+    check('mk.centerFraction', MARKER_SCROLL_CENTER_FRACTION, 0.4)
+  }
+
+  // ---------------------------------------- EditorPersistenceIndicator.swift
+  check('pi.stateFailed', editorPersistenceBadgeState({ status: 'failed', hasDraft: false }), 'failed')
+  check('pi.stateSaving', editorPersistenceBadgeState({ status: 'saving', hasDraft: false }), 'saving')
+  check('pi.stateEditing', editorPersistenceBadgeState({ status: 'clean', hasDraft: true }), 'editing')
+  check('pi.stateSaved', editorPersistenceBadgeState({ status: 'clean', hasDraft: false }), 'saved')
+  check('pi.titles', Object.values(EDITOR_PERSISTENCE_TITLES).join('/'), '已保存/正在保存/编辑中/保存失败')
+  check('pi.a11y', EDITOR_PERSISTENCE_ACCESSIBILITY.failed, '查看自动保存失败原因')
+  check('pi.ids', EDITOR_PERSISTENCE_IDENTIFIERS.editing, 'editor.persistence.editing')
+  check('pi.metrics', `${EDITOR_PERSISTENCE_BADGE_METRICS.height}/${EDITOR_PERSISTENCE_BADGE_METRICS.markerSize}/${EDITOR_PERSISTENCE_BADGE_METRICS.spacing}`, '26/12/7')
+  check('pi.colors', EDITOR_PERSISTENCE_BADGE_COLORS.failedFillOpacity, 0.1)
+  check('pi.markers', ['saved', 'saving', 'editing', 'failed'].map(editorPersistenceMarker).join(','), 'check,progressDot,pencil,warning')
+  {
+    const rest = editorSaveDotFrame(0, false)
+    check('pi.dotRestScale', rest.scale, EDITOR_SAVE_DOT.minScale)
+    check('pi.dotRestOpacity', rest.opacity, EDITOR_SAVE_DOT.minOpacity)
+    const peak = editorSaveDotFrame(EDITOR_SAVE_DOT.period, false)
+    check('pi.dotPeakScale', peak.scale, 1)
+    const back = editorSaveDotFrame(EDITOR_SAVE_DOT.period * 2, false)
+    check('pi.dotBackScale', Math.round(back.scale * 1000) / 1000, 0.6)
+    const still = editorSaveDotFrame(0.3, true)
+    check('pi.dotReduceMotion', `${still.scale}/${still.opacity}`, '1/1')
+  }
+
+  // ---------------------------------------------------- ProjectWorkspace.swift
+  {
+    const scheduled = []
+    const events = []
+    const persistence = {
+      session: null,
+      isSaved: true,
+      status: 'clean',
+      scheduleAutosave: (project) => scheduled.push(project),
+      activate: (session, saved) => events.push(`activate:${session.id}:${saved}`),
+      flush: async () => ({ savedAt: 7 }),
+      move: async () => null,
+      moveAndInvalidate: async () => null,
+      flushAndInvalidate: async () => null,
+      invalidateCurrentSession: async () => null,
+    }
+    const document = { project: { name: 'p' } }
+    const workspace = new ProjectWorkspace(document, persistence)
+    check('pw.initialSaved', workspace.isSaved, true)
+    check('pw.initialStatus', workspace.status, 'clean')
+    const snapshot = { name: 'q' }
+    workspace.notifyProjectChanged(snapshot)
+    workspace.notifyProjectChanged(snapshot)
+    check('pw.autosaveOncePerProject', scheduled.length, 1)
+    workspace.notifyProjectChanged({ name: 'r' })
+    check('pw.autosaveOnNewSnapshot', scheduled.length, 2)
+    workspace.activate({ id: 's1' }, false)
+    check('pw.activateForwarded', events.join(','), 'activate:s1:false')
+    const receipt = await workspace.flush({ name: 'q' })
+    check('pw.flushReceipt', receipt.savedAt, 7)
+    const invalidated = await workspace.invalidateCurrentSession()
+    check('pw.invalidateNull', invalidated, null)
+  }
+
+  // ------------------------------------------------ CaptureDeviceResolution.swift
+  check('cdr.roles', CAPTURE_INPUT_DEVICE_ROLES.join(','), 'camera,microphone,iosDevice')
+  {
+    const automatic = captureInputDeviceRequest('camera', null)
+    check('cdr.automaticKind', automatic.kind, 'automatic')
+    check('cdr.automaticRole', captureInputDeviceRequestRole(automatic), 'camera')
+    check('cdr.automaticId', captureInputDeviceRequestedUniqueID(automatic), null)
+    const exact = captureInputDeviceRequest('microphone', '')
+    check('cdr.emptyStringIsExact', exact.kind, 'exact')
+    check('cdr.exactId', captureInputDeviceRequestedUniqueID(exact), '')
+  }
+  check('cdr.msgCameraAuto', captureDeviceResolutionErrorMessage('camera', null), CAPTURE_DEVICE_ERROR_MESSAGES.cameraAutomatic)
+  check('cdr.msgCameraExact', captureDeviceResolutionErrorMessage('camera', 'abc'), CAPTURE_DEVICE_ERROR_MESSAGES.cameraExact)
+  check('cdr.msgMicAuto', captureDeviceResolutionErrorMessage('microphone', null), '没有找到可用的麦克风。')
+  check('cdr.msgMicExact', captureDeviceResolutionErrorMessage('microphone', 'abc'), '所选麦克风已断开或不可用，请重新选择。')
+  check('cdr.msgIosAuto', captureDeviceResolutionErrorMessage('iosDevice', null), '请先选择要录制的 iPhone 或 iPad。')
+  check('cdr.msgIosExact', captureDeviceResolutionErrorMessage('iosDevice', 'abc'), '所选 iPhone 或 iPad 已断开或不可用，请重新选择。')
+  {
+    const error = new CaptureInputDeviceResolutionError('camera', 'abc')
+    check('cdr.errorKind', error.info.kind, 'cameraUnavailable')
+    check('cdr.errorMessage', error.message, CAPTURE_DEVICE_ERROR_MESSAGES.cameraExact)
+    check('cdr.errorRequested', error.info.requestedUniqueID, 'abc')
+  }
+  {
+    const candidates = [
+      { role: 'camera', uniqueID: 'cam-1', localizedName: '内建摄像头' },
+      { role: 'microphone', uniqueID: 'mic-1', localizedName: '内建麦克风' },
+      { role: 'iosDevice', uniqueID: 'ios-1', localizedName: 'iPhone' },
+    ]
+    const exact = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('camera', 'cam-1'), candidates, defaultUniqueID: null,
+    })
+    check('cdr.exactFound', exact.ok, true)
+    check('cdr.exactName', exact.device.localizedName, '内建摄像头')
+    // 同名 ID 但角色不同 → 必须失败（角色是身份的一部分）
+    const wrongRole = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('camera', 'mic-1'), candidates, defaultUniqueID: null,
+    })
+    check('cdr.roleMismatch', wrongRole.ok, false)
+    check('cdr.roleMismatchKind', wrongRole.error.kind, 'cameraUnavailable')
+    const automatic = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('camera', null), candidates, defaultUniqueID: 'cam-1',
+    })
+    check('cdr.automaticDefault', automatic.ok, true)
+    const noDefault = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('camera', null), candidates, defaultUniqueID: null,
+    })
+    check('cdr.automaticNoDefault', noDefault.ok, false)
+    const defaultIsOtherRole = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('microphone', null), candidates, defaultUniqueID: 'cam-1',
+    })
+    check('cdr.defaultRoleMismatch', defaultIsOtherRole.ok, false)
+    // iOS 端点永不接受自动选择
+    const iosAutomatic = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('iosDevice', null), candidates, defaultUniqueID: 'ios-1',
+    })
+    check('cdr.iosNeverAutomatic', iosAutomatic.ok, false)
+    check('cdr.iosMessage', iosAutomatic.error.message, CAPTURE_DEVICE_ERROR_MESSAGES.iosAutomatic)
+    const iosExact = resolveCaptureInputDevice({
+      request: captureInputDeviceRequest('iosDevice', 'ios-1'), candidates, defaultUniqueID: null,
+    })
+    check('cdr.iosExactWorks', iosExact.ok, true)
+  }
+
+  // ------------------------------------------------- CameraRuntimeFormatMonitor.swift
+  check('cf.capacity', CAMERA_CADENCE_WINDOW_CAPACITY, 31)
+  check('cf.minimumSamples', CAMERA_CADENCE_MINIMUM_SAMPLES, 8)
+  check('cf.fpsDelta', CAMERA_CADENCE_FPS_DELTA, 0.5)
+  {
+    const window = new RollingHostTimeWindow(3)
+    window.append(1); window.append(2); window.append(3)
+    check('cf.windowCount', window.count, 3)
+    check('cf.windowFirst', window.first, 1)
+    check('cf.windowLast', window.last, 3)
+    window.append(4)
+    check('cf.windowWrappedFirst', window.first, 2)
+    check('cf.windowWrappedLast', window.last, 4)
+    window.reset()
+    check('cf.windowReset', window.count, 0)
+    check('cf.windowResetFirst', window.first, null)
+    const guarded = new RollingHostTimeWindow(0)
+    check('cf.windowCapacityFloor', guarded.capacity, 1)
+  }
+  {
+    const layout = { isStructurallyValid: true, width: 1920, height: 1080, pixelFormat: 0x42475241, planeCount: 1, bytesPerRow: 7680 }
+    const monitor = new CameraRuntimeFormatMonitor()
+    check('cf.invalidLayout', monitor.observe({ layout: { ...layout, isStructurallyValid: false }, hostTime: 0, deliveredDuration: 1 / 30 }), null)
+    check('cf.nonFiniteTime', monitor.observe({ layout, hostTime: NaN, deliveredDuration: 1 / 30 }), null)
+    const first = monitor.observe({ layout, hostTime: 0, deliveredDuration: 1 / 30 })
+    check('cf.firstReportFps', first.framesPerSecond, 30)
+    check('cf.firstReportWidth', first.width, 1920)
+    const suppressed = monitor.observe({ layout, hostTime: 0.2, deliveredDuration: 1 / 30.2 })
+    check('cf.suppressedWithinSecond', suppressed, null)
+    const cadenceChanged = monitor.observe({ layout, hostTime: 1.5, deliveredDuration: 1 / 29.4 })
+    check('cf.reportedAfterInterval', cadenceChanged !== null, true)
+    const dimsChanged = monitor.observe({
+      layout: { ...layout, width: 1280, height: 720 }, hostTime: 1.6, deliveredDuration: 1 / 29.4,
+    })
+    check('cf.dimensionsReportImmediately', dimsChanged.width, 1280)
+    check('cf.logLine', monitor.logLine({ width: 1280, height: 720, framesPerSecond: 29.4 }, layout).includes('pixelFormat=BGRA'), true)
+    monitor.reset()
+    const afterReset = monitor.observe({ layout, hostTime: 9, deliveredDuration: 1 / 60 })
+    check('cf.reportsAgainAfterReset', afterReset.framesPerSecond, 60)
+  }
+  {
+    // 窗口估算：样本自身时长无效时用 8 个主机时间点算
+    const layout = { isStructurallyValid: true, width: 640, height: 480, pixelFormat: 0x42475241, planeCount: 1, bytesPerRow: 2560 }
+    const monitor = new CameraRuntimeFormatMonitor()
+    let last = null
+    for (let i = 0; i < 8; i += 1) {
+      last = monitor.observe({ layout, hostTime: i / 30, deliveredDuration: 0 })
+    }
+    check('cf.windowFps', last.framesPerSecond, 30)
+    check('cf.windowWidth', last.width, 640)
+  }
+  check('cf.fourCCPrintable', fourCC(0x42475241), 'BGRA')
+  check('cf.fourCCFallback', fourCC(1), '0x00000001')
+
+  // ------------------------------------------------------- EditorFramePreview.swift
+  check('fp.height', FRAME_PREVIEW_HEIGHT, 146)
+  check('fp.barHeight', FRAME_PREVIEW_CHROME_BAR_HEIGHT, 11)
+  check('fp.bezel', FRAME_PREVIEW_DEVICE_BEZEL, 4.5)
+  check('fp.minimumContent', FRAME_PREVIEW_MINIMUM_CONTENT_SIDE, 20)
+  check('fp.trafficLights', FRAME_PREVIEW_TRAFFIC_LIGHTS.length, 3)
+  check('fp.darkWindow', framePreviewIsDark('windowDark'), true)
+  check('fp.darkBrowser', framePreviewIsDark('browserDark'), true)
+  check('fp.lightBrowser', framePreviewIsDark('browserLight'), false)
+  check('fp.deviceNotDark', framePreviewIsDark('devicePhone'), false)
+  {
+    const geometry = framePreviewScreenGeometry({
+      stageWidth: 400, stageHeight: 146,
+      canvas: { padding: 40, cornerRadius: 24, borderWidth: 20, shadowStrength: 0.28, screenFrame: 'none', screenFrameScale: 1 },
+      baseWidth: 320, baseHeight: 180,
+    })
+    check('fp.margin', Math.round(geometry.margin * 1000) / 1000, 18.218)
+    check('fp.noneBar', geometry.bar, 0)
+    check('fp.noneBezel', geometry.bezel, 0)
+    check('fp.noneScale', geometry.scale, 1)
+    check('fp.contentWidth', geometry.contentWidth, 320)
+    check('fp.contentHeight', Math.round(geometry.contentHeight * 100) / 100, 109.56)
+    check('fp.contentRadius', Math.round(geometry.contentRadius * 100) / 100, 4.35)
+    check('fp.outerRadiusNone', Math.round(geometry.outerRadius * 100) / 100, 4.35)
+    check('fp.borderWidth', geometry.borderWidth, 6)
+    check('fp.shadow', Math.round(geometry.shadowOpacity * 1000) / 1000, 0.292)
+    check('fp.insetRadiusNone', Math.round(geometry.contentInsetRadius * 100) / 100, 4.35)
+  }
+  {
+    const geometry = framePreviewScreenGeometry({
+      stageWidth: 400, stageHeight: 146,
+      canvas: { padding: 40, cornerRadius: 24, borderWidth: 20, shadowStrength: 0.28, screenFrame: 'browserLight', screenFrameScale: 2 },
+      baseWidth: 320, baseHeight: 100,
+    })
+    check('fp.browserBar', geometry.bar, 11)
+    check('fp.scaleClamped', geometry.scale, 1.6)
+    check('fp.browserOuterRadius', geometry.outerRadius, 6)
+    check('fp.browserInsetRadius', geometry.contentInsetRadius, 0)
+    check('fp.availableHeight', Math.round(geometry.availableHeight * 100) / 100, 98.56)
+  }
+  {
+    const geometry = framePreviewScreenGeometry({
+      stageWidth: 300, stageHeight: 200,
+      canvas: { padding: 0, cornerRadius: 0, borderWidth: 0, shadowStrength: 0, screenFrame: 'devicePhone', screenFrameScale: 0.1, screenFrameContentCornerRadius: 40 },
+      baseWidth: 100, baseHeight: 200,
+    })
+    check('fp.deviceBezel', geometry.bezel, 4.5)
+    check('fp.deviceScaleFloor', geometry.scale, 0.6)
+    check('fp.deviceOuterRadius', geometry.outerRadius, 13.5)
+    check('fp.deviceInsetRadius', geometry.contentInsetRadius, 3)
+    check('fp.marginBase', Math.round(geometry.margin * 1000) / 1000, 14)
+    check('fp.zeroShadow', geometry.shadowOpacity, 0.18)
+  }
+  {
+    const position = framePreviewScreenPosition({
+      stageWidth: 400, stageHeight: 146, totalWidth: 320, totalHeight: 110,
+      contentPosition: { x: 0.5, y: 0.5 },
+    })
+    check('fp.positionX', position.x, 200)
+    check('fp.positionY', position.y, 73)
+    const corner = framePreviewScreenPosition({
+      stageWidth: 400, stageHeight: 146, totalWidth: 320, totalHeight: 110,
+      contentPosition: { x: 1, y: 1 },
+    })
+    check('fp.positionCornerX', corner.x, 240)
+    check('fp.positionCornerY', corner.y, 91)
+    const overflow = framePreviewScreenPosition({
+      stageWidth: 100, stageHeight: 100, totalWidth: 320, totalHeight: 110,
+      contentPosition: { x: 1, y: 1 },
+    })
+    check('fp.positionNoFreeSpace', `${overflow.x}/${overflow.y}`, '160/55')
+  }
+  check('fp.blur', framePreviewWallpaperBlur(40), 10)
+  check('fp.blurClamped', framePreviewWallpaperBlur(400), 10)
+  check('fp.blurZero', framePreviewWallpaperBlur(-5), 0)
+  check('fp.addressDark', framePreviewAddressBarColor(true).opacity, 0.12)
+  check('fp.addressLight', framePreviewAddressBarColor(false).opacity, 0.07)
+  check('fp.chromeDark', framePreviewChromeBarBackground(true), 0.17)
+  check('fp.chromeLight', framePreviewChromeBarBackground(false), 0.96)
+
+  // --------------------------------------------------- RecorderPanelInteraction.swift
+  check('rp.grip', `${DRAG_GRIP_WIDTH}x${DRAG_GRIP_HEIGHT}`, '22x40')
+  check('rp.gripDot', DRAG_GRIP_DOT_DIAMETER, 2)
+  check('rp.gripDots', DRAG_GRIP_DOTS_PER_COLUMN * 2, 6)
+  check('rp.gripId', DRAG_GRIP_ACCESSIBILITY_IDENTIFIER, 'recorder.window-drag-grip')
+  check('rp.gripLabel', DRAG_GRIP_LABEL, '拖动录制条')
+  check('rp.events', PANEL_POINTER_EVENTS.join(','), 'mouseMoved,leftMouseUp,rightMouseUp,otherMouseUp')
+  check('rp.islandNoHitTest', ISLAND_INTERACTION_VIEW_ACCEPTS_HIT_TEST, false)
+  check('rp.hostingFirstMouse', RECORDER_HOSTING_ACCEPTS_FIRST_MOUSE, true)
+  check(
+    'rp.monitorInstall',
+    panelPointerMonitorAction({ enabled: true, hasLocalMonitor: false, hasGlobalMonitor: false }),
+    'install'
+  )
+  check(
+    'rp.monitorRefresh',
+    panelPointerMonitorAction({ enabled: true, hasLocalMonitor: true, hasGlobalMonitor: true }),
+    'refresh'
+  )
+  check(
+    'rp.monitorRemove',
+    panelPointerMonitorAction({ enabled: false, hasLocalMonitor: true, hasGlobalMonitor: true }),
+    'remove'
+  )
+  {
+    const island = { x: 0, y: 0, width: 100, height: 100 }
+    const base = {
+      enabled: true, hasIslandView: true, islandBelongsToWindow: true,
+      pressedMouseButtons: 0, pointer: { x: 50, y: 50 }, island,
+    }
+    check('rp.inside', panelPointerDecision(base), 'accept')
+    check('rp.outside', panelPointerDecision({ ...base, pointer: { x: 150, y: 50 } }), 'ignore')
+    // 圆角矩形的角上：矩形内但圆外
+    check('rp.cornerRejected', panelPointerDecision({ ...base, pointer: { x: 1, y: 1 } }), 'ignore')
+    check('rp.pressedKeeps', panelPointerDecision({ ...base, pressedMouseButtons: 1, pointer: { x: 500, y: 500 } }), 'keep')
+    check('rp.disabled', panelPointerDecision({ ...base, enabled: false }), 'ignore')
+    check('rp.noIsland', panelPointerDecision({ ...base, hasIslandView: false }), 'ignore')
+    check('rp.otherWindow', panelPointerDecision({ ...base, islandBelongsToWindow: false }), 'ignore')
+    check('rp.noPointer', panelPointerDecision({ ...base, pointer: null }), 'ignore')
+    check('rp.rectContains', roundedRectContains(island, 50, { x: 50, y: 0 }), true)
+    check('rp.rectEdge', roundedRectContains(island, 50, { x: 50, y: 101 }), false)
+    check('rp.zeroRadius', roundedRectContains(island, 0, { x: 99, y: 99 }), true)
+  }
+
+  // ------------------------------------------------- EditorShortcutCheatsheet.swift
+  check('sk.groups', EDITOR_SHORTCUT_GROUPS.map((g) => g.title).join('/'), '播放与浏览/剪辑/运镜与轨道/通用')
+  check('sk.entryCount', shortcutEntryCount(), 26)
+  check('sk.minimumColumn', SHORTCUT_KEY_COLUMN_MINIMUM, 96)
+  check('sk.columnPadding', SHORTCUT_KEY_COLUMN_PADDING, 16)
+  check('sk.panelHeight', SHORTCUT_PANEL_HEIGHT, 480)
+  check('sk.panelWidth', shortcutPanelWidth(116), 460)
+  check('sk.panelExplanation', SHORTCUT_PANEL_EXPLANATION_WIDTH, 344)
+  check('sk.keycapRadius', SHORTCUT_KEYCAP.cornerRadius, 6)
+  check('sk.keycapStroke', SHORTCUT_KEYCAP.strokeOpacity, 0.12)
+  check('sk.title', SHORTCUT_PANEL_TEXT.title, '快捷键速查')
+  check('sk.closeA11y', SHORTCUT_PANEL_TEXT.closeAccessibility, '关闭快捷键速查')
+  check('sk.widthFromMeasure', shortcutKeyColumnWidth(() => 100), 116)
+  check('sk.widthFloor', shortcutKeyColumnWidth(() => 10), 96)
+  check('sk.widthCeil', shortcutKeyColumnWidth(() => 87), 103)
+  check(
+    'sk.widthFromTable',
+    shortcutKeyColumnWidth((text) => text.length * 7),
+    107
+  )
+  check(
+    'sk.entriesHaveKeys',
+    EDITOR_SHORTCUT_GROUPS.every((group) => group.entries.every((entry) => entry.keys.length > 0 && entry.action.length > 0)),
+    true
+  )
+
+  // ----------------------------------------------------- RecordingProjectEditor.swift
+  check('rpe.busy', EDITOR_BUSY_MESSAGE, '请先完成当前项目的打开、保存或导出操作。')
+  check('rpe.saveFailure', projectSaveFailureMessage('磁盘已满'), '保存项目失败：磁盘已满')
+  {
+    const idle = { phase: 'editor', isExporting: false, isMediaExchangeRunning: false, hasSession: true }
+    check('rpe.barrierOk', canCrossSaveBarrier({ isCrossingSaveBarrier: false, model: idle }), true)
+    check('rpe.barrierNoModel', canCrossSaveBarrier({ isCrossingSaveBarrier: false, model: null }), false)
+    check('rpe.barrierCrossing', canCrossSaveBarrier({ isCrossingSaveBarrier: true, model: idle }), false)
+    check('rpe.barrierExporting', canCrossSaveBarrier({ isCrossingSaveBarrier: false, model: { ...idle, isExporting: true } }), false)
+    check('rpe.barrierExchanging', canCrossSaveBarrier({ isCrossingSaveBarrier: false, model: { ...idle, isMediaExchangeRunning: true } }), false)
+    check('rpe.barrierNoSession', canCrossSaveBarrier({ isCrossingSaveBarrier: false, model: { ...idle, hasSession: false } }), false)
+    check('rpe.barrierFinishing', canCrossSaveBarrier({ isCrossingSaveBarrier: false, model: { ...idle, phase: 'finishing' } }), false)
+  }
+  {
+    check('rpe.openCrossing', openProjectDecision({ isCrossingSaveBarrier: true, hasModel: true, model: null }).kind, 'ignore')
+    check('rpe.openFresh', openProjectDecision({ isCrossingSaveBarrier: false, hasModel: false, model: null }).kind, 'createModel')
+    const idle = { phase: 'editor', isExporting: false, isMediaExchangeRunning: false, hasSession: true }
+    check('rpe.openReuse', openProjectDecision({ isCrossingSaveBarrier: false, hasModel: true, model: idle }).kind, 'reuseModel')
+    const busy = openProjectDecision({
+      isCrossingSaveBarrier: false, hasModel: true,
+      model: { ...idle, isExporting: true },
+    })
+    check('rpe.openReject', busy.kind, 'reject')
+    check('rpe.openRejectMessage', busy.message, EDITOR_BUSY_MESSAGE)
+  }
+  check(
+    'rpe.observeNotCurrent',
+    phaseObservationAction({ isCurrentModel: false, phase: 'setup' }).kind,
+    'notifyOnly'
+  )
+  check(
+    'rpe.observeSetupError',
+    phaseObservationAction({ isCurrentModel: true, phase: 'setup', errorMessage: '坏文件' }).kind,
+    'releaseWithError'
+  )
+  check(
+    'rpe.observeSetupSilent',
+    phaseObservationAction({ isCurrentModel: true, phase: 'setup' }).kind,
+    'release'
+  )
+  check(
+    'rpe.observeEditor',
+    phaseObservationAction({ isCurrentModel: true, phase: 'editor' }).kind,
+    'notifyOnly'
+  )
+  check('rpe.outcomeReplacement', saveBarrierOutcome({ purpose: 'replacement', flushReturnedReceipt: true }).action, 'closeProject')
+  check('rpe.outcomeTermination', saveBarrierOutcome({ purpose: 'termination', flushReturnedReceipt: true }).action, 'stayOpen')
+  {
+    const failed = saveBarrierOutcome({ purpose: 'termination', flushReturnedReceipt: false })
+    check('rpe.outcomeFailure', failed.ok, false)
+    check('rpe.outcomeFailureMessage', failed.message, '保存项目失败：未能写入项目文件。')
+    const withReason = saveBarrierOutcome({ purpose: 'termination', flushReturnedReceipt: false, failureReason: '只读卷' })
+    check('rpe.outcomeFailureReason', withReason.message, '保存项目失败：只读卷')
+  }
+  {
+    const restored = restoreEditorState('保存项目失败：x')
+    check('rpe.restorePhase', restored.phase, 'editor')
+    check('rpe.restoreStage', restored.transitionStage, 'idle')
+    check('rpe.restoreMessage', restored.errorMessage, '保存项目失败：x')
+  }
+
+  // ------------------------------------------------ EditorTimelineClipChrome.swift
+  check('tcl.resolveEditing', resolveTimelineClipEmphasis({ isEditing: true, isSelected: true, isHovered: true }), 'editing')
+  check('tcl.resolveSelected', resolveTimelineClipEmphasis({ isEditing: false, isSelected: true, isHovered: true }), 'selected')
+  check('tcl.resolveHovered', resolveTimelineClipEmphasis({ isEditing: false, isSelected: false, isHovered: true }), 'hovered')
+  check('tcl.resolveIdle', resolveTimelineClipEmphasis({ isEditing: false, isSelected: false, isHovered: false }), 'idle')
+  {
+    const idle = timelineClipEmphasisMetrics('idle')
+    check('tcl.idleStroke', `${idle.strokeOpacity}/${idle.strokeWidth}`, '0.08/0.65')
+    check('tcl.idleHandles', idle.handleOpacity, 0)
+    const editing = timelineClipEmphasisMetrics('editing')
+    check('tcl.editingStroke', `${editing.strokeOpacity}/${editing.strokeWidth}`, '1/1.5')
+    check('tcl.editingHandles', editing.handleOpacity, 1)
+    const hovered = timelineClipEmphasisMetrics('hovered')
+    check('tcl.hoveredTrackLight', hovered.trackLightFillOpacity, 0.34)
+    check('tcl.selectedTrackDark', timelineClipEmphasisMetrics('selected').trackDarkFillOpacity, 0.4)
+    check('tcl.primaryNeutral', timelineClipEmphasisMetrics('selected').primaryNeutralFillOpacity, 0.065)
+  }
+  check('tcl.handlesIdle', timelineClipShowsHandles('idle'), false)
+  check('tcl.handlesHovered', timelineClipShowsHandles('hovered'), true)
+  check('tcl.surfaceLight', timelineClipSurface('selected', 'light').opacity, 0.46)
+  check('tcl.surfaceDark', timelineClipSurface('selected', 'dark').opacity, 0.4)
+  check('tcl.surfaceSource', timelineClipSurface('idle', 'light').source, 'trackWash')
+  check('tcl.primarySource', primaryTimelineSurface('editing').source, 'chrome')
+  check('tcl.primaryOpacity', primaryTimelineSurface('editing').opacity, 0.07)
+  {
+    const tintHover = timelineClipChromeStyle({ emphasis: 'hovered', hasTint: true, hasSelectionRing: false })
+    check('tcl.tintHoverOpacity', tintHover.opacity, 0.7)
+    check('tcl.tintHoverWidth', tintHover.strokeWidth, 0.75)
+    check('tcl.tintSource', tintHover.ringSource, 'tint')
+    const noTintHover = timelineClipChromeStyle({ emphasis: 'hovered', hasTint: false, hasSelectionRing: false })
+    check('tcl.noTintHoverOpacity', noTintHover.opacity, 0.2)
+    const noTintIdle = timelineClipChromeStyle({ emphasis: 'idle', hasTint: false, hasSelectionRing: false })
+    check('tcl.noTintIdleOpacity', noTintIdle.opacity, 0.1)
+    check('tcl.defaultRing', noTintIdle.ringSource, 'defaultRing')
+    const selectionOnly = timelineClipChromeStyle({ emphasis: 'idle', hasTint: false, hasSelectionRing: true })
+    check('tcl.selectionRingSource', selectionOnly.ringSource, 'selectionTint')
+    const selected = timelineClipChromeStyle({ emphasis: 'selected', hasTint: true, hasSelectionRing: true })
+    check('tcl.selectedRing', `${selected.opacity}/${selected.strokeWidth}`, '1/1.5')
+  }
+  check('tcl.animation', `${TIMELINE_CLIP_CHROME_ANIMATION.kind}/${TIMELINE_CLIP_CHROME_ANIMATION.duration}`, 'easeOut/0.14')
+  check('tcl.noHitTesting', TIMELINE_CLIP_CHROME_HIT_TESTING, false)
+
+}
+
+await runRecordingShellBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
