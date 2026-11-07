@@ -9773,5 +9773,1022 @@ async function runCaptureWindowBatch() {
 
 await runCaptureWindowBatch()
 
+
+
+async function runPreviewAndSelectionBatch() {
+  // ========== 7 文件 / 1375 行：预览诊断 / 录制就绪 / 选择反馈 /
+  //            选择状态机 / 选择过渡 / 设备目录 / 音频增益分段
+  const {
+    // ---- PreviewFrameDiagnostics.swift
+    PREVIEW_DIAGNOSTICS_ENVIRONMENT_KEY, PREVIEW_DIAGNOSTICS_MAX_CAPTURES,
+    PREVIEW_DIAGNOSTICS_CAPTURE_WINDOW_SECONDS, PREVIEW_DIAGNOSTICS_MAX_MEASUREMENTS,
+    PREVIEW_DIAGNOSTICS_REPORT_DELAY_SECONDS, PREVIEW_DIAGNOSTICS_INFO_SAMPLE_INTERVAL,
+    PREVIEW_DIAGNOSTICS_MAX_PENDING_RENDER_INFO, PREVIEW_DIAGNOSTICS_REPORT_NOTE,
+    previewDiagnosticsConfigured, previewDiagnosticsEnqueueFrame,
+    previewDiagnosticsPercentile, previewDiagnosticsStats,
+    previewDiagnosticsPresentedFPS, previewDiagnosticsDeadlineDelayMS,
+    previewDiagnosticsWithinWindow, previewDiagnosticsShouldCollectRenderInfo,
+    previewDiagnosticsRenderInfoUpdate, previewDiagnosticsBuildReport,
+    PreviewFrameDiagnostics,
+    // ---- CaptureReadiness.swift
+    captureDisplayDimensions, captureDisplayPickerLabel, captureDisplayFromSnapshot,
+    CAPTURE_UNKNOWN_DISPLAY, captureHasSufficientDisk, captureInsufficientDiskMessage,
+    captureDisplayCanShowTargetRate, captureFrameRateWarningText,
+    captureAvailableDiskBytes, estimateRecordingBytes, captureReadinessCurrent,
+    capturePermissionStateFromAuthorizationStatus, capturePermissionStateLabel,
+    CAPTURE_PERMISSION_STATE_LABELS, formatFileByteCount,
+    // ---- AppChoiceFeedback.swift
+    APP_CHOICE_MINIMUM_PRESS_DURATION, APP_CHOICE_ACTIVATION_RELEASE_WINDOW,
+    APP_CHOICE_DISABLED_OPACITY, APP_CHOICE_CONTENT_PRESSED_SCALE,
+    APP_CHOICE_ICON_PRESSED_SCALE, APP_CHOICE_PRESS_ANIMATION_SECONDS,
+    APP_CHOICE_PRESS_DEFAULT, appChoiceKeyPressDecision, AppChoiceFeedback,
+    appChoiceContentScale, appChoiceIconScale,
+    // ---- CaptureSelectionState.swift
+    makeCaptureSelectionToken, captureSelectionTokensEqual, captureSelectionTargetSource,
+    materializeCaptureSelectionTarget, CAPTURE_SELECTION_IDLE, captureSelectionSession,
+    captureSelectionSelectedSource, captureSelectionTarget, captureSelectionCanStartRecording,
+    captureSelectionTargetsEqual, captureSelectionStatesEqual, reduceCaptureSelection,
+    CaptureSelectionCoordinator,
+    // ---- CaptureSelectionTransition.swift
+    CAPTURE_SELECTION_PRESENT_FADE_SECONDS, CAPTURE_SELECTION_RETIRE_FADE_SECONDS,
+    CAPTURE_SELECTION_CARD_HIDE_SECONDS, CAPTURE_SELECTION_CARD_OFFSET_Y,
+    CAPTURE_SELECTION_CARD_SCALE, CAPTURE_SELECTION_CARD_MOTION_SECONDS,
+    CAPTURE_SELECTION_RETIRE_PREREQUISITES, captureSelectionFadePlan,
+    captureSelectionPresentStartAlpha, CaptureSelectionWindowTransition,
+    captureSelectionCardShowPlan, framesEqual, captureSelectionCardHidePlan,
+    captureSelectionCardAnimatePlan, captureSelectionCardMotion,
+    CaptureSelectionCardTransition,
+    // ---- CaptureDeviceCatalog.swift
+    runtimeFormatResolution, runtimeFormatLabel, captureDeviceInfos,
+    CAPTURE_DEVICE_IOS_MODEL_ID, CAPTURE_DEVICE_DISCOVERY_ROLES,
+    captureDeviceRequiresIOSModelID, captureDeviceIsEligible,
+    captureEnableIOSScreenCaptureDecision, captureDeviceResolutionsFromFormats,
+    captureDeviceDefaultQueryForRequest, captureResolveLiveDevice,
+    CaptureDeviceCatalogScheduler,
+    // ---- TimelineAudioGainProcessor.swift
+    TIMELINE_AUDIO_GAIN_EPSILON, timelineAudioGainClamped, timelineAudioGainValidSpans,
+    timelineAudioGainNeedsProcessor, timelineAudioGainParametersPlan,
+    timelineAudioGainFirstSpanIndex, timelineAudioGainNextBoundaryFrame,
+    timelineAudioGainSegments, timelineAudioGainScaleKind, timelineAudioGainSampleCount,
+    // ---- 依赖（CaptureConfiguration，本批顺带导出）
+    makeCaptureConfiguration,
+  } = m
+
+  // ---------------------------------------------------------------------------
+  // PreviewFrameDiagnostics.swift（180 行）
+  // ---------------------------------------------------------------------------
+  check('pfd.envKey', PREVIEW_DIAGNOSTICS_ENVIRONMENT_KEY, 'DOGSC_PREVIEW_DIAGNOSTICS')
+  check('pfd.configuredOn', previewDiagnosticsConfigured({ DOGSC_PREVIEW_DIAGNOSTICS: '1' }), true)
+  check('pfd.configuredTrueString',
+    previewDiagnosticsConfigured({ DOGSC_PREVIEW_DIAGNOSTICS: 'true' }), false)
+  check('pfd.configuredAbsent', previewDiagnosticsConfigured({}), false)
+  check('pfd.maxCaptures', PREVIEW_DIAGNOSTICS_MAX_CAPTURES, 3)
+  check('pfd.windowSeconds', PREVIEW_DIAGNOSTICS_CAPTURE_WINDOW_SECONDS, 10)
+  check('pfd.maxMeasurements', PREVIEW_DIAGNOSTICS_MAX_MEASUREMENTS, 900)
+  check('pfd.reportDelay', PREVIEW_DIAGNOSTICS_REPORT_DELAY_SECONDS, 11)
+  check('pfd.infoInterval', PREVIEW_DIAGNOSTICS_INFO_SAMPLE_INTERVAL, 0.25)
+  check('pfd.maxPending', PREVIEW_DIAGNOSTICS_MAX_PENDING_RENDER_INFO, 4)
+
+  const enqueued = previewDiagnosticsEnqueueFrame(
+    { captureID: 2, index: 5, queuedAt: 1, collectsRenderInfo: true }, 9.5)
+  check('pfd.enqueueQueuedAt', enqueued.queuedAt, 9.5)
+  check('pfd.enqueueKeepsCaptureID', enqueued.captureID, 2)
+  check('pfd.enqueueKeepsIndex', enqueued.index, 5)
+  check('pfd.enqueueKeepsCollects', enqueued.collectsRenderInfo, true)
+
+  check('pfd.percentileTwenty',
+    previewDiagnosticsPercentile([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20], 0.95), 19)
+  check('pfd.percentileSingle', previewDiagnosticsPercentile([7], 0.95), 7)
+  check('pfd.percentileEmpty', previewDiagnosticsPercentile([], 0.95), 0)
+  check('pfd.percentileZeroFraction', previewDiagnosticsPercentile([3, 9], 0), 3)
+
+  check('pfd.statsEmptyNull', previewDiagnosticsStats([]), null)
+  const st = previewDiagnosticsStats([2, 4, 6])
+  check('pfd.statsCount', st.count, 3)
+  check('pfd.statsMean', st.mean, 4)
+  check('pfd.statsP95', st.p95, 4)
+  check('pfd.statsMax', st.max, 6)
+
+  check('pfd.fpsSixtyInOneSecond', previewDiagnosticsPresentedFPS(61, 1), 60)
+  check('pfd.fpsZeroSpan', previewDiagnosticsPresentedFPS(61, 0), 0)
+  check('pfd.fpsSingleShown', previewDiagnosticsPresentedFPS(1, 2), 0)
+  check('pfd.fpsNegativeSpan', previewDiagnosticsPresentedFPS(5, -1), 0)
+
+  check('pfd.deadlineClampedEarly', previewDiagnosticsDeadlineDelayMS(1.0, 1.2), 0)
+  check('pfd.deadlineLate', previewDiagnosticsDeadlineDelayMS(1.25, 1.2), 50, 1e-6)
+
+  check('pfd.withinWindow', previewDiagnosticsWithinWindow(0, 9.9), true)
+  check('pfd.atWindowEdge', previewDiagnosticsWithinWindow(0, 10), false)
+
+  check('pfd.collectFirstFrame',
+    previewDiagnosticsShouldCollectRenderInfo({ now: 100, lastInfoSampleAt: 0, pendingRenderInfo: 0 }), true)
+  check('pfd.collectTooSoon',
+    previewDiagnosticsShouldCollectRenderInfo({ now: 100.1, lastInfoSampleAt: 100, pendingRenderInfo: 0 }), false)
+  check('pfd.collectBackpressure',
+    previewDiagnosticsShouldCollectRenderInfo({ now: 100, lastInfoSampleAt: 0, pendingRenderInfo: 4 }), false)
+  check('pfd.collectUnderLimit',
+    previewDiagnosticsShouldCollectRenderInfo({ now: 100.3, lastInfoSampleAt: 100, pendingRenderInfo: 3 }), true)
+
+  const renderInfo = previewDiagnosticsRenderInfoUpdate(
+    { kernelCompileSeconds: 0.002, kernelExecutionSeconds: 0.004, passCount: 3, pixelsProcessed: 1000 })
+  check('pfd.renderInfoCompileMS', renderInfo.compileMS, 2)
+  check('pfd.renderInfoExecutionMS', renderInfo.executionMS, 4)
+  check('pfd.renderInfoPasses', renderInfo.passes, 3)
+  check('pfd.renderInfoPixels', renderInfo.pixels, 1000)
+
+  {
+    const diag = new PreviewFrameDiagnostics()
+    const first = diag.beginFrame({ epoch: 10, outputTime: 0, target: 0, evaluationMS: 1, now: 0 })
+    check('pfd.classFirstCapture', first.captureID, 1)
+    check('pfd.classFirstIndex', first.index, 0)
+    // 首帧时 lastInfoSampleAt 仍是 0，now 也是 0 → 0 - 0 < 0.25 → 不采样
+    check('pfd.classFirstNoInfo', first.collectsRenderInfo, false)
+    const second = diag.beginFrame({ epoch: 10, outputTime: 1, target: 1, evaluationMS: 2, now: 0.3 })
+    check('pfd.classSameEpochIndex', second.index, 1)
+    check('pfd.classSecondCollects', second.collectsRenderInfo, true)
+    diag.encoded(second, { queueMS: 1, graphMS: 2, drawableWaitMS: 3, encodeMS: 4 })
+    diag.presented(second, 1.5)
+    // 0 表示没显示 → 不得写入
+    const third = diag.beginFrame({ epoch: 10, outputTime: 2, target: 2, evaluationMS: 3, now: 0.6 })
+    diag.presented(third, 0)
+    const report = diag.report(1)
+    check('pfd.classReportTicks', report.ticks, 3)
+    check('pfd.classReportSubmitted', report.submitted, 1)
+    check('pfd.classReportPresented', report.actuallyPresented, 1)
+    check('pfd.classReportPresentedFPS', report.presentedFPS, 0)
+    check('pfd.classReportOutputStart', report.outputStart, 0)
+    check('pfd.classReportOutputEnd', report.outputEnd, 2)
+    check('pfd.classReportEpoch', report.epoch, 10)
+    check('pfd.classReportNullAfterRemoval', diag.report(1), null)
+    check('pfd.classReportNote', report.note, PREVIEW_DIAGNOSTICS_REPORT_NOTE)
+    // 已出报告之后同 epoch 的帧：captureCount 仍指向那条已删除的批次
+    check('pfd.classAfterReportRejected',
+      diag.beginFrame({ epoch: 10, outputTime: 3, target: 3, evaluationMS: 4, now: 0.9 }), null)
+  }
+
+  {
+    const diag = new PreviewFrameDiagnostics()
+    check('pfd.capEpoch1',
+      diag.beginFrame({ epoch: 1, outputTime: 0, target: 0, evaluationMS: 0, now: 0 }) != null, true)
+    check('pfd.capEpoch2',
+      diag.beginFrame({ epoch: 2, outputTime: 0, target: 0, evaluationMS: 0, now: 0 }) != null, true)
+    check('pfd.capEpoch3',
+      diag.beginFrame({ epoch: 3, outputTime: 0, target: 0, evaluationMS: 0, now: 0 }) != null, true)
+    check('pfd.capEpoch4Rejected',
+      diag.beginFrame({ epoch: 4, outputTime: 0, target: 0, evaluationMS: 0, now: 0 }), null)
+    check('pfd.capCount', diag.captureCountValue, 3)
+    // 第 4 个 epoch 被拒时不能污染 lastEpoch
+    check('pfd.capLastEpoch', diag.lastEpochValue, 3)
+  }
+
+  {
+    const diag = new PreviewFrameDiagnostics()
+    diag.beginFrame({ epoch: 1, outputTime: 0, target: 0, evaluationMS: 0, now: 0 })
+    check('pfd.windowInside',
+      diag.beginFrame({ epoch: 1, outputTime: 1, target: 1, evaluationMS: 1, now: 9.99 }) != null, true)
+    check('pfd.windowOutside',
+      diag.beginFrame({ epoch: 1, outputTime: 2, target: 2, evaluationMS: 2, now: 10 }), null)
+  }
+
+  {
+    const diag = new PreviewFrameDiagnostics()
+    let accepted = 0
+    let rejectedAt = -1
+    for (let index = 0; index < 901; index += 1) {
+      const frame = diag.beginFrame({ epoch: 1, outputTime: index, target: index, evaluationMS: 0, now: 0 })
+      if (frame == null) { rejectedAt = index } else { accepted += 1 }
+    }
+    check('pfd.maxMeasurementsAccepted', accepted, 900)
+    check('pfd.maxMeasurementsRejectedAt', rejectedAt, 900)
+  }
+
+  {
+    const diag = new PreviewFrameDiagnostics()
+    const frame = diag.beginFrame({ epoch: 1, outputTime: 0, target: 0, evaluationMS: 0, now: 100 })
+    check('pfd.reserveOK', diag.reserveRenderInfo(frame), true)
+    check('pfd.reservePending', diag.pendingRenderInfoCount, 1)
+    diag.releaseRenderInfo(frame, null)
+    check('pfd.releasePending', diag.pendingRenderInfoCount, 0)
+    diag.releaseRenderInfo(frame, { kernelCompileSeconds: 0.001, kernelExecutionSeconds: 0.003, passCount: 1, pixelsProcessed: 10 })
+    check('pfd.releaseNeverNegative', diag.pendingRenderInfoCount, 0)
+    const report = diag.report(1)
+    check('pfd.releaseAppliedCompile', report.ciKernelCompileMS.max, 1)
+    check('pfd.releaseAppliedExecution', report.ciKernelExecutionMS.max, 3)
+    // 报告已摘掉 → 再预留必须失败
+    check('pfd.reserveAfterReport', diag.reserveRenderInfo(frame), false)
+  }
+
+  check('pfd.coalescedCount', (() => {
+    const diag = new PreviewFrameDiagnostics()
+    const frame = diag.beginFrame({ epoch: 1, outputTime: 0, target: 0, evaluationMS: 0, now: 0 })
+    diag.coalesced(frame)
+    diag.failed(frame)
+    const report = diag.report(1)
+    return `${report.coalesced}/${report.failed}`
+  })(), '1/1')
+
+  check('pfd.buildReportFPS', (() => {
+    const report = previewDiagnosticsBuildReport(1, {
+      epoch: 7, startedAt: 0, lastInfoSampleAt: 0,
+      measurements: [
+        { outputTime: 0, target: 0, evaluationMS: 0, presentedAt: 1.0 },
+        { outputTime: 1, target: 1, evaluationMS: 0, presentedAt: 1.5 },
+        { outputTime: 2, target: 2, evaluationMS: 0 },
+      ],
+    })
+    return `${report.actuallyPresented}:${report.presentedFPS}`
+  })(), '2:2')
+  check('pfd.buildReportIntervals', (() => {
+    const report = previewDiagnosticsBuildReport(1, {
+      epoch: 7, startedAt: 0, lastInfoSampleAt: 0,
+      measurements: [
+        { outputTime: 0, target: 0, evaluationMS: 0, presentedAt: 1.0 },
+        { outputTime: 1, target: 1, evaluationMS: 0, presentedAt: 1.5 },
+      ],
+    })
+    return report.displayIntervalMS.max
+  })(), 500)
+  const deadlineReport = previewDiagnosticsBuildReport(1, {
+    epoch: 7, startedAt: 0, lastInfoSampleAt: 0,
+    measurements: [
+      { outputTime: 0, target: 1.0, evaluationMS: 0, presentedAt: 1.2 },
+      // 提前送达（1.9 < 2.0）夹到 0，不得算成负延迟
+      { outputTime: 1, target: 2.0, evaluationMS: 0, presentedAt: 1.9 },
+    ],
+  })
+  check('pfd.buildReportDeadlineMax', deadlineReport.deadlineDelayMS.max, 200, 1e-6)
+  check('pfd.buildReportDeadlineMean', deadlineReport.deadlineDelayMS.mean, 100, 1e-6)
+
+  // ---------------------------------------------------------------------------
+  // CaptureReadiness.swift（181 行）
+  // ---------------------------------------------------------------------------
+  const display5K = { id: 1, name: 'Studio Display', width: 5120, height: 2880, refreshRate: 60 }
+  check('cr.h264Envelope', (() => {
+    const d = captureDisplayDimensions(display5K, 'h264')
+    return `${d.width}x${d.height}`
+  })(), '4096x2304')
+  check('cr.nativeEnvelope', (() => {
+    const d = captureDisplayDimensions(display5K, 'hevc')
+    return `${d.width}x${d.height}`
+  })(), '5120x2880')
+  check('cr.pickerLabel', captureDisplayPickerLabel(
+    { id: 2, name: '内置', width: 2560, height: 1440, refreshRate: 60 }),
+    '内置 · 2560×1440 · 60 Hz')
+
+  check('cr.snapshotNoID', captureDisplayFromSnapshot({
+    displayID: null, name: 'x', modeRefreshRate: 60, maximumFramesPerSecond: 60,
+    pixelWidth: 100, pixelHeight: 100 }), null)
+  check('cr.snapshotRefreshFallback', captureDisplayFromSnapshot({
+    displayID: 1, name: 'x', modeRefreshRate: 0, maximumFramesPerSecond: 120,
+    pixelWidth: 100, pixelHeight: 100 }).refreshRate, 120)
+  check('cr.snapshotRefreshMin', captureDisplayFromSnapshot({
+    displayID: 1, name: 'x', modeRefreshRate: 0, maximumFramesPerSecond: 0,
+    pixelWidth: 100, pixelHeight: 100 }).refreshRate, 1)
+  check('cr.snapshotRefreshRounded', captureDisplayFromSnapshot({
+    displayID: 1, name: 'x', modeRefreshRate: 59.94, maximumFramesPerSecond: 60,
+    pixelWidth: 100, pixelHeight: 100 }).refreshRate, 60)
+  check('cr.snapshotDimensionFloor', (() => {
+    const d = captureDisplayFromSnapshot({
+      displayID: 1, name: 'x', modeRefreshRate: 60, maximumFramesPerSecond: 60,
+      pixelWidth: 0, pixelHeight: 0 })
+    return `${d.width}x${d.height}`
+  })(), '1x1')
+
+  const readinessBase = {
+    hasScreenRecordingPermission: true, availableDiskBytes: 1_000_000_000,
+    estimatedOneMinuteBytes: 1_000_000_000, displayRefreshRate: 60,
+    targetFrameRate: 60, captureCodec: 'h264',
+  }
+  check('cr.sufficientNull', captureHasSufficientDisk({ ...readinessBase, availableDiskBytes: null }), true)
+  check('cr.sufficientEqual', captureHasSufficientDisk(readinessBase), true)
+  check('cr.insufficient',
+    captureHasSufficientDisk({ ...readinessBase, availableDiskBytes: 999_999_999 }), false)
+  check('cr.messageNullWhenEnough', captureInsufficientDiskMessage(readinessBase), null)
+  check('cr.messageNullWhenUnknown',
+    captureInsufficientDiskMessage({ ...readinessBase, availableDiskBytes: null }), null)
+  check('cr.messageText',
+    captureInsufficientDiskMessage({ ...readinessBase, availableDiskBytes: 500_000_000 }),
+    '开始录制需预留约 1 分钟的空间（1 GB），当前可用 500 MB。请再释放约 500 MB 后重试。')
+
+  check('cr.canShowNull',
+    captureDisplayCanShowTargetRate({ ...readinessBase, displayRefreshRate: null }), true)
+  check('cr.canShowEqual', captureDisplayCanShowTargetRate(readinessBase), true)
+  check('cr.canShowBelow',
+    captureDisplayCanShowTargetRate({ ...readinessBase, displayRefreshRate: 30 }), false)
+  check('cr.warningNull', captureFrameRateWarningText(readinessBase), null)
+  check('cr.warningText',
+    captureFrameRateWarningText({ ...readinessBase, displayRefreshRate: 30 }),
+    '目标为 60 FPS，但显示器当前仅报告 30 Hz；录制会保留实际帧率，不会补帧冒充。')
+
+  check('cr.diskWalksUp', captureAvailableDiskBytes({
+    workingFolder: '/Users/me/Library/Working',
+    pathExists: (p) => p === '/Users/me',
+    freeBytesAtPath: (p) => (p === '/Users/me' ? 42 : null),
+  }), 42)
+  check('cr.diskExistingFolder', captureAvailableDiskBytes({
+    workingFolder: '/data',
+    pathExists: () => true,
+    freeBytesAtPath: (p) => (p === '/data' ? 7 : null),
+  }), 7)
+  check('cr.diskRootFallback', captureAvailableDiskBytes({
+    workingFolder: '/a/b/c',
+    pathExists: (p) => p === '/',
+    freeBytesAtPath: (p) => (p === '/' ? 11 : null),
+  }), 11)
+
+  const noBitrate = () => 2_000_000
+  check('cr.estimateProRes', estimateRecordingBytes({
+    width: 1920, height: 1080, frameRate: 30, codec: 'proRes422', duration: 60,
+    exportBitrate: noBitrate,
+  }), 934_560_000)
+  check('cr.estimateProResFloor', estimateRecordingBytes({
+    width: 320, height: 240, frameRate: 30, codec: 'proRes422', duration: 60,
+    exportBitrate: noBitrate,
+  }), 751_440_000)
+  check('cr.estimateHevc', estimateRecordingBytes({
+    width: 1920, height: 1080, frameRate: 30, codec: 'hevc', duration: 60,
+    exportBitrate: noBitrate,
+  }), 16_440_000)
+
+  check('cr.currentFirstDisplay', (() => {
+    const r = captureReadinessCurrent({
+      displays: [{ id: 3, name: 'A', width: 1920, height: 1080, refreshRate: 60 }],
+      displayID: null, targetFrameRate: 60, captureCodec: 'hevc',
+      hasScreenRecordingPermission: true, availableDiskBytes: 100,
+      exportBitrate: noBitrate,
+    })
+    return `${r.displayRefreshRate}:${r.estimatedOneMinuteBytes}`
+  })(), '60:16440000')
+  check('cr.currentByID', (() => {
+    const r = captureReadinessCurrent({
+      displays: [
+        { id: 3, name: 'A', width: 1920, height: 1080, refreshRate: 60 },
+        { id: 4, name: 'B', width: 1280, height: 720, refreshRate: 30 },
+      ],
+      displayID: 4, targetFrameRate: 30, captureCodec: 'h264',
+      hasScreenRecordingPermission: false, availableDiskBytes: null,
+      exportBitrate: noBitrate,
+    })
+    return `${r.displayRefreshRate}:${r.hasScreenRecordingPermission}`
+  })(), '30:false')
+  check('cr.currentUnknownDisplay', (() => {
+    const r = captureReadinessCurrent({
+      displays: [], displayID: 9, targetFrameRate: 60, captureCodec: 'hevc',
+      hasScreenRecordingPermission: true, availableDiskBytes: 0,
+      exportBitrate: noBitrate,
+    })
+    return `${r.displayRefreshRate}:${r.estimatedOneMinuteBytes}`
+  })(), `60:${CAPTURE_UNKNOWN_DISPLAY.width === 1920 ? 16_440_000 : -1}`)
+
+  check('cr.permissionUnknown', capturePermissionStateFromAuthorizationStatus('unknown'), 'restricted')
+  check('cr.permissionAuthorized',
+    capturePermissionStateFromAuthorizationStatus('authorized'), 'authorized')
+  check('cr.permissionLabel', capturePermissionStateLabel('denied'), '未授权')
+  check('cr.permissionLabels', Object.keys(CAPTURE_PERMISSION_STATE_LABELS).length, 4)
+
+  check('cr.byteCount999', formatFileByteCount(999), '999 bytes')
+  check('cr.byteCount1000', formatFileByteCount(1000), '1 KB')
+  check('cr.byteCount1500', formatFileByteCount(1500), '1.5 KB')
+  check('cr.byteCountZero', formatFileByteCount(0), '0 bytes')
+  check('cr.byteCountNaN', formatFileByteCount(Number.NaN), '0 bytes')
+
+  // ---------------------------------------------------------------------------
+  // AppChoiceFeedback.swift（182 行）
+  // ---------------------------------------------------------------------------
+  check('acf.minimumPress', APP_CHOICE_MINIMUM_PRESS_DURATION, 0.1)
+  check('acf.activationWindow', APP_CHOICE_ACTIVATION_RELEASE_WINDOW, 0.05)
+  check('acf.disabledOpacity', APP_CHOICE_DISABLED_OPACITY, 0.45)
+  check('acf.contentScale', APP_CHOICE_CONTENT_PRESSED_SCALE, 0.96)
+  check('acf.iconScale', APP_CHOICE_ICON_PRESSED_SCALE, 0.9)
+  check('acf.pressAnimation', APP_CHOICE_PRESS_ANIMATION_SECONDS, 0.09)
+  check('acf.defaultNotPressed', APP_CHOICE_PRESS_DEFAULT.pressed, false)
+
+  check('acf.keyDisabled',
+    appChoiceKeyPressDecision({ key: 'return', isEnabled: false, modifiers: [] }), 'ignored')
+  check('acf.keyWithModifier',
+    appChoiceKeyPressDecision({ key: 'return', isEnabled: true, modifiers: ['command'] }), 'ignored')
+  check('acf.keyReturn',
+    appChoiceKeyPressDecision({ key: 'return', isEnabled: true, modifiers: [] }), 'handled')
+  check('acf.keyOther',
+    appChoiceKeyPressDecision({ key: 'space', isEnabled: true, modifiers: [] }), 'ignored')
+
+  {
+    const feedback = new AppChoiceFeedback()
+    feedback.trackPress(1, true, true)
+    check('acf.trackBegins', `${feedback.press.pressed}/${feedback.press.wasSelected}`, 'true/true')
+    feedback.trackPress(1.05, false, true)
+    check('acf.shortPressHeld', feedback.press.pressed, true)
+    check('acf.shortPressDelay', feedback.pendingReleaseDelay(1.05), 0.05, 1e-9)
+    check('acf.shortPressSettleEarly', feedback.settle(1.099), false)
+    check('acf.shortPressSettleAt', feedback.settle(1.1), true)
+    check('acf.shortPressReleased', feedback.press.pressed, false)
+    check('acf.shortPressDelayGone', feedback.pendingReleaseDelay(1.2), null)
+  }
+
+  {
+    const feedback = new AppChoiceFeedback()
+    feedback.trackPress(1, true, false)
+    feedback.trackPress(1.5, false, false)
+    check('acf.longHoldReleasesNow', feedback.press.pressed, false)
+    check('acf.longHoldNoDelay', feedback.pendingReleaseDelay(1.5), null)
+  }
+
+  {
+    const feedback = new AppChoiceFeedback()
+    feedback.trackPress(1, true, true)
+    // action 与 isPressed=false 的先后任意：这里先等 action
+    feedback.activate(1.02, true)
+    check('acf.activateConsumesNative', feedback.press.pressed, true)
+    feedback.trackPress(1.05, false, true)
+    // 若 activate 重新 begin 过，startedAt 会变成 1.02 → 结束于 1.12
+    check('acf.activateDidNotRestart', feedback.pendingReleaseDelay(1.05), 0.05, 1e-9)
+  }
+
+  {
+    const feedback = new AppChoiceFeedback()
+    // 键盘/无障碍触发：完全没有原生按下过程
+    feedback.activate(5, false)
+    check('acf.activateWithoutNative', feedback.press.pressed, true)
+    check('acf.activateWithoutNativeDelay', feedback.pendingReleaseDelay(5), 0.1, 1e-9)
+    feedback.settle(5.1)
+    check('acf.activateSettles', feedback.press.pressed, false)
+  }
+
+  check('acf.contentScaleEngaged',
+    appChoiceContentScale({ press: { pressed: true, wasSelected: true }, reduceMotion: false }), 0.96)
+  check('acf.contentScaleOther',
+    appChoiceContentScale({ press: { pressed: true, wasSelected: false }, reduceMotion: false }), 1)
+  check('acf.contentScaleReduceMotion',
+    appChoiceContentScale({ press: { pressed: true, wasSelected: true }, reduceMotion: true }), 1)
+  check('acf.iconScaleEngaged',
+    appChoiceIconScale({ press: { pressed: true, wasSelected: false }, reduceMotion: false }), 0.9)
+  check('acf.iconScaleSelected',
+    appChoiceIconScale({ press: { pressed: true, wasSelected: true }, reduceMotion: false }), 1)
+
+  // ---------------------------------------------------------------------------
+  // CaptureSelectionState.swift（204 行）
+  // ---------------------------------------------------------------------------
+  check('css.tokenEqual',
+    captureSelectionTokensEqual(makeCaptureSelectionToken(3), makeCaptureSelectionToken(3)), true)
+  check('css.tokenNotEqual',
+    captureSelectionTokensEqual(makeCaptureSelectionToken(3), makeCaptureSelectionToken(4)), false)
+  check('css.tokenNullEqual', captureSelectionTokensEqual(null, null), true)
+  check('css.tokenNullVsValue',
+    captureSelectionTokensEqual(null, makeCaptureSelectionToken(1)), false)
+
+  check('css.targetSourceDisplay', captureSelectionTargetSource({ kind: 'display', id: 1, name: 'A' }), 'display')
+  check('css.targetSourceWindow',
+    captureSelectionTargetSource({ kind: 'window', id: 1, name: 'W',
+      applicationBundleIdentifier: null, applicationName: null }), 'window')
+  check('css.targetSourceArea',
+    captureSelectionTargetSource({ kind: 'area', displayID: null, displayName: null,
+      rect: { x: 0, y: 0, width: 1, height: 1 } }), 'area')
+  check('css.targetSourceDevice',
+    captureSelectionTargetSource({ kind: 'device', id: 'd', name: 'D' }), 'device')
+
+  const selectionBase = makeCaptureConfiguration({
+    windowID: 7, windowName: 'OldWindow', deviceID: 'old', deviceName: 'Old',
+    area: { x: 0.1, y: 0.1, width: 0.5, height: 0.5 },
+    systemAudioScope: 'selectedApplication',
+  })
+  check('css.materializeDisplayClears',
+    (() => {
+      const c = materializeCaptureSelectionTarget(selectionBase, { kind: 'display', id: 2, name: 'D2' })
+      return `${c.source}:${c.windowID}:${c.deviceID}:${c.area}:${c.displayID}`
+    })(), 'display:null:null:null:2')
+  check('css.materializeDisplayKeepsScope',
+    materializeCaptureSelectionTarget(selectionBase, { kind: 'display', id: 2, name: 'D2' })
+      .systemAudioScope, 'selectedApplication')
+  check('css.materializeWindowWithoutBundle',
+    materializeCaptureSelectionTarget(selectionBase, { kind: 'window', id: 9, name: 'C',
+      applicationBundleIdentifier: null, applicationName: null }).systemAudioScope, 'all')
+  check('css.materializeWindowWithBundle',
+    (() => {
+      const c = materializeCaptureSelectionTarget(selectionBase, { kind: 'window', id: 9, name: 'C',
+        applicationBundleIdentifier: 'com.example', applicationName: 'C' })
+      return `${c.systemAudioScope}:${c.selectedApplicationBundleIdentifier}`
+    })(), 'selectedApplication:com.example')
+  check('css.materializeAreaConstrained',
+    (() => {
+      const c = materializeCaptureSelectionTarget(selectionBase, { kind: 'area', displayID: 5,
+        displayName: 'D5', rect: { x: -1, y: 0.5, width: 2, height: 2 } })
+      return `${c.area.x},${c.area.y},${c.area.width},${c.area.height}`
+    })(), '0,0.5,1,0.5')
+  check('css.materializeAreaScope',
+    materializeCaptureSelectionTarget(selectionBase, { kind: 'area', displayID: 5, displayName: 'D5',
+      rect: { x: 0, y: 0, width: 0.5, height: 0.5 } }).systemAudioScope, 'all')
+  check('css.materializeDeviceScope',
+    materializeCaptureSelectionTarget(selectionBase, { kind: 'device', id: 'cam', name: 'Cam' })
+      .systemAudioScope, 'all')
+
+  const t1 = makeCaptureSelectionToken(1)
+  const t2 = makeCaptureSelectionToken(2)
+  const displayTarget = { kind: 'display', id: 2, name: 'D2' }
+  const windowTarget = { kind: 'window', id: 3, name: 'W3',
+    applicationBundleIdentifier: null, applicationName: null }
+
+  check('css.reduceChoose',
+    reduceCaptureSelection(CAPTURE_SELECTION_IDLE,
+      { kind: 'choose', source: 'display', token: t1 }).kind, 'selecting')
+  const selecting = reduceCaptureSelection(CAPTURE_SELECTION_IDLE,
+    { kind: 'choose', source: 'display', token: t1 })
+  check('css.reduceConfirmStaleToken',
+    reduceCaptureSelection(selecting, { kind: 'confirm', target: displayTarget, token: t2 }) === selecting, true)
+  check('css.reduceConfirmSourceMismatch',
+    reduceCaptureSelection(selecting, { kind: 'confirm', target: windowTarget, token: t1 }) === selecting, true)
+  const ready = reduceCaptureSelection(selecting, { kind: 'confirm', target: displayTarget, token: t1 })
+  check('css.reduceConfirmReady', ready.kind, 'ready')
+  check('css.reduceConfirmTarget', captureSelectionTarget(ready).name, 'D2')
+  check('css.reduceCanStart', captureSelectionCanStartRecording(ready), true)
+  check('css.reduceCanStartSelecting', captureSelectionCanStartRecording(selecting), false)
+  check('css.reduceSelectedSource', captureSelectionSelectedSource(ready), 'display')
+  check('css.reduceSessionToken', captureSelectionSession(ready).token.rawValue, 1)
+  check('css.reduceIdleSession', captureSelectionSession(CAPTURE_SELECTION_IDLE), null)
+  check('css.reduceUnlock', reduceCaptureSelection(ready, { kind: 'unlock', token: t1 }).kind, 'selecting')
+  check('css.reduceUnlockStale',
+    reduceCaptureSelection(ready, { kind: 'unlock', token: t2 }) === ready, true)
+  check('css.reduceCancel', reduceCaptureSelection(ready, { kind: 'cancel', token: t1 }).kind, 'idle')
+  check('css.reduceCancelStale',
+    reduceCaptureSelection(ready, { kind: 'cancel', token: t2 }) === ready, true)
+
+  check('css.targetsEqual',
+    captureSelectionTargetsEqual(displayTarget, { kind: 'display', id: 2, name: 'D2' }), true)
+  check('css.targetsNotEqual',
+    captureSelectionTargetsEqual(displayTarget, { kind: 'display', id: 2, name: 'D3' }), false)
+  check('css.targetsDifferentKind',
+    captureSelectionTargetsEqual(displayTarget, windowTarget), false)
+  check('css.statesEqual', captureSelectionStatesEqual(ready, { ...ready }), true)
+  check('css.statesNotEqualKind',
+    captureSelectionStatesEqual(ready, selecting), false)
+
+  {
+    const coordinator = new CaptureSelectionCoordinator()
+    const notifications = []
+    const observed = new CaptureSelectionCoordinator((state) => notifications.push(state.kind))
+    const session = observed.choose('window')
+    check('css.coordinatorToken', session.token.rawValue, 1)
+    check('css.coordinatorSource', session.source, 'window')
+    check('css.coordinatorIsCurrent', observed.isCurrent(session.token), true)
+    check('css.coordinatorIsNotCurrent', observed.isCurrent(makeCaptureSelectionToken(99)), false)
+    check('css.coordinatorConfirmMismatch',
+      observed.confirm(displayTarget, session.token), false)
+    check('css.coordinatorConfirm',
+      observed.confirm({ kind: 'window', id: 4, name: 'W4',
+        applicationBundleIdentifier: null, applicationName: null }, session.token), true)
+    check('css.coordinatorConfirmAgain',
+      observed.confirm({ kind: 'window', id: 4, name: 'W4',
+        applicationBundleIdentifier: null, applicationName: null }, session.token), false)
+    check('css.coordinatorUnlock', observed.unlock(session.token), true)
+    check('css.coordinatorUnlockAgain', observed.unlock(session.token), false)
+    check('css.coordinatorCancel', observed.cancel(session.token), true)
+    check('css.coordinatorCancelIdle', observed.cancel(session.token), false)
+    check('css.coordinatorResetIdle', observed.reset(), false)
+    observed.choose('device')
+    check('css.coordinatorResetActive', observed.reset(), true)
+    check('css.coordinatorStateAfterReset', observed.state.kind, 'idle')
+    // 状态未变时不通知
+    check('css.coordinatorNotifications', notifications.join(','),
+      'selecting,ready,selecting,idle,selecting,idle')
+    check('css.coordinatorFreshToken', coordinator.choose('display').token.rawValue, 1)
+  }
+
+  // ---------------------------------------------------------------------------
+  // CaptureSelectionTransition.swift（217 行）
+  // ---------------------------------------------------------------------------
+  check('cst.presentFade', CAPTURE_SELECTION_PRESENT_FADE_SECONDS, 0.18)
+  check('cst.retireFade', CAPTURE_SELECTION_RETIRE_FADE_SECONDS, 0.16)
+  check('cst.cardHide', CAPTURE_SELECTION_CARD_HIDE_SECONDS, 0.14)
+  check('cst.cardOffset', CAPTURE_SELECTION_CARD_OFFSET_Y, 6)
+  check('cst.cardScale', CAPTURE_SELECTION_CARD_SCALE, 0.985)
+  check('cst.cardMotionSeconds', CAPTURE_SELECTION_CARD_MOTION_SECONDS, 0.2)
+  check('cst.retirePrerequisites', CAPTURE_SELECTION_RETIRE_PREREQUISITES.length, 4)
+
+  check('cst.fadeIn', (() => {
+    const p = captureSelectionFadePlan({ retiring: false, reduceMotion: false })
+    return `${p.duration}:${p.closeOnCompletion}:${p.immediate}:${p.targetAlpha}`
+  })(), '0.18:false:false:1')
+  check('cst.fadeOut', (() => {
+    const p = captureSelectionFadePlan({ retiring: true, reduceMotion: false })
+    return `${p.duration}:${p.closeOnCompletion}:${p.immediate}:${p.targetAlpha}`
+  })(), '0.16:true:false:0')
+  check('cst.fadeOutReduceMotion', (() => {
+    const p = captureSelectionFadePlan({ retiring: true, reduceMotion: true })
+    return `${p.duration}:${p.closeOnCompletion}:${p.immediate}:${p.targetAlpha}`
+  })(), '0:true:true:0')
+  check('cst.presentStartAlpha', captureSelectionPresentStartAlpha(false), 0)
+  check('cst.presentStartAlphaReduce', captureSelectionPresentStartAlpha(true), 1)
+
+  {
+    const closed = []
+    const alphas = []
+    const transition = new CaptureSelectionWindowTransition({
+      reduceMotion: () => false,
+      closeWindow: (key) => closed.push(key),
+      setAlpha: (key, alpha) => alphas.push(`${key}=${alpha}`),
+    })
+    transition.present('a')
+    check('cst.presentPending', transition.pendingCount, 1)
+    transition.retire(['a'], true)
+    check('cst.retireStillPending', transition.pendingCount, 1)
+    transition.finishImmediately()
+    check('cst.finishClears', transition.pendingCount, 0)
+    check('cst.finishCloses', closed.join(','), 'a')
+  }
+
+  {
+    const closed = []
+    const transition = new CaptureSelectionWindowTransition({
+      reduceMotion: () => true,
+      closeWindow: (key) => closed.push(key),
+      setAlpha: () => {},
+    })
+    transition.retire(['b'], true)
+    check('cst.reduceMotionClosesImmediately', closed.join(','), 'b')
+    check('cst.reduceMotionNoPending', transition.pendingCount, 0)
+  }
+
+  {
+    const closed = []
+    const transition = new CaptureSelectionWindowTransition({
+      reduceMotion: () => false,
+      closeWindow: (key) => closed.push(key),
+      setAlpha: () => {},
+    })
+    transition.retire(['c'], false)
+    check('cst.unanimatedRetireCloses', closed.join(','), 'c')
+  }
+
+  {
+    const alphas = []
+    const transition = new CaptureSelectionWindowTransition({
+      reduceMotion: () => false,
+      closeWindow: () => {},
+      setAlpha: (key, alpha) => alphas.push(`${key}=${alpha}`),
+    })
+    transition.present('d')
+    transition.settlePresentation(['d'])
+    check('cst.settlePinsAlpha', alphas.join(',').endsWith('d=1'), true)
+    check('cst.settleClears', transition.pendingCount, 0)
+  }
+
+  {
+    const rect = { x: 10, y: 20, width: 100, height: 50 }
+    check('cst.framesEqual', framesEqual(rect, { ...rect }), true)
+    check('cst.framesNotEqual', framesEqual(rect, { ...rect, y: 21 }), false)
+    check('cst.showFirst', (() => {
+      const p = captureSelectionCardShowPlan({ isPresented: false, targetFrame: null, target: rect })
+      return `${p.entering}:${p.updateFrame}`
+    })(), 'true:true')
+    check('cst.showSameFrame', (() => {
+      const p = captureSelectionCardShowPlan({ isPresented: true, targetFrame: rect, target: { ...rect } })
+      return `${p.entering}:${p.updateFrame}`
+    })(), 'false:false')
+    check('cst.showMovedFrame', (() => {
+      const p = captureSelectionCardShowPlan({ isPresented: true, targetFrame: rect,
+        target: { ...rect, x: 30 } })
+      return `${p.entering}:${p.updateFrame}`
+    })(), 'false:true')
+  }
+
+  check('cst.hideNeverShownAnimated',
+    captureSelectionCardHidePlan({ isPresented: false, animated: true, reduceMotion: false }), null)
+  check('cst.hideNeverShownImmediate', (() => {
+    const p = captureSelectionCardHidePlan({ isPresented: false, animated: false, reduceMotion: false })
+    return `${p.duration}:${p.hideOnCompletion}:${p.immediate}`
+  })(), '0:true:true')
+  check('cst.hideAnimated', (() => {
+    const p = captureSelectionCardHidePlan({ isPresented: true, animated: true, reduceMotion: false })
+    return `${p.duration}:${p.hideOnCompletion}:${p.immediate}`
+  })(), '0.14:true:false')
+  check('cst.hideAnimatedReduce', (() => {
+    const p = captureSelectionCardHidePlan({ isPresented: true, animated: true, reduceMotion: true })
+    return `${p.duration}:${p.immediate}`
+  })(), '0:true')
+
+  check('cst.animateReduced', (() => {
+    const p = captureSelectionCardAnimatePlan({ initialAlpha: 0, alpha: 1, duration: 0.16,
+      reduceMotion: true, hideOnCompletion: false })
+    return `${p.animate}:${p.duration}`
+  })(), 'false:0')
+  check('cst.animateSameAlpha', (() => {
+    const p = captureSelectionCardAnimatePlan({ initialAlpha: 0, alpha: 0, duration: 0.14,
+      reduceMotion: false, hideOnCompletion: true })
+    return `${p.animate}:${p.hideOnCompletion}`
+  })(), 'false:true')
+  check('cst.animateNormal', (() => {
+    const p = captureSelectionCardAnimatePlan({ initialAlpha: 0, alpha: 1, duration: 0.16,
+      reduceMotion: false, hideOnCompletion: false })
+    return `${p.animate}:${p.duration}`
+  })(), 'true:0.16')
+
+  check('cst.motionVisible', (() => {
+    const p = captureSelectionCardMotion({ appeared: true, retiring: false, reduceMotion: false })
+    return `${p.offsetY}:${p.scale}:${p.duration}`
+  })(), '0:1:0.2')
+  check('cst.motionEntering', (() => {
+    const p = captureSelectionCardMotion({ appeared: false, retiring: false, reduceMotion: false })
+    return `${p.offsetY}:${p.scale}`
+  })(), '6:0.985')
+  check('cst.motionRetiringDuration',
+    captureSelectionCardMotion({ appeared: true, retiring: true, reduceMotion: false }).duration, 0.16)
+  check('cst.motionReduceMotion', (() => {
+    const p = captureSelectionCardMotion({ appeared: false, retiring: false, reduceMotion: true })
+    return `${p.offsetY}:${p.scale}:${p.duration}`
+  })(), '0:1:null')
+
+  {
+    const card = new CaptureSelectionCardTransition()
+    check('cst.cardStartsHidden', card.isPresented, false)
+    card.show('v', { x: 0, y: 0, width: 10, height: 10 })
+    check('cst.cardShown', card.isPresented, true)
+    check('cst.cardFrame', card.targetFrame.width, 10)
+    check('cst.cardGeneration', card.generationValue, 1)
+    card.show('v', { x: 0, y: 0, width: 10, height: 10 })
+    check('cst.cardSameFrameNoBump', card.generationValue, 1)
+    card.show('v', { x: 5, y: 0, width: 10, height: 10 })
+    check('cst.cardMovedNoBump', card.generationValue, 1)
+    check('cst.cardHidePlanDuration', card.hide(true, false).duration, 0.14)
+    check('cst.cardHidden', card.isPresented, false)
+    check('cst.cardHideBumps', card.generationValue, 2)
+    check('cst.cardHideAgainNull', card.hide(true, false), null)
+    card.show('v', { x: 1, y: 1, width: 2, height: 2 })
+    card.stop()
+    check('cst.cardStopClears', `${card.isPresented}:${card.targetFrame}`, 'false:null')
+  }
+
+  // ---------------------------------------------------------------------------
+  // CaptureDeviceCatalog.swift（216 行）
+  // ---------------------------------------------------------------------------
+  check('cdc.runtimeResolution',
+    (() => {
+      const r = runtimeFormatResolution({ width: 1920, height: 1080, framesPerSecond: 30 })
+      return `${r.width}x${r.height}`
+    })(), '1920x1080')
+  check('cdc.runtimeLabel',
+    runtimeFormatLabel({ width: 1920, height: 1080, framesPerSecond: 30 }),
+    '1080p · 16:9 · 30.0 FPS')
+  check('cdc.runtimeLabelRounded',
+    runtimeFormatLabel({ width: 1280, height: 720, framesPerSecond: 29.97 }),
+    '720p · 16:9 · 30.0 FPS')
+  check('cdc.deviceInfos', (() => {
+    const infos = captureDeviceInfos([
+      { uniqueID: 'a', localizedName: 'A' },
+      { uniqueID: 'b', localizedName: 'B' },
+    ])
+    return `${infos.length}:${infos[0].id}:${infos[1].name}`
+  })(), '2:a:B')
+  check('cdc.iosModelID', CAPTURE_DEVICE_IOS_MODEL_ID, 'iOS Device')
+  check('cdc.discoveryRoleCount', CAPTURE_DEVICE_DISCOVERY_ROLES.length, 3)
+  check('cdc.iosRequiresModel',
+    captureDeviceRequiresIOSModelID('iosDevice'), true)
+  check('cdc.cameraNoModel', captureDeviceRequiresIOSModelID('camera'), false)
+  check('cdc.eligibleCamera',
+    captureDeviceIsEligible({ role: 'camera', isConnected: true, modelID: 'FaceTime HD' }), true)
+  check('cdc.eligibleDisconnected',
+    captureDeviceIsEligible({ role: 'camera', isConnected: false, modelID: 'x' }), false)
+  check('cdc.eligibleIOSWrongModel',
+    captureDeviceIsEligible({ role: 'iosDevice', isConnected: true, modelID: 'iPad' }), false)
+  check('cdc.eligibleIOSRightModel',
+    captureDeviceIsEligible({ role: 'iosDevice', isConnected: true, modelID: 'iOS Device' }), true)
+  check('cdc.enableIOSOK', captureEnableIOSScreenCaptureDecision(0), true)
+  check('cdc.enableIOSFail', captureEnableIOSScreenCaptureDecision(-50), false)
+
+  check('cdc.resolutionsDedupedSorted', (() => {
+    const list = captureDeviceResolutionsFromFormats([
+      { width: 1280, height: 720, supportedFrameRateRangeCount: 1 },
+      { width: 1920, height: 1080, supportedFrameRateRangeCount: 2 },
+      { width: 1920, height: 1080, supportedFrameRateRangeCount: 1 },
+      { width: 640, height: 480, supportedFrameRateRangeCount: 1 },
+    ])
+    return list.map((r) => `${r.width}x${r.height}`).join(',')
+  })(), '1920x1080,1280x720,640x480')
+  check('cdc.resolutionsSkipped', (() => {
+    const list = captureDeviceResolutionsFromFormats([
+      { width: 0, height: 1080, supportedFrameRateRangeCount: 1 },
+      { width: 1920, height: 0, supportedFrameRateRangeCount: 1 },
+      { width: 1920, height: 1080, supportedFrameRateRangeCount: 0 },
+      { width: 1024, height: 768, supportedFrameRateRangeCount: 1 },
+    ])
+    return list.map((r) => `${r.width}x${r.height}`).join(',')
+  })(), '1024x768')
+  check('cdc.resolutionsTieByWidth', (() => {
+    const list = captureDeviceResolutionsFromFormats([
+      { width: 1440, height: 2560, supportedFrameRateRangeCount: 1 },
+      { width: 2560, height: 1440, supportedFrameRateRangeCount: 1 },
+    ])
+    return list.map((r) => r.width).join(',')
+  })(), '2560,1440')
+
+  check('cdc.defaultQueryExact',
+    captureDeviceDefaultQueryForRequest({ kind: 'exact', role: 'camera', uniqueID: 'x' }), 'none')
+  check('cdc.defaultQueryCamera',
+    captureDeviceDefaultQueryForRequest({ kind: 'automatic', role: 'camera' }), 'video')
+  check('cdc.defaultQueryMicrophone',
+    captureDeviceDefaultQueryForRequest({ kind: 'automatic', role: 'microphone' }), 'audio')
+  check('cdc.defaultQueryIOS',
+    captureDeviceDefaultQueryForRequest({ kind: 'automatic', role: 'iosDevice' }), 'none')
+
+  check('cdc.resolveAutomaticAppendsDefault', (() => {
+    const result = captureResolveLiveDevice({
+      request: { kind: 'automatic', role: 'camera' },
+      candidates: [{ role: 'camera', uniqueID: 'builtin', localizedName: '内置' }],
+      defaultDevice: { uniqueID: 'usb', isConnected: true },
+    })
+    return `${result.ok}:${result.appendedDefault}:${result.device.uniqueID}`
+  })(), 'true:true:usb')
+  check('cdc.resolveAutomaticExistingDefault', (() => {
+    const result = captureResolveLiveDevice({
+      request: { kind: 'automatic', role: 'camera' },
+      candidates: [{ role: 'camera', uniqueID: 'usb', localizedName: 'USB' }],
+      defaultDevice: { uniqueID: 'usb', isConnected: true },
+    })
+    return `${result.appendedDefault}:${result.device.uniqueID}`
+  })(), 'false:usb')
+  check('cdc.resolveExactNeverUsesDefault', (() => {
+    const result = captureResolveLiveDevice({
+      request: { kind: 'exact', role: 'camera', uniqueID: 'missing' },
+      candidates: [{ role: 'camera', uniqueID: 'builtin', localizedName: '内置' }],
+      defaultDevice: { uniqueID: 'usb', isConnected: true },
+    })
+    return `${result.ok}:${result.requestedUniqueID}`
+  })(), 'false:missing')
+  check('cdc.resolveDisconnectedDefault', (() => {
+    const result = captureResolveLiveDevice({
+      request: { kind: 'automatic', role: 'camera' },
+      candidates: [{ role: 'camera', uniqueID: 'builtin', localizedName: '内置' }],
+      defaultDevice: { uniqueID: 'usb', isConnected: false },
+    })
+    // Swift L148-152：未连接的默认设备不补进候选，但 defaultUniqueID 仍然传下去
+    // → 策略在候选里找不到它 → 解析失败（requestedUniqueID 为 null）
+    return `${result.ok}:${result.requestedUniqueID}`
+  })(), 'false:null')
+  check('cdc.resolveAutomaticNoDefault', (() => {
+    const result = captureResolveLiveDevice({
+      request: { kind: 'automatic', role: 'camera' },
+      candidates: [{ role: 'camera', uniqueID: 'builtin', localizedName: '内置' }],
+      defaultDevice: null,
+    })
+    return `${result.ok}:${result.requestedUniqueID}`
+  })(), 'false:null')
+
+  check('cdc.schedulerCoalesces', await (async () => {
+    let calls = 0
+    const scheduler = new CaptureDeviceCatalogScheduler(async () => {
+      calls += 1
+      return { screenDevices: [], cameras: [], microphones: [] }
+    })
+    const first = scheduler.snapshot()
+    const second = scheduler.snapshot()
+    check('cdc.schedulerSamePromise', first === second, true)
+    await Promise.all([first, second])
+    check('cdc.schedulerCalls', calls, 1)
+    check('cdc.schedulerIdle', scheduler.isEnumerating, false)
+    return true
+  })(), true)
+
+  // ---------------------------------------------------------------------------
+  // TimelineAudioGainProcessor.swift（195 行）
+  // ---------------------------------------------------------------------------
+  check('tag.epsilon', TIMELINE_AUDIO_GAIN_EPSILON, 1e-7)
+  check('tag.clampHigh', timelineAudioGainClamped(2), 1)
+  check('tag.clampLow', timelineAudioGainClamped(-1), 0)
+  check('tag.clampNaN', timelineAudioGainClamped(Number.NaN), 0)
+  check('tag.clampKeep', timelineAudioGainClamped(0.35), 0.35)
+
+  check('tag.validSpans', (() => {
+    const spans = timelineAudioGainValidSpans([
+      { start: 2, end: 3, gain: 0.5 },
+      { start: 0, end: 0, gain: 0.5 },
+      { start: 1, end: 2, gain: 0.2 },
+      { start: Number.NaN, end: 4, gain: 0.1 },
+    ])
+    return spans.map((s) => s.start).join(',')
+  })(), '1,2')
+
+  check('tag.needsProcessor', timelineAudioGainNeedsProcessor(0.5, [
+    { start: 0, end: 1, gain: 0.2 },
+  ]), true)
+  check('tag.noProcessorWhenAllSame', timelineAudioGainNeedsProcessor(0.5, [
+    { start: 0, end: 1, gain: 0.5 },
+    { start: 1, end: 2, gain: 0.5 },
+  ]), false)
+  check('tag.noProcessorWhenClampedSame', timelineAudioGainNeedsProcessor(1, [
+    { start: 0, end: 1, gain: 2 },
+  ]), false)
+
+  check('tag.planNoProcessor', (() => {
+    const p = timelineAudioGainParametersPlan({
+      defaultGain: 0.8, spans: [{ start: 0, end: 1, gain: 0.8 }], processorAvailable: true,
+    })
+    return `${p.volume}:${p.usesProcessor}:${p.spans.length}`
+  })(), '0.8:false:0')
+  check('tag.planWithProcessor', (() => {
+    const p = timelineAudioGainParametersPlan({
+      defaultGain: 0.8, spans: [{ start: 0, end: 1, gain: 0 }], processorAvailable: true,
+    })
+    return `${p.volume}:${p.usesProcessor}:${p.spans[0].gain}`
+  })(), '1:true:0')
+  check('tag.planProcessorUnavailable', (() => {
+    const p = timelineAudioGainParametersPlan({
+      defaultGain: 0.8, spans: [{ start: 0, end: 1, gain: 0 }], processorAvailable: false,
+    })
+    return `${p.volume}:${p.usesProcessor}`
+  })(), '0:false')
+  check('tag.planClampsDefault', timelineAudioGainParametersPlan({
+    defaultGain: 5, spans: [], processorAvailable: true,
+  }).volume, 1)
+
+  const sortedSpans = [
+    { start: 0, end: 1, gain: 0.5 },
+    { start: 1, end: 2, gain: 0.2 },
+    { start: 2, end: 3, gain: 0.8 },
+  ]
+  check('tag.firstIndexAtZero', timelineAudioGainFirstSpanIndex(sortedSpans, 0), 0)
+  check('tag.firstIndexAtBoundary', timelineAudioGainFirstSpanIndex(sortedSpans, 1), 1)
+  check('tag.firstIndexInside', timelineAudioGainFirstSpanIndex(sortedSpans, 1.5), 1)
+  check('tag.firstIndexPast', timelineAudioGainFirstSpanIndex(sortedSpans, 3), 3)
+  check('tag.firstIndexEmpty', timelineAudioGainFirstSpanIndex([], 0), 0)
+
+  check('tag.nextBoundary', timelineAudioGainNextBoundaryFrame({
+    frame: 0, frameCount: 100, boundary: 0.5, start: 0, step: 0.01,
+  }), 50)
+  check('tag.nextBoundaryAtLeastOne', timelineAudioGainNextBoundaryFrame({
+    frame: 10, frameCount: 100, boundary: 0.05, start: 0, step: 0.01,
+  }), 11)
+  check('tag.nextBoundaryClamped', timelineAudioGainNextBoundaryFrame({
+    frame: 99, frameCount: 100, boundary: 100, start: 0, step: 0.01,
+  }), 100)
+
+  check('tag.segmentsSplitsAtSpans', (() => {
+    const segments = timelineAudioGainSegments({
+      spans: sortedSpans, defaultGain: 1, start: 0, sampleRate: 100, frameCount: 300,
+    })
+    return segments.map((s) => `${s.startFrame}-${s.endFrame}:${s.gain}`).join('|')
+  })(), '0-100:0.5|100-200:0.2|200-300:0.8')
+  check('tag.segmentsDefaultBeforeFirstSpan', (() => {
+    const segments = timelineAudioGainSegments({
+      spans: [{ start: 0.5, end: 1, gain: 0 }], defaultGain: 1, start: 0, sampleRate: 100,
+      frameCount: 100,
+    })
+    return segments.map((s) => `${s.startFrame}-${s.endFrame}:${s.gain}`).join('|')
+  })(), '0-50:1|50-100:0')
+  check('tag.segmentsDefaultAfterLastSpan', (() => {
+    const segments = timelineAudioGainSegments({
+      spans: [{ start: 0, end: 0.5, gain: 0 }], defaultGain: 1, start: 0, sampleRate: 100,
+      frameCount: 100,
+    })
+    return segments.map((s) => `${s.startFrame}-${s.endFrame}:${s.gain}`).join('|')
+  })(), '0-50:0|50-100:1')
+  check('tag.segmentsEmpty', timelineAudioGainSegments({
+    spans: [], defaultGain: 1, start: 0, sampleRate: 100, frameCount: 0,
+  }).length, 0)
+  check('tag.segmentsInvalidSampleRate', (() => {
+    const segments = timelineAudioGainSegments({
+      spans: [], defaultGain: 1, start: 0, sampleRate: 0, frameCount: 10,
+    })
+    return `${segments.length}:${segments[0].gain}:${segments[0].endFrame}`
+  })(), '1:0:10')
+  check('tag.segmentsNonFiniteStart', timelineAudioGainSegments({
+    spans: [], defaultGain: 1, start: Number.NaN, sampleRate: 100, frameCount: 10,
+  })[0].gain, 0)
+  check('tag.segmentsCoverage', (() => {
+    const segments = timelineAudioGainSegments({
+      spans: sortedSpans, defaultGain: 1, start: 0, sampleRate: 50, frameCount: 137,
+    })
+    const last = segments[segments.length - 1]
+    return `${segments[0].startFrame}:${last.endFrame}`
+  })(), '0:137')
+
+  check('tag.scaleIdentity',
+    timelineAudioGainScaleKind({ gain: 1, isFloat: true, isSignedInteger: false, bytesPerSample: 4 }), 'identity')
+  check('tag.scaleZero',
+    timelineAudioGainScaleKind({ gain: 0, isFloat: true, isSignedInteger: false, bytesPerSample: 4 }), 'zero')
+  check('tag.scaleFloat32',
+    timelineAudioGainScaleKind({ gain: 0.5, isFloat: true, isSignedInteger: false, bytesPerSample: 4 }), 'multiplyFloat32')
+  check('tag.scaleFloat64',
+    timelineAudioGainScaleKind({ gain: 0.5, isFloat: true, isSignedInteger: false, bytesPerSample: 8 }), 'multiplyFloat64')
+  check('tag.scaleInt16',
+    timelineAudioGainScaleKind({ gain: 0.5, isFloat: false, isSignedInteger: true, bytesPerSample: 2 }), 'multiplyInteger')
+  check('tag.scaleInt32',
+    timelineAudioGainScaleKind({ gain: 0.5, isFloat: false, isSignedInteger: true, bytesPerSample: 4 }), 'multiplyInteger')
+  check('tag.scaleUnknownFormat',
+    timelineAudioGainScaleKind({ gain: 0.5, isFloat: false, isSignedInteger: false, bytesPerSample: 3 }), 'zero')
+
+  check('tag.sampleCount', timelineAudioGainSampleCount({
+    lowerFrame: 0, upperFrame: 10, channels: 2, byteSize: 80, bytesPerSample: 4,
+  }), 20)
+  check('tag.sampleCountClamped', timelineAudioGainSampleCount({
+    lowerFrame: 0, upperFrame: 100, channels: 2, byteSize: 40, bytesPerSample: 4,
+  }), 10)
+  check('tag.sampleCountEmpty', timelineAudioGainSampleCount({
+    lowerFrame: 5, upperFrame: 5, channels: 2, byteSize: 40, bytesPerSample: 4,
+  }), 0)
+  check('tag.sampleCountZeroBytes', timelineAudioGainSampleCount({
+    lowerFrame: 0, upperFrame: 5, channels: 2, byteSize: 10, bytesPerSample: 0,
+  }), 0)
+}
+
+await runPreviewAndSelectionBatch()
+
 console.log(`MODEL-RESULT passed=${passed} failed=${failed}`)
 if (failed > 0) process.exit(1)
